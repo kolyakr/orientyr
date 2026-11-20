@@ -69,6 +69,7 @@ scripts/                CLI entry points (run.py, make_video.py, benchmark.py, s
 outputs/                generated images/videos (gitignored, except curated results/)
 results/                final images/videos used in README and pitch
 tests/                  quick sanity tests (homography math, synthetic GT)
+ui/                     mission-control console: a Next.js app that replays a run folder (see ui/README.md)
 ```
 
 ## Engineering conventions
@@ -254,6 +255,8 @@ tools/task.sh test                                       # the test suite (pytes
 ruff check .                                             # lint, as CI does (experiments/ excluded)
 python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
+(cd ui && npm install && npm run dev)                    # the console on outputs/fake: http://localhost:3000 (ORIENTYR_RUN=<run dir> for another run)
+(cd ui && npm test)                                      # the console's own tests (vitest); pytest also runs them on a fresh fake run
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
