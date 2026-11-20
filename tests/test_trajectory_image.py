@@ -522,3 +522,14 @@ def test_on_a_dense_run_footprints_follow_the_numbering(tmp_path):
 
 def test_on_a_sparse_run_every_accepted_fix_has_its_footprint(plain):
     assert plain["layout"].footprints == [0, 1, 2, 3, 7, 9]      # not 4, 5 (no fix), 6 (rejected), 8 (interpolated)
+
+
+def test_long_runs_space_numbers_by_the_width_of_their_longest_number(tmp_path):
+    # 18 px fits "12", not "1187": with 4-digit frame numbers the labels stacked into a dense column
+    pts = [(150 + 1.1 * i, 500 + 200 * math.sin(i / 200)) for i in range(1200)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    labs = [lab for lab in layout.labels if lab.idx is not None]
+    widest = max(lab.box[2] - lab.box[0] for lab in labs)
+    assert widest > ti.MIN_LABEL_SPACING * layout.unit                 # the case this is about
+    for a, b in itertools.combinations(labs, 2):
+        assert math.hypot(pts[a.idx][0] - pts[b.idx][0], pts[a.idx][1] - pts[b.idx][1]) >= widest, (a.text, b.text)
