@@ -19,6 +19,7 @@ from pathlib import Path
 import cv2
 
 from dronenav.accuracy import WITHIN_PX, load_truth, score
+from dronenav.config import add_shared_args, init_cli
 from dronenav.pipeline import MATCHERS, OUTPUTS, NothingLocalized, localize_run
 from dronenav.telemetry import TelemetryError, read_run
 
@@ -38,9 +39,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cache", default="outputs/cache", help="map feature cache; 'none' for no cache")
     ap.add_argument("--within", type=float, default=WITHIN_PX,
                     help=f"a fix within this many map px of the truth is correct (default {WITHIN_PX:g})")
+    add_shared_args(ap)
     a = ap.parse_args(argv)
     if (a.map is None) != (a.frames is None):
         ap.error("--map and --frames go together (to localize first), or neither (to score an existing run)")
+    init_cli(a)               # logging and the device, as in every matching script (M0-07); the device is for --map
     try:
         truth = load_truth(a.truth)        # before localizing: a wrong truth path must not cost a whole run
         if a.map is not None:
