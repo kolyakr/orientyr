@@ -6,6 +6,7 @@ scipy>=1.11
 torch>=2.2          # uses MPS on Apple Silicon, falls back to CPU
 kornia>=0.7
 lightglue @ git+https://github.com/cvg/LightGlue.git   # not on PyPI
+imageio-ffmpeg>=0.5  # ffmpeg with x264 for the trajectory video (M1-08), on every OS
 # dev
 pytest>=8
 ruff>=0.4
