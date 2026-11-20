@@ -2,14 +2,14 @@
 
 /**
  * Mission control, as a mock-up: a recorded run (run.json + run.jsonl + frames/) replayed on the map.
- * The map is the scene; everything else floats over it as glass: the brand, the legend and the camera on the
- * left, the timeline dock under the map, and on the right what the tracker knows at this frame.
+ * The map is the scene; everything else lies over it as dark glass panels: the brand, the legend and the camera
+ * on the left, the timeline dock under the map, and on the right what the tracker knows at this frame.
  * Playback works; the mission controls are drawn but inactive until the live engine exists (M7).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Run, RunRecord } from "@/lib/run";
 import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, sigmaPx, stateRuns } from "@/lib/view";
-import { MapView } from "./MapView";
+import { MapView, type StageLayout } from "./MapView";
 
 const SPEEDS = [1, 2, 4, 8];
 const MAX_DOTS = 40;
@@ -50,23 +50,6 @@ function Ticker({ value }: { value: string }) {
     </span>
   );
 }
-
-/**
- * The lens filter of the small glass pills: the backdrop is pushed inwards along the edges, as a thick glass
- * edge bends what is under it. The displacement map is a tiny SVG stretched over the element: red moves x,
- * green moves y, mid-grey moves nothing. Chromium only (CSS turns it on under [data-lens]); elsewhere the
- * pills keep a plain blur.
- */
-const LENS_MAP = `data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" preserveAspectRatio="none">` +
-  `<defs><linearGradient id="x" x1="0" x2="1" y1="0" y2="0">` +
-  `<stop offset="0" stop-color="#f00"/><stop offset=".04" stop-color="#c00"/><stop offset=".12" stop-color="#800000"/>` +
-  `<stop offset=".88" stop-color="#800000"/><stop offset=".96" stop-color="#400000"/><stop offset="1" stop-color="#000"/></linearGradient>` +
-  `<linearGradient id="y" x1="0" x2="0" y1="0" y2="1">` +
-  `<stop offset="0" stop-color="#0f0"/><stop offset=".1" stop-color="#00c000"/><stop offset=".3" stop-color="#008000"/>` +
-  `<stop offset=".7" stop-color="#008000"/><stop offset=".9" stop-color="#004000"/><stop offset="1" stop-color="#000"/></linearGradient></defs>` +
-  `<rect width="100" height="100" fill="url(#x)"/><rect width="100" height="100" fill="url(#y)" style="mix-blend-mode:screen"/></svg>`,
-)}`;
 
 export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: number }) {
   const n = run.records.length;
@@ -143,10 +126,37 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   const bands = useMemo(() => stateRuns(run.records), [run]);
   const progress = Math.round(((frame + 0.5) / n) * 100000) / 1000; // % of the timeline, rounded for a stable transform
 
+  // The stage, measured: the map's camera needs to know which part of it the panels leave free.
+  // Layout offsets, not client rects: the panels' entrance animation must not move the numbers.
   const root = useRef<HTMLElement>(null);
-  useEffect(() => {
-    // Lens refraction needs an SVG filter as a backdrop-filter: only Chromium draws that.
-    if (root.current && "chrome" in window) root.current.dataset.lens = "";
+  const overlay = useRef<HTMLDivElement>(null);
+  const [layout, setLayout] = useState<StageLayout | null>(null);
+  useLayoutEffect(() => {
+    const main = root.current, cell = overlay.current;
+    if (!main || !cell) return;
+    const PAD = 12;
+    const measure = () => {
+      const width = cell.offsetWidth, height = cell.offsetHeight;
+      let left = 0, top = 0;   // the left column (brand, legend, camera) and the row of the follow button
+      for (const el of Array.from(cell.children) as HTMLElement[]) {
+        if (el.classList.contains("follow")) top = el.offsetTop + el.offsetHeight;
+        else left = Math.max(left, el.offsetLeft + el.offsetWidth);
+      }
+      if (left > width * 0.4) left = 0; // a very narrow stage: the column would take too much, the route may pass under it
+      const x = left + PAD, y = top + PAD;
+      const next: StageLayout = {
+        cell: { width, height },
+        free: { x, y, width: Math.max(width - x - PAD / 2, 40), height: Math.max(height - y - PAD / 2, 40) },
+        view: { x: -cell.offsetLeft, y: -cell.offsetTop, width: main.clientWidth, height: main.clientHeight },
+      };
+      setLayout((old) => (JSON.stringify(old) === JSON.stringify(next) ? old : next));
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(main);
+    watch.observe(cell);
+    for (const el of Array.from(cell.children)) watch.observe(el);
+    return () => watch.disconnect();
   }, []);
   /** The light under the pointer: each glass panel gets the pointer's place in its own box, CSS draws the glow. */
   const light = (e: PointerEvent<HTMLElement>) => {
@@ -160,23 +170,14 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   return (
     <main ref={root} className="console" data-state={rec.state} data-follow={follow || undefined} data-playing={playing || undefined}
           onPointerMove={light}>
-      <svg className="defs" width="0" height="0" aria-hidden="true">
-        <filter id="glass-lens" x="0" y="0" width="1" height="1" primitiveUnits="objectBoundingBox" colorInterpolationFilters="sRGB">
-          <feImage href={LENS_MAP} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="map" />
-          <feDisplacementMap in="SourceGraphic" in2="map" scale="0.16" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </svg>
-
-      {/* a blurred copy of the map behind everything: around the map the scene has soft edges, not black bars */}
-      <div className="backdrop" aria-hidden="true" />
       <div className="stage">
-        <MapView run={run} frame={frame} follow={follow} stepMs={playing ? stepMs : 250} />
+        <MapView run={run} frame={frame} follow={follow} stepMs={playing ? stepMs : 250} layout={layout} />
       </div>
-      {/* the red breath of a lost signal: under the panels, so it shows through the glass */}
+      {/* the red breath of a lost signal, around the map and under the panels */}
       <div className="alarm" aria-hidden="true" />
 
-      <div className="overlay">
-        <header className="brand glass lens">
+      <div ref={overlay} className="overlay">
+        <header className="brand glass pill">
           <svg viewBox="0 0 32 32" aria-hidden="true">
             <circle cx="16" cy="16" r="11.5" />
             <path d="M16 2v6M16 24v6M2 16h6M24 16h6" />
@@ -188,7 +189,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           </div>
         </header>
 
-        <ul className="legend glass lens" aria-label="Map legend">
+        <ul className="legend glass pill" aria-label="Map legend">
           <li><i style={{ background: confidenceColor(1) }} />sure</li>
           <li><i style={{ background: confidenceColor(0.3) }} />less sure</li>
           <li><i style={{ background: confidenceColor(0) }} />guessing</li>
@@ -196,7 +197,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           <li><i className="ring" />where it can be</li>
         </ul>
 
-        <button type="button" className="follow glass lens press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
+        <button type="button" className="follow glass pill press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
           {follow ? "Show whole map" : "Follow drone"}
         </button>

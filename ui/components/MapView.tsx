@@ -2,33 +2,55 @@
 
 /**
  * The map with everything the tracker believes drawn over it, in map pixel coordinates: the SVG's viewBox
- * is the map itself, so telemetry is plotted as it is written, with no conversion. The SVG is fitted into the
- * free part of the screen (the "stage") and may overflow it: in follow mode the zoomed map slides under the
- * glass panels, while the drone stays in the middle of the stage.
+ * is the map itself, so telemetry is plotted as it is written, with no conversion. The SVG lies in the stage
+ * cell and may overflow it: a camera (lib/view.ts) moves and scales the map group, so the map slides under the
+ * panels. In the whole-route view the camera fits the route into the free part of the stage; in follow mode it
+ * keeps the drone in the middle of that free part.
  */
 import { useEffect, useMemo, useState } from "react";
 import type { Run } from "@/lib/run";
-import { confidenceColor, drawAngle, headingOf, niceStep, sigmaEllipse, stateRuns, trail } from "@/lib/view";
+import { type Camera, type Rect, confidenceColor, drawAngle, fitRoute, footprintSize, headingOf, inViewBox, niceStep, routeBox, sigmaEllipse, stateRuns, trail } from "@/lib/view";
 
-const FOLLOW_ZOOM = 2.4;
-const STAGE_RATIO = 1.36; // the stage is about this wide for its height; a taller map is fitted by height
+/** The stage as Console.tsx measures it, in CSS px counted from the stage cell's top-left corner. */
+export interface StageLayout {
+  cell: { width: number; height: number }; // the stage cell: the svg's own box
+  free: Rect; // the part of the cell that no panel covers
+  view: Rect; // the whole console: the map may cover all of it, under the panels
+}
+
+const FOLLOW_ZOOM = 2.4; // follow mode, against the map fitted into the stage cell
+const STAGE_RATIO = 1.36; // before the stage is measured: it is about this wide for its height
 const INTRO_MS = 1500; // on load the flown route draws itself once, start to drone, in about this long
 
 const pts = (points: number[][]) => points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 const tenth = (v: number) => Math.round(v * 10) / 10;
 
-export function MapView({ run, frame, follow, stepMs }: {
+export function MapView({ run, frame, follow, stepMs, layout }: {
   run: Run;
   frame: number;
   follow: boolean;
   stepMs: number; // how long one frame stays on screen: the camera and the drone glide for this long
+  layout: StageLayout | null; // null until the stage is measured (the server's HTML, the first render)
 }) {
   const [w, h] = run.info.map_size;
   const rec = run.records[frame];
-  const zoom = follow ? FOLLOW_ZOOM : 1;
-  // one "screen unit" in map px: marker and text sizes stay the same when zoomed, and on a tall map
-  const u0 = Math.max(w, h * STAGE_RATIO) / 1000;
-  const u = u0 / zoom;
+  // The route with half a footprint around it: the footprint drawn at the ends of the route stays in sight.
+  const box = useMemo(() => routeBox(run.records, [w, h], (footprintSize(run.records) || Math.max(w, h) * 0.08) / 2), [run, w, h]);
+  let camera: Camera | null = null;
+  if (layout) {
+    const { cell, free, view } = layout;
+    const whole = fitRoute(box, [w, h], free, view);
+    if (follow) {
+      // closer than the whole-route view in any case, with the drone in the middle of the free stage
+      const scale = Math.max(Math.min(cell.width / w, cell.height / h) * FOLLOW_ZOOM, whole.scale * 1.6);
+      camera = { scale, x: free.x + free.width / 2 - rec.x * scale, y: free.y + free.height / 2 - rec.y * scale };
+    } else camera = whole;
+  }
+  const group = camera && layout ? inViewBox(camera, [w, h], layout.cell) : null;
+  // one "screen unit" in map px: markers and text keep their size on screen at any zoom, a little larger on a big stage
+  const u = camera && layout
+    ? Math.min(1.3, Math.max(0.85, Math.min(layout.cell.width, layout.cell.height) / 720)) / camera.scale
+    : Math.max(w, h * STAGE_RATIO) / 1000;
   const labelEvery = niceStep(run.records.length, 10); // number about ten points: all of them would cover the route
   const segs = trail(run.records, frame);
   const flown = run.records.slice(0, frame + 1);
@@ -40,10 +62,15 @@ export function MapView({ run, frame, follow, stepMs }: {
   // The frame at which the current state began: a new state replays its one-shot animation (the lock-on ring).
   const runs = useMemo(() => stateRuns(run.records), [run]);
   const since = runs.find((r) => frame >= r.from && frame <= r.to)?.from ?? 0;
-  // Follow mode keeps the drone in the middle: scale about the drone, then move it to the map centre.
-  const camera = follow
-    ? `translate(${w / 2}px, ${h / 2}px) scale(${zoom}) translate(${tenth(-rec.x)}px, ${tenth(-rec.y)}px)`
-    : "none";
+  const transform = group ? `translate(${tenth(group.x)}px, ${tenth(group.y)}px) scale(${Math.round(group.scale * 1e4) / 1e4})` : "none";
+  // The camera glides between frames and views, but not into its first measured place.
+  const measured = layout !== null;
+  const [glide, setGlide] = useState(false);
+  useEffect(() => {
+    if (!measured) return;
+    const id = setTimeout(() => setGlide(true), 120);
+    return () => clearTimeout(id);
+  }, [measured]);
 
   // The intro: the route already flown at load draws itself in order. Afterwards a new segment draws at once.
   const [introFrames] = useState(frame);
@@ -55,14 +82,14 @@ export function MapView({ run, frame, follow, stepMs }: {
 
   return (
     <svg data-part="map" className="map" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet"
-         role="img" aria-label="Map with the drone's route" style={{ ["--step" as string]: `${Math.round(stepMs)}ms` }}>
+         role="img" aria-label="Map with the drone's route" data-ready={measured || undefined} style={{ ["--step" as string]: `${Math.round(stepMs)}ms` }}>
       <defs>
-        <clipPath id="map-clip"><rect width={w} height={h} rx={14 * u0} /></clipPath>
+        <clipPath id="map-clip"><rect width={w} height={h} rx={12 * u} /></clipPath>
       </defs>
-      <g className="map-camera" style={{ transform: camera, transition: `transform ${Math.round(Math.max(stepMs, 350))}ms cubic-bezier(.22, 1, .36, 1)` }}>
+      <g className="map-camera" style={{ transform, transition: glide ? `transform ${Math.round(Math.max(stepMs, 350))}ms cubic-bezier(.22, 1, .36, 1)` : "none" }}>
         <image href="/api/map" width={w} height={h} preserveAspectRatio="none" clipPath="url(#map-clip)" />
-        <rect width={w} height={h} rx={14 * u0} className="map-dim" />
-        <rect width={w} height={h} rx={14 * u0} className="map-rim" strokeWidth={1.2 * u0} />
+        <rect width={w} height={h} rx={12 * u} className="map-dim" />
+        <rect width={w} height={h} rx={12 * u} className="map-rim" strokeWidth={1 * u} />
 
         <g data-part="trail">
           {/* a dark casing under the coloured route, as one element: the three colours read on any terrain */}
