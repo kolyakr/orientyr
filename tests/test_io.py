@@ -39,12 +39,32 @@ def test_natural_order_and_frame_numbers(tmp_path):
                                                      "crop_23.png"]
 
 
-def test_names_without_unique_numbers_are_numbered_by_position(tmp_path):
-    for name in ("b.png", "a.png", "take1_x.png", "take1_y.png"):     # no number, or the same number twice
+def test_names_without_numbers_are_numbered_by_position(tmp_path):
+    for name in ("c.png", "a.png", "b.png"):
         _img(tmp_path / name)
     frames = list(FolderSource(tmp_path))
-    assert [Path(f.source).name for f in frames] == ["a.png", "b.png", "take1_x.png", "take1_y.png"]
+    assert [Path(f.source).name for f in frames] == ["a.png", "b.png", "c.png"]
+    assert [f.idx for f in frames] == [0, 1, 2]
+
+
+def test_repeated_numbers_are_numbered_by_position_in_a_fixed_order(tmp_path):
+    # the number is not a frame number when it repeats (take1_x, take1_y); f_1 and f_01 tie on the number, so
+    # the name decides, not the filesystem
+    for name in ("take1_y.png", "take1_x.png", "f_01.png", "f_1.png"):
+        _img(tmp_path / name)
+    frames = list(FolderSource(tmp_path))
+    assert [Path(f.source).name for f in frames] == ["f_01.png", "f_1.png", "take1_x.png", "take1_y.png"]
     assert [f.idx for f in frames] == [0, 1, 2, 3]
+
+
+def test_a_stray_file_without_a_number_is_an_error_not_a_renumbering(tmp_path):
+    # one preview.png among keyframes used to renumber the whole folder: frame_00030 at 0.033 s instead of 1 s
+    (tmp_path / "meta.json").write_text(json.dumps({"fps": 30}))
+    for n in (0, 30, 60):
+        _img(tmp_path / "frames" / f"frame_{n:05d}.png")
+    _img(tmp_path / "frames" / "preview.png")
+    with pytest.raises(ValueError, match="preview.png"):
+        FolderSource(tmp_path / "frames")
 
 
 def test_the_last_number_in_a_name_is_the_frame_number(tmp_path):
@@ -269,3 +289,96 @@ def test_an_unrelated_broken_json_in_maps_does_not_stop_a_hires_layer(tmp_path):
     (tmp_path / "maps" / "list.json").write_text("[1, 2]")
     m = load_map(_img(tmp_path / "hires" / "m_z18.png", shape=(40, 60, 3)))
     assert m.sidecar == side and m.level == side["hires"]
+
+
+
+def test_odd_digits_in_names_do_not_crash(tmp_path):
+    # "²" is a digit to str.isdigit() but not to the \d the names are split on
+    for name in ("\u00b21.png", "x_2.png"):
+        _img(tmp_path / name)
+    assert len(list(FolderSource(tmp_path))) == 2
+
+
+def test_a_folder_named_like_an_image_is_not_a_frame(tmp_path):
+    _img(tmp_path / "f_1.png")
+    (tmp_path / "f_9.png").mkdir()
+    assert [f.idx for f in FolderSource(tmp_path)] == [1]
+
+
+def test_upper_case_extensions_are_images(tmp_path):
+    for n in (1, 2):
+        _img(tmp_path / f"f_{n}.png").rename(tmp_path / f"F_{n}.PNG")
+    assert len(FolderSource(tmp_path)) == 2
+
+
+@pytest.mark.parametrize("fps", [True, float("inf"), float("nan"), "30"])
+def test_fps_arguments_that_are_not_real_frame_rates_are_refused(tmp_path, fps):
+    _img(tmp_path / "f_0.png")
+    with pytest.raises(ValueError, match="fps"):
+        FolderSource(tmp_path, fps=fps)
+
+
+def test_numpy_frame_rates_are_fine(tmp_path):
+    _img(tmp_path / "f_30.png")
+    assert [f.t for f in FolderSource(tmp_path, fps=np.int64(30))] == [1.0]
+    assert [f.t for f in FolderSource(tmp_path, fps=np.float32(15))] == [2.0]
+
+
+@pytest.mark.parametrize("raw", [b'{"fps": 1' + b"0" * 400 + b"}", b'{"fps": 30, "note": "\xff\xfe"}'.replace(b"\\x", b"\\x"),
+                                 b"\xff\xfe not utf-8"])
+def test_meta_json_read_errors_name_the_file(tmp_path, raw):
+    (tmp_path / "meta.json").write_bytes(raw)
+    _img(tmp_path / "frames" / "frame_00000.png")
+    with pytest.raises(ValueError, match="meta.json"):
+        FolderSource(tmp_path / "frames")
+
+
+def _exif_rotated_jpeg(path: Path, shape=(20, 40, 3)):
+    """A JPEG whose EXIF says "rotate 90°" (orientation 6), the way phones save portrait photos."""
+    ok, buf = cv2.imencode(".jpg", np.zeros(shape, np.uint8))
+    assert ok
+    ifd = b"II*\x00\x08\x00\x00\x00" + b"\x01\x00" + b"\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00" + b"\x00" * 4
+    app1 = b"Exif\x00\x00" + ifd
+    data = buf.tobytes()
+    path.write_bytes(data[:2] + b"\xff\xe1" + (len(app1) + 2).to_bytes(2, "big") + app1 + data[2:])
+    return path
+
+
+def test_a_map_is_read_as_stored_not_rotated_by_exif(tmp_path):
+    # map pixels are coordinates: an EXIF rotation would turn the map and break its sidecar's size
+    m = load_map(_exif_rotated_jpeg(tmp_path / "map.jpg"))
+    assert m.image.shape == (20, 40, 3)
+
+
+def test_a_hires_layer_takes_the_sidecar_that_names_it_not_the_first_one(tmp_path):
+    # irpin_2017.json sorts first; a hires layer must get its own year's georeference, never another's
+    _img(tmp_path / "maps" / "a2017.png", shape=(20, 30, 3))
+    _sidecar(tmp_path / "maps" / "a2017.json", (30, 20), hires_size=(60, 40), hires_file="hires/a2017_z18.png")
+    _img(tmp_path / "maps" / "b2025.png", shape=(20, 30, 3))
+    side = _sidecar(tmp_path / "maps" / "b2025.json", (30, 20), hires_size=(60, 40), hires_file="hires/b2025_z18.png")
+    m = load_map(_img(tmp_path / "hires" / "b2025_z18.png", shape=(40, 60, 3)))
+    assert m.sidecar == side and m.level["file"] == "hires/b2025_z18.png"
+
+
+def test_two_sidecars_claiming_one_layer_is_an_error(tmp_path):
+    for name in ("a", "b"):
+        _img(tmp_path / "maps" / f"{name}.png", shape=(20, 30, 3))
+        _sidecar(tmp_path / "maps" / f"{name}.json", (30, 20), hires_size=(60, 40), hires_file="hires/x_z18.png")
+    with pytest.raises(ValueError, match=r"a\.json.*b\.json|b\.json.*a\.json"):
+        load_map(_img(tmp_path / "hires" / "x_z18.png", shape=(40, 60, 3)))
+
+
+def test_the_block_that_names_the_file_wins_over_another_of_the_same_size(tmp_path):
+    p = _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))
+    (tmp_path / "maps" / "m.json").write_text(json.dumps({
+        "camera": {"size_px": [30, 20]},                                 # same size, but not this file
+        "map": {"file": "maps/m.png", "zoom": 17, "size_px": [30, 20]}}))
+    assert load_map(p).level["zoom"] == 17
+
+
+@pytest.mark.data
+@pytest.mark.skipif(not (IRPIN / "hires" / "irpin_2025_z18.png").exists(), reason="data/ not downloaded")
+def test_the_irpin_hires_layer_gets_its_own_years_zoom_18_block():
+    m = load_map(IRPIN / "hires" / "irpin_2025_z18.png")
+    assert m.level["zoom"] == 18 and m.level["file"] == "hires/irpin_2025_z18.png"
+    assert m.sidecar["capture"]["date"].startswith("2025")
