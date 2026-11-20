@@ -239,3 +239,33 @@ def test_the_task_map_loads_without_a_georeference():
 def test_the_irpin_map_finds_its_zoom_17_block():
     m = load_map(IRPIN / "maps" / "irpin_2025.png")
     assert m.level["zoom"] == 17 and m.level["size_px"] == [3936, 3936] and m.sidecar["capture"]["sensor"]
+
+
+# --- review ----------------------------------------------------------------------------------------------------
+
+def test_frames_follow_their_numbers_so_time_never_runs_back(tmp_path):
+    # the number is the frame's time: ordered by name, a_10, b_2, c_5 ran 10 s, 2 s, 5 s and the telemetry
+    # writer (idx strictly increasing) would refuse the run
+    for name in ("a_10.png", "b_2.png", "c_5.png"):
+        _img(tmp_path / name)
+    frames = list(FolderSource(tmp_path))
+    assert [f.idx for f in frames] == [2, 5, 10]
+    assert [Path(f.source).name for f in frames] == ["b_2.png", "c_5.png", "a_10.png"]
+    assert [f.t for f in frames] == sorted(f.t for f in frames)
+
+
+@pytest.mark.parametrize("size", [5, "30x20", [30], [30, "20"], [30, -20], None, True])
+def test_a_malformed_size_in_the_sidecar_is_a_clear_error(tmp_path, size):
+    p = _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))
+    (tmp_path / "maps" / "m.json").write_text(json.dumps({"map": {"file": "maps/m.png", "size_px": size}}))
+    with pytest.raises(ValueError, match=r"m\.json.*size_px"):
+        load_map(p)
+
+
+def test_an_unrelated_broken_json_in_maps_does_not_stop_a_hires_layer(tmp_path):
+    _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))
+    side = _sidecar(tmp_path / "maps" / "m.json", (30, 20), hires_size=(60, 40))
+    (tmp_path / "maps" / "notes.json").write_text("{not json")
+    (tmp_path / "maps" / "list.json").write_text("[1, 2]")
+    m = load_map(_img(tmp_path / "hires" / "m_z18.png", shape=(40, 60, 3)))
+    assert m.sidecar == side and m.level == side["hires"]
