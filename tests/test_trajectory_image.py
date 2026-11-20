@@ -9,6 +9,7 @@ the screenshots in the PR; what can be checked is tested here (spec update in th
 
 Most tests use a hand-made run on a plain grey map, so every drawn pixel stands out and every position is known.
 """
+import itertools
 import math
 import subprocess
 import sys
@@ -45,7 +46,8 @@ def _corners(H, frame):
     return p[:, :2] / p[:, 2:]
 
 
-def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), frame=(64, 64), scale=1.0):
+def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), frame=(64, 64), scale=1.0,
+              interpolated_with_fix=()):
     """A run folder over a plain grey map. Points in ``missed`` have no fix (LOST); in ``rejected`` a rejected
     fix far away (RELOCALIZING); in ``interpolated`` an accepted-looking position marked interpolated, no fix."""
     w, h = map_size
@@ -69,13 +71,13 @@ def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), 
                 H = _H(fx, fy, 0.0, scale, frame)
                 fix = Fix(idx=i, H=H, x=fx, y=fy, heading_deg=0.0, scale=scale, footprint=_corners(H, frame),
                           inliers=6, inlier_ratio=0.05, reproj_px=7.0, accepted=False, reject_reason="too_few_inliers")
-            elif i not in interpolated:
+            elif i not in interpolated or i in interpolated_with_fix:
                 H = _H(x, y, head, scale, frame)
                 fix = Fix(idx=i, H=H, x=x, y=y, heading_deg=head, scale=scale, footprint=_corners(H, frame),
                           inliers=200, inlier_ratio=0.6, reproj_px=0.8, accepted=True)
             track = TrackState(idx=i, state=state, x=x, y=y, vx=0.0, vy=0.0, cov=np.eye(2), fix=fix)
             wr.write(Record(idx=i, t=float(i), source=f"frames/frame_{i:05d}.png", track=track,
-                            interpolated=i in interpolated))
+                            interpolated=i in interpolated or i in interpolated_with_fix))
     return d
 
 
@@ -245,7 +247,7 @@ def test_dense_runs_are_thinned_but_keep_start_and_finish(tmp_path):
     d = _make_run(tmp_path, size, pts, frame=(16, 16))
     _, layout = ti.render_trajectory(d)
     numbered = [lab for lab in layout.labels if lab.idx is not None]
-    assert 5 < len(numbered) < 300
+    assert 5 < len(numbered) < 300 and layout.unlabelled == []      # thinned on purpose, none dropped
     texts = {lab.text for lab in layout.labels}
     assert {"START", "FINISH"} <= texts
     for a in range(len(layout.labels)):
@@ -345,3 +347,106 @@ def test_a_map_given_in_memory_may_be_grey_or_have_alpha(plain, channels):
     assert img.shape == (1000, 1600, 3)
     x, y = plain["pts"][1]
     assert _close(img[round(y), round(x)], ti.FIXED)
+
+
+def test_labels_follow_the_spacing_not_the_median_step(tmp_path):
+    # hovering makes the median step 0: thinning by it labelled every 2nd point and then dropped a quarter
+    pts = [(300, 500)] * 40 + [(300 + 25 * k, 500) for k in range(1, 40)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts))
+    numbered = {lab.idx for lab in layout.labels if lab.idx is not None}
+    assert set(range(40, 79)) <= numbered          # every moving point, 25 px apart, has room for its number
+    assert len(numbered & set(range(40))) == 1    # the hover is labelled once
+    assert layout.unlabelled == []
+
+
+def test_ends_outside_the_map_still_get_start_and_finish(tmp_path):
+    # a dead-reckoned position can leave the map; START and FINISH are always shown, at the map's edge
+    d = _make_run(tmp_path, (1600, 1000), [(-200, 500), (400, 500), (1200, 500), (1800, 500)])
+    img, layout = ti.render_trajectory(d)
+    tags = {lab.text: lab.box for lab in layout.labels if lab.idx is None}
+    assert set(tags) == {"START", "FINISH"}
+    for box in tags.values():
+        assert _inside(box, img.shape)
+    left, right = img[480:521, :30].reshape(-1, 3), img[480:521, -30:].reshape(-1, 3)
+    assert any(_close(px, ti.START) for px in left) and any(_close(px, ti.FINISH) for px in right)
+
+
+def test_the_legend_is_left_out_when_the_map_is_too_small(tmp_path):
+    d = _make_run(tmp_path, (200, 150), [(40, 75), (100, 75), (160, 75)], frame=(16, 16))
+    _, layout = ti.render_trajectory(d)
+    assert layout.legend is None
+    assert {lab.idx for lab in layout.labels if lab.idx is not None} == {0, 1, 2}
+
+
+def test_the_legend_fits_a_narrow_map(tmp_path):
+    d = _make_run(tmp_path, (500, 4000), [(250, 400 + 400 * i) for i in range(9)])
+    img, layout = ti.render_trajectory(d)
+    assert layout.legend is None or _inside(layout.legend, img.shape)
+
+
+def _hits_route(box, pts, step=1.0):
+    """Does the box touch the polyline through pts (sampled every ``step`` px)?"""
+    for a, b in itertools.pairwise(pts):
+        n = max(1, int(np.hypot(b[0] - a[0], b[1] - a[1]) / step))
+        for s in np.linspace(0, 1, n + 1):
+            x, y = a[0] + s * (b[0] - a[0]), a[1] + s * (b[1] - a[1])
+            if box[0] <= x <= box[2] and box[1] <= y <= box[3]:
+                return True
+    return False
+
+
+def _near_marker(box, x, y, r):
+    cx, cy = min(max(x, box[0]), box[2]), min(max(y, box[1]), box[3])
+    return math.hypot(cx - x, cy - y) < r
+
+
+@pytest.fixture(scope="module")
+def fake(tmp_path_factory):
+    d = tmp_path_factory.mktemp("fake")
+    rng = np.random.default_rng(0)
+    m = d / "map.png"
+    cv2.imwrite(str(m), cv2.GaussianBlur(rng.uniform(0, 255, (900, 1400, 3)).astype(np.uint8), (0, 0), 2))
+    make_fake_run(m, d / "run")
+    from dronenav.telemetry import read_run
+    pts = [(r.track.x, r.track.y) for r in read_run(d / "run" / "run.jsonl")]
+    img, layout = ti.render_trajectory(d / "run")
+    return {"pts": pts, "img": img, "layout": layout}
+
+
+def test_on_a_curved_route_labels_cover_no_marker_and_no_route(fake):
+    # the straight plain run checks only point centres; here the route curves and markers have a radius
+    r = ti.END_R * fake["layout"].unit
+    for lab in fake["layout"].labels:
+        assert not _hits_route(lab.box, fake["pts"]), lab
+        for i, (x, y) in enumerate(fake["pts"]):
+            if i != lab.idx:
+                assert not _near_marker(lab.box, x, y, r), (lab, i)
+    assert fake["layout"].unlabelled == []
+
+
+def test_on_a_curved_route_the_legend_covers_no_marker_and_no_route(fake):
+    box = fake["layout"].legend
+    assert box is not None and not _hits_route(box, fake["pts"])
+    assert not any(_near_marker(box, x, y, ti.END_R * fake["layout"].unit) for x, y in fake["pts"])
+
+
+def test_strokes_match_at_a_fractional_scale_too(tmp_path):
+    assert abs(_stroke_in_preview(tmp_path, (800, 500)) - _stroke_in_preview(tmp_path, (2600, 1625))) <= 1
+
+
+def test_an_interpolated_point_gets_no_footprint(tmp_path):
+    # interpolated means "not measured": it is drawn as missed, so its footprint is not drawn either
+    pts = _line((1600, 1000))
+    d = _make_run(tmp_path, (1600, 1000), pts, interpolated_with_fix={4})
+    img, _ = ti.render_trajectory(d)
+    x, y = pts[4]
+    assert not _changed(img[round(y - 32), round(x)])          # the footprint's side, 32 px off the route
+    x, y = pts[3]
+    assert _changed(img[round(y - 32), round(x)])
+
+
+@pytest.mark.parametrize("size", [(3001, 1777), (1777, 3001), (1601, 1601)])
+def test_the_preview_long_side_is_exactly_the_preview_size(tmp_path, size):
+    d = _make_run(tmp_path, size, _line(size, n=4), frame=(16, 16))
+    _, prev = ti.write_trajectory(d)
+    assert max(cv2.imread(str(prev)).shape[:2]) == 1600
