@@ -63,7 +63,7 @@ frames/video ─► preprocess ─► coarse localization ─► fine registrati
 
 ```
 docs/TASK.md            task statement (+ docs/task_images/)
-data/                   input map + frames (gitignored; download link in docs/TASK.md)
+data/                   all data (gitignored; from the team Google Drive via tools/data.sh, see "Data")
 src/dronenav/           package: io, preprocess, matching/, localize, tracking, viz
 scripts/                CLI entry points (run.py, make_video.py, benchmark.py, synth_flight.py)
 outputs/                generated images/videos (gitignored, except curated results/)
@@ -213,11 +213,42 @@ What makes a test reliable here:
 - `finish` merges into `develop` only after the human says so.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
+- Data moves only through `tools/data.sh` (see **Data** below). `ls`, `pull` and `check` are always fine;
+  `push` uploads to the shared team folder, so run it only when the human asks, show the dry run first,
+  and pass `--yes` after they confirm. Never delete or rename anything on the Drive.
+
+## Data: the team Google Drive
+
+All data lives in one shared Google Drive folder, which mirrors the local, gitignored `data/` folder:
+<https://drive.google.com/drive/folders/1Z5iIhFekHIFkAjH49jxUdf3k4SGw7voe>. Git never holds data; the Drive is
+the single source, and everyone keeps a local copy in `data/`.
+
+```
+data/hackatons-data/   global_map.png, crops/crop_0.png … crop_49.png        (organisers' task data)
+data/irpin/            maps/ hires/ unosat.geojson flights/ drone/ preview/ source/   (our showcase data)
+data/video/            phone takes (M2-01), added when filmed
+```
+
+`tools/data.sh` wraps rclone, with the remote rooted at the shared folder (paths are relative to `data/`):
+
+| Command | What it does |
+|---|---|
+| `tools/data.sh setup` | one time: `brew install rclone` first; creates the rclone remote `orientyr` (browser Google login) |
+| `tools/data.sh ls [path]` | list the Drive folder or a subfolder, e.g. `irpin/flights` |
+| `tools/data.sh pull [path]` | Drive → `data/[path]`: new and changed files only, never deletes local files |
+| `tools/data.sh check [path]` | compare `data/[path]` with the Drive by size; lists missing and different files |
+| `tools/data.sh push <path> [--yes]` | `data/<path>` → Drive: dry run without `--yes`; never deletes on the Drive; a path is required |
+
+Rules: pull before you start work that reads data. Add new data under a new subfolder (or new files),
+never overwrite someone else's files in place; if data must change, add a versioned copy and say so in the
+task's issue. Push needs edit access to the folder (ask @kolyakr). Without rclone, download the folder in the
+browser and unzip it into `data/` so the layout above matches (`scripts/check_data.py`, M0-06, will verify it).
 
 ## Commands (fill in as they become real)
 
 ```bash
 pip install -r requirements.txt && pip install -e .   # stack, then the dronenav package (src/ layout)
+tools/data.sh setup && tools/data.sh pull               # get the data from the team Drive into data/
 tools/task.sh test                                       # the test suite (pytest over tests/)
 python scripts/run.py --map data/map.png --frames data/frames --out outputs/run1
 python scripts/run.py --map data/map.png --video data/phone.mp4 --out outputs/phone
