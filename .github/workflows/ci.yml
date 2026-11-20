@@ -13,9 +13,12 @@ on:
 permissions:
   contents: read
 
-concurrency:                        # a new push to a PR cancels its stale run
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+# A new push to a PR cancels that PR's stale run: only the newest push matters there. Every other run (pushes to
+# develop/main, manual runs) gets a group of its own, its run id, so it is never cancelled, not even as a queued
+# run replaced by a newer one: each merge commit gets its own verdict (M0-10).
+concurrency:
+  group: ci-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
