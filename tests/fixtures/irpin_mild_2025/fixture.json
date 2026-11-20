@@ -1,0 +1,73 @@
+{
+ "about": "CI fixture (M0-08): map px = crop px + crop.origin_px; truth is in full-map px. H_frame_to_map maps UNDISTORTED frame px (cv2.undistort with camera.K, camera.dist): on the raw frame it is off by the lens distortion. Regenerate with tools/make_ci_fixtures.py.",
+ "source": {
+  "map": "irpin/maps/irpin_2025.png",
+  "map_size_px": [
+   3936,
+   3936
+  ],
+  "flight": "irpin/flights/mild/2025",
+  "video": "flight.mp4",
+  "fps": 30
+ },
+ "crop": {
+  "file": "map_crop.jpg",
+  "origin_px": [
+   2768,
+   2812
+  ],
+  "size_px": [
+   512,
+   512
+  ]
+ },
+ "camera": {
+  "size": [
+   1024,
+   768
+  ],
+  "hfov_deg": 70.0,
+  "K": [
+   [
+    731.2117794519627,
+    0.0,
+    512.0
+   ],
+   [
+    0.0,
+    731.2117794519627,
+    384.0
+   ],
+   [
+    0.0,
+    0.0,
+    1.0
+   ]
+  ],
+  "dist": [
+   -0.08,
+   0.012,
+   0,
+   0,
+   0
+  ]
+ },
+ "frames": [
+  {
+   "i": 6150,
+   "t": 205.0,
+   "file": "frame_006150.jpg"
+  },
+  {
+   "i": 6300,
+   "t": 210.0,
+   "file": "frame_006300.jpg"
+  },
+  {
+   "i": 6450,
+   "t": 215.0,
+   "file": "frame_006450.jpg"
+  }
+ ],
+ "truth": "truth.jsonl"
+}

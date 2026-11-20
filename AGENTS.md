@@ -250,6 +250,8 @@ browser and unzip it into `data/` so the layout above matches (`scripts/check_da
 pip install -r requirements.txt && pip install -e .   # stack, then the dronenav package (src/ layout)
 tools/data.sh setup && tools/data.sh pull               # get the data from the team Drive into data/
 tools/task.sh test                                       # the test suite (pytest over tests/)
+ruff check .                                             # lint, as CI does (experiments/ excluded)
+python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
