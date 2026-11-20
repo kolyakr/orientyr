@@ -26,3 +26,6 @@ markers = ["data: needs the full dataset in data/ (skipped when it is missing)"]
 line-length = 120
 target-version = "py311"
 src = ["src", "tests", "scripts"]
+# experiments/ holds one-off research scripts kept for the record (see their READMEs), not maintained code: CI
+# lints the package, tests, scripts and tools only.
+extend-exclude = ["experiments"]

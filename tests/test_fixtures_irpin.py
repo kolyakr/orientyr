@@ -46,6 +46,9 @@ def _registration_score(rec: dict, meta: dict, extra: np.ndarray | None = None) 
     """NCC between the crop and the keyframe warped onto it, over the part of the crop the frame covers."""
     crop = cv2.imread(str(FIX / meta["crop"]["file"]), cv2.IMREAD_GRAYSCALE)
     frame = cv2.imread(str(FIX / f"frame_{rec['i']:06d}.jpg"), cv2.IMREAD_GRAYSCALE)
+    # the truth homography acts on undistorted pixels: the renderer applies lens distortion after projecting
+    cam = meta["camera"]
+    frame = cv2.undistort(frame, np.asarray(cam["K"], float), np.asarray(cam["dist"], float))
     H = _crop_from_frame(rec, meta) if extra is None else extra @ _crop_from_frame(rec, meta)
     size = crop.shape[::-1]
     warped = cv2.warpPerspective(frame, H, size, flags=cv2.INTER_AREA)
@@ -118,8 +121,10 @@ def test_truth_registers_the_frame_onto_the_crop(k):
     meta, rec = _meta(), _truth()[k]
     good = _registration_score(rec, meta)
     off = _registration_score(rec, meta, np.array([[1, 0, 12], [0, 1, 12], [0, 0, 1]], float))
-    # aligned imagery correlates strongly; a 12 px slip (~9 m) must cost a lot, or the check proves nothing
-    assert good >= 0.6, good
+    # same imagery, exactly aligned, scores ≈ 0.98 (what's left is render noise and JPEG); 0.9 leaves room for codec
+    # differences across OpenCV builds yet fails on a raw (distorted) frame (≈ 0.75-0.85) or any real slip.
+    # A 12 px slip (~9 m) must cost a lot, or the check proves nothing.
+    assert good >= 0.9, good
     assert good - off >= 0.2, (good, off)
 
 
