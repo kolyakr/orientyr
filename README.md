@@ -4,13 +4,284 @@
 
 # Orientyr
 
-Visual navigation for a drone that has lost GNSS: each camera frame is matched to a satellite map to recover
-the drone's position, heading and route. Built for the Spectron hackathon (IT-JIM task, advanced level).
+A drone has lost GPS. It still has a camera and a satellite map. Orientyr matches each camera frame to the map
+and gets back the drone's position, heading and route.
 
-> Work in progress. The full description of the approach, results and how to run it comes with M8-02.
-> Contributors: start with [AGENTS.md](AGENTS.md) (workflow, tasks, data on the team Google Drive).
+Built for the Spectron hackathon (IT-JIM task). The task gives one satellite map and 50 drone frames in flight
+order. The frames are rotated and have a different scale than the map. The program must draw the route on the map
+and make a video with the drone's position.
+
+This is README v1. It describes what the code does today. Things that are not built yet are marked **planned**.
+Contributors: the team workflow (tasks, branches, PRs) is in [AGENTS.md](AGENTS.md).
+
+## Approach
+
+Each frame goes through the same steps. A fix (an accepted position) from one frame tells the next frame where to
+look and how much to shrink.
+
+```mermaid
+flowchart TD
+    M["Satellite map"] --> MF["Map features: SIFT keypoints, RootSIFT descriptors<br/>computed once, cached in outputs/cache"]
+    F["Frames folder<br/>read in frame-number order"] --> S["Shrink the frame<br/>one frame pixel = 0.65 map pixels"]
+    S --> W{"Is there a fix<br/>from the last frame?"}
+    W -- "yes" --> WIN["Match in a window<br/>around the predicted position"]
+    W -- "no" --> GLO["Match on the whole map"]
+    MF --> WIN
+    MF --> GLO
+    WIN --> H["Homography with MAGSAC++<br/>then 7 sanity checks"]
+    GLO --> H
+    H -- "window failed" --> GLO
+    H -- "accepted" --> P["Pose: x, y in map pixels, heading,<br/>scale, footprint, inliers"]
+    H -- "rejected" --> L["No fix: state LOST<br/>position coasts, then holds"]
+    P -. "next window and next scale" .-> S
+    P --> T["run.json + run.jsonl<br/>one record per frame"]
+    L --> T
+    T --> IMG["trajectory.png<br/>trajectory_preview.jpg"]
+    T --> VID["trajectory.mp4"]
+```
+
+The steps, with the file that does each one:
+
+1. **Read** ([src/dronenav/io.py](src/dronenav/io.py)). Frames are sorted by the last number in the file name,
+   so `crop_2.png` comes before `crop_10.png`.
+2. **Shrink** ([src/dronenav/scale.py](src/dronenav/scale.py)). A frame shows more detail than the map has. The
+   extra pixels only cost time, so the frame is made smaller first. The scale comes from the last fix. With no
+   fix yet, three sizes are tried and the one with the most inliers wins.
+3. **Match** ([src/dronenav/matching/rootsift.py](src/dronenav/matching/rootsift.py)). SIFT keypoints with
+   RootSIFT descriptors, FLANN nearest neighbours, Lowe's ratio test (0.8). The map's features are computed once
+   and saved to disk.
+4. **Search** ([src/dronenav/search.py](src/dronenav/search.py)). The first frame is matched to the whole map.
+   After a fix, the next frame is matched only to a window around the predicted position. If the window fails,
+   the whole map is tried again in the same frame.
+5. **Fit and check** ([src/dronenav/geometry.py](src/dronenav/geometry.py)). MAGSAC++ fits a homography (a
+   3 × 3 matrix that maps frame pixels to map pixels). Seven checks reject a wrong one: degenerate, too few
+   inliers (under 15), not convex, mirrored, scale out of range, stretched, high reprojection error.
+6. **Pose.** The frame centre on the map is the position. The rotation gives the heading. The four warped corners
+   give the footprint (the ground the camera sees).
+7. **State** ([src/dronenav/pipeline.py](src/dronenav/pipeline.py)). Every frame gets a state: `TRACKING`,
+   `LOST` or `RELOCALIZING` (the first fix after a loss). A lost frame keeps moving with the last speed for at
+   most 5 seconds, then holds.
+8. **Draw** ([src/dronenav/viz/](src/dronenav/viz)). The route image and the video are drawn from the run
+   folder, so they can be drawn again without matching again.
+
+### Built, and planned
+
+| Part | Status |
+|---|---|
+| Frames from a folder, RootSIFT matcher, scale rule, window search, homography checks, route image, video | built, used by `scripts/run.py` |
+| Gap interpolation and smoothing ([src/dronenav/smoothing.py](src/dronenav/smoothing.py)) | built and tested, not used by `scripts/run.py` yet |
+| Per-fix confidence ([src/dronenav/confidence.py](src/dronenav/confidence.py)) | built and tested, not used by `scripts/run.py` yet |
+| Video reader ([src/dronenav/video.py](src/dronenav/video.py)) | built and tested, but `scripts/run.py --video` is **planned**: today it stops with an error |
+| Learned matchers (SuperPoint + LightGlue) | **planned**. `--matcher` accepts only `sift` today. `torch`, `kornia` and `lightglue` are installed for this step |
+| Kalman filter | **planned**. Today the state logic in step 7 does this job |
+| Our own phone video filmed over the map (advanced level) | **planned** |
+| Accuracy benchmark with ground truth | **planned** (M1-10) |
+
+## Install
+
+You need:
+
+- **Python 3.11** or newer (tested on 3.13 on macOS and on 3.11 in Linux CI);
+- `git` (one package is installed from GitHub);
+- 1 to 3 GB of free disk space, most of it for `torch` (about 1 GB on macOS).
+
+You do not need to install ffmpeg. The video encoder comes with the `imageio-ffmpeg` package.
+
+```bash
+git clone https://github.com/kolyakr/orientyr.git
+cd orientyr
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt && pip install -e .
+```
+
+The second `pip install` adds the `dronenav` package itself (the code in `src/`). Without it the scripts cannot
+import `dronenav`.
+
+On Linux without a GPU, set this before `pip install`. It takes the small CPU build of `torch` instead of the
+2 GB CUDA build:
+
+```bash
+export PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+```
+
+Every time you open a new terminal, run `source .venv/bin/activate` again. The commands below were run on macOS
+and Linux. On Windows use WSL, because the tools in `tools/` are bash scripts.
+
+## Getting the data
+
+The data is not in git. It lives in the team's Google Drive folder:
+<https://drive.google.com/drive/folders/1Z5iIhFekHIFkAjH49jxUdf3k4SGw7voe>
+
+For the task run you need only `hackatons-data/`: the map and the 50 frames (about 56 MB). The folder must look
+like this:
+
+```text
+data/
+  hackatons-data/
+    global_map.png
+    crops/crop_0.png ... crop_49.png
+```
+
+**Way 1, no extra tools.** Open the link in a browser. Download the folder `hackatons-data` (Google gives you a
+zip). Unzip it so that the file `data/hackatons-data/global_map.png` exists.
+
+**Way 2, with rclone.** Good when you want all the data, or want to update it later.
+
+```bash
+brew install rclone
+tools/data.sh setup
+tools/data.sh pull hackatons-data
+```
+
+`tools/data.sh setup` opens a browser once to log in to Google. `tools/data.sh pull` without a path downloads
+everything, including our own Irpin data (several GB). On Linux, install rclone from <https://rclone.org/install/>.
+
+Check the result:
+
+```bash
+python scripts/check_data.py
+```
+
+This checks the whole layout, described in [data/README.md](data/README.md). If you downloaded only
+`hackatons-data`, it lists the `irpin/...` files as missing. That is fine for the task run. No line may start with
+`missing: hackatons-data`.
+
+## Run
+
+One command does everything:
+
+```bash
+python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run1
+```
+
+It prints one line at the end:
+
+```text
+run: 50 of 50 frames localized in 22.0 s -> outputs/run1 (trajectory.png, trajectory.mp4)
+```
+
+The first run on a map is slower, because it computes the map's features and saves them in `outputs/cache`
+(about 80 MB for the task map). Later runs on the same map load them.
+
+Your own data works the same way: `--map` is any map image, `--frames` is a folder of images with numbers in
+their names. Useful options:
+
+```bash
+python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/fast --speed 5
+python scripts/run.py --help
+```
+
+`--speed 5` makes the video five times faster (about 11 seconds instead of 50). `--fps` says how many frames one second
+of flight has (default 1). `--cache` moves the feature cache. `--video` is planned and stops with an error today.
+
+Exit code 0 means success. Code 1 means that no frame was found on the map (wrong map?). Code 2 means a bad path
+or option. On an error, the output folder stays as it was.
+
+## Outputs
+
+`outputs/run1` gets five files:
+
+| File | What it is |
+|---|---|
+| `trajectory.png` | The map at full size with the route, numbered points, footprints, START and FINISH |
+| `trajectory_preview.jpg` | The same picture, 1600 px wide, easy to open and share |
+| `trajectory.mp4` | Video (1280 × 720, H.264): a camera follows the drone over the map, with the trail, the footprint, the frame the drone saw, and a HUD (frame number, time, inliers, state) |
+| `run.jsonl` | One line of JSON per frame: position, heading, scale, footprint, inliers, state, time spent |
+| `run.json` | Which map and which frames the run used |
+
+`run.json` and `run.jsonl` point to the map and the frames by relative path. Do not move the run folder or the
+data if you want to draw the image or the video again.
+
+To draw again without matching again:
+
+```bash
+python scripts/render_image.py --run outputs/run1
+python scripts/render_video.py --run outputs/run1 --speed 5
+```
+
+Everything in `outputs/` is ignored by git.
+
+## Result
+
+Our own showcase flight: a simulated drone flight over Irpin, Ukraine, rendered from satellite imagery of 2022
+(7 min 22 s of video, one keyframe per second). The engine localized 442 of 442 keyframes in 189 s on an Apple M5
+laptop. Blue line: the route. White boxes: what the camera saw. Numbers: frame numbers in the video.
+
+![The route of the Irpin showcase flight on the satellite map, with numbered points, START and FINISH](results/m1-11/trajectory_irpin.jpg)
+
+This is `trajectory_preview.jpg` of a run with `--map data/irpin/maps/irpin_2022.png` and
+`--frames data/irpin/flights/mild/2022/frames`, made smaller for the README.
+
+## Numbers
+
+Measured for this README with the command in [Run](#run), on the task data. One run each on an Apple M5 laptop,
+Python 3.13. This is a smoke check, not a benchmark.
+
+| What | Value |
+|---|---|
+| Frames localized | 50 of 50 |
+| Frames in state `LOST` | 0 |
+| Whole command, first run (map features computed) | 22.0 s |
+| Whole command, second run (map features from the cache) | 14.3 s |
+| Matching only, per frame (median) | 50 ms |
+| Matching only, first frame (whole map, three sizes tried) | 1.2 s |
+| Search used | whole map: 1 frame, window: 49 frames |
+| Inliers per frame | median 318, lowest 129 |
+
+Most of the time in the second run is drawing: the video alone takes about 8.5 s.
+
+**Accuracy numbers: to be added by M1-10.** "Localized" above means that the homography passed the checks. It does
+not yet mean that the position was compared with ground truth. M1-10 will do that.
+
+Earlier measurements of single parts (the scale rule, the search, the confidence) are in the
+[notes](#notes) at the end.
+
+## Tests
+
+```bash
+tools/task.sh test
+ruff check .
+```
+
+`tools/task.sh test` runs pytest on `tests/` with the right import path. The suite needs no data and no network,
+and runs on the CPU in one to two minutes. Tests that need the full dataset are skipped when `data/` is not there.
+`ruff check .` is the linter. CI runs both on every pull request.
+
+To run one file: `tools/task.sh test tests/test_geometry.py`.
+
+## Repo layout
+
+```text
+src/dronenav/        the package
+  io.py                frames from a folder, the map
+  scale.py             how much to shrink a frame
+  matching/            RootSIFT matcher (more matchers: planned)
+  search.py            window or whole map
+  geometry.py          homography, checks, pose
+  pipeline.py          the steps wired together, the run folder
+  telemetry.py         run.json and run.jsonl
+  viz/                 route image and video
+  smoothing.py, confidence.py, video.py    built, not used by run.py yet
+  sim/                 synthetic flights and "chaos" (blur, noise, dropped frames) for tests
+scripts/             command-line tools: run.py, render_image.py, render_video.py, check_data.py, ...
+tools/               data.sh (data from the Drive), task.sh (team workflow and tests)
+tests/               the test suite, with small fixtures in tests/fixtures/
+results/             small curated images used in this README
+experiments/         one-off research scripts, kept for the record
+data/                the data (not in git)
+outputs/             what the scripts write (not in git)
+```
+
+## Console
+
+A "mission control" console is **planned** (M7-01): a Next.js app in `ui/` that replays a run folder in the browser.
+It is not in this branch yet.
 
 ## Notes
+
+Measurements of single parts, each made when that part was built.
 
 ### Frame-to-map scale (M1-03)
 

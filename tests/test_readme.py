@@ -158,9 +158,16 @@ def _targets() -> tuple[set[str], set[str]]:
 
 
 def _ignored(path: str) -> bool:
-    r = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=ROOT, check=False)
+    """True when git would not carry ``path`` to a fresh clone: it is untracked and an ignore rule covers it."""
+    if subprocess.run(["git", "ls-files", "--error-unmatch", path], cwd=ROOT, capture_output=True,
+                      check=False).returncode == 0:
+        return False   # tracked: a rule that matches it (a laptop's own .git/info/exclude, say) changes nothing
+    # -v prints the pattern that decided: check-ignore also "matches" a negated one (!/data/README.md), which
+    # un-ignores the file. Exit code 1: no pattern matched at all.
+    r = subprocess.run(["git", "check-ignore", "-v", "--no-index", path], cwd=ROOT, capture_output=True, text=True,
+                       check=False)
     assert r.returncode in (0, 1), r
-    return r.returncode == 0
+    return r.returncode == 0 and not r.stdout.split("\t")[0].split(":", 2)[2].startswith("!")
 
 
 def test_every_relative_link_points_into_the_repo():
