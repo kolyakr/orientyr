@@ -33,18 +33,17 @@ import cv2
 import numpy as np
 
 from dronenav.telemetry import Record, RunInfo, read_run, read_run_info
+from dronenav.viz.draw import FINISH, FIXED, FONT, FOOTPRINT, MISSED, OUTLINE, START, TEXT
+from dronenav.viz.draw import SHIFT as _SHIFT
+from dronenav.viz.draw import dashed as _dashed
+from dronenav.viz.draw import is_missed as _is_missed
+from dronenav.viz.draw import px as _px
 
 __all__ = ["FINISH", "FIXED", "FOOTPRINT", "MISSED", "START", "Label", "Layout", "Written", "render_records",
            "render_trajectory", "write_trajectory"]
 
-# Colours, BGR. Chosen to stand out on satellite imagery (greens, greys, browns) and from each other.
-FIXED = (255, 170, 0)        # azure: route and points with an accepted fix
-MISSED = (0, 140, 255)       # orange: no accepted fix, or interpolated
-FOOTPRINT = (235, 235, 235)  # near white, translucent
-START = (60, 210, 60)        # green
-FINISH = (60, 40, 230)       # red
-TEXT = (255, 255, 255)
-OUTLINE = (0, 0, 0)
+# Colours (FIXED, MISSED, FOOTPRINT, START, FINISH, TEXT, OUTLINE) come from dronenav.viz.draw, shared with the
+# video renderer.
 
 # Sizes in preview pixels (multiplied by unit at full size).
 LINE = 3.0
@@ -53,14 +52,11 @@ POINT_R = 4.5
 DOT_R = 1.6                  # unnumbered points: a dot within the route line's width
 DOT_SPACING = 8.0            # preview px between drawn points: denser dots would bury the dashes
 END_R = 7.5
-FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.42            # ≈ 10 px digits in the preview
 MIN_LABEL_SPACING = 18.0     # preview px between numbered points, at least (a 2-digit label is ≈ 18 px wide)
 MARGIN = 12.0                # legend distance from the image edge
 FOOTPRINT_ALPHA = 0.55
 LEGEND_ALPHA = 0.78
-
-_SHIFT = 4                   # sub-pixel drawing: OpenCV coordinates in 1/16 px
 
 
 @dataclass(frozen=True)
@@ -194,17 +190,6 @@ def _bgr(img: np.ndarray) -> np.ndarray:
 
 # --- drawing ---------------------------------------------------------------------------------------------------
 
-def _is_missed(r: Record) -> bool:
-    """No accepted fix on this frame, or its position was filled in rather than measured."""
-    return r.interpolated or r.track.fix is None or not r.track.fix.accepted
-
-
-def _px(x: float, y: float) -> tuple[int, int]:
-    """Map px (origin at the top-left corner of the top-left pixel) to OpenCV's sub-pixel integer coordinates
-    (pixel centres at integers)."""
-    return round((x - 0.5) * (1 << _SHIFT)), round((y - 0.5) * (1 << _SHIFT))
-
-
 def _t(v: float, unit: float) -> int:
     """A size in preview px to a full-size thickness or radius (at least 1)."""
     return max(1, round(v * unit))
@@ -238,22 +223,6 @@ def _draw_route(img, obstacles, pts, missed, unit) -> None:
         else:
             cv2.line(img, _px(*a), _px(*b), FIXED, thick, cv2.LINE_AA, _SHIFT)
             phase = 0.0
-
-
-def _dashed(img, a, b, colour, thick, dash, gap, phase: float = 0.0) -> float:
-    """Dashes from a to b, starting ``phase`` px into the dash+gap pattern; returns the phase at b."""
-    length = float(np.hypot(*(b - a)))
-    period = dash + gap
-    if length == 0:
-        return phase
-    d = (b - a) / length
-    s = -phase                                   # where the current pattern period started, relative to a
-    while s < length:
-        ds, de = max(s, 0.0), min(s + dash, length)
-        if de > ds:
-            cv2.line(img, _px(*(a + d * ds)), _px(*(a + d * de)), colour, thick, cv2.LINE_AA, _SHIFT)
-        s += period
-    return (length + phase) % period
 
 
 def _draw_points(img, obstacles, pts, missed, numbered: set[int], ends, unit) -> None:
