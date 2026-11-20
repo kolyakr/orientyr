@@ -14,7 +14,7 @@ import sys
 import cv2
 
 from dronenav.config import add_shared_args, init_cli
-from dronenav.pipeline import MATCHERS, NothingLocalized, run
+from dronenav.pipeline import MATCHERS, TRACKERS, NothingLocalized, run
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -29,6 +29,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="the rate of the numbers in the frame names: t = number / fps (keyframes frame_00030 of a "
                          "30 fps video: 30). Default: meta.json next to the frames, else 1")
     ap.add_argument("--speed", type=float, default=1.0, help="video: run seconds per video second (default 1)")
+    ap.add_argument("--tracker", default="kalman",
+                    help=f"kalman: the Kalman tracker's states and filtered positions (M5); none: M1's interim "
+                         f"states, raw fixes (available: {', '.join(TRACKERS)})")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
     add_shared_args(ap)
     a = ap.parse_args(argv)
@@ -39,7 +42,8 @@ def main(argv: list[str] | None = None) -> int:
               "extract frames to a folder and use --frames", file=sys.stderr)
         return 2
     try:
-        s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache)
+        s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache,
+                tracker=a.tracker)
     except NothingLocalized as e:
         print(f"run: error: {e}", file=sys.stderr)
         return 1

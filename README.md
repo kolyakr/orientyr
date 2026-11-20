@@ -169,3 +169,17 @@ The regression tests are in [tests/test_accuracy.py](tests/test_accuracy.py):
 - **CI:** the fixture's 3 Irpin keyframes must each stay within 1.5 px (measured 0.24 to 0.53).
 - **Locally, with the data:** the 50 task crops and 40 consecutive Irpin keyframes must keep a median ≤ 0.5 px
   and a max ≤ 1.5 px, with no wrong fix.
+
+### Tracker states (M5-02)
+
+[src/dronenav/tracking/states.py](src/dronenav/tracking/states.py) puts a state machine on top of the filter, and
+`run.py` writes its states (`--tracker kalman`, the default; `--tracker none` keeps M1's interim states).
+- **LOST** at the start and after 3 misses in a row (no fix, a rejected one, or one the gate refuses). The
+  prediction is not trusted, so the frame is searched on the whole map.
+- **RELOCALIZING:** a fix found while LOST is only a candidate, since a look-alike block can fool one frame. A second
+  fix that agrees with it gives **TRACKING**. One that disagrees becomes the new candidate, and a miss means LOST again.
+- **TRACKING:** misses coast on the filter's prediction. Counting refused fixes as misses also resets a filter that
+  has drifted and refuses every true fix.
+- After 5 s without a fix the position holds instead of flying on a stale velocity, and its uncertainty keeps growing.
+- On the task's 50 frames: RELOCALIZING on frame 0, then TRACKING throughout.
+- Each record's `extra["step"]` says what the filter did with that frame's fix: INIT, HIT, GATED, COAST or NONE.

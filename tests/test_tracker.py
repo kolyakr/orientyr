@@ -16,10 +16,10 @@ import math
 
 import numpy as np
 import pytest
-from dronenav.tracking.states import Tracker, TrackerConfig
 
 from dronenav.search import SearchMode
 from dronenav.tracking.kalman import KalmanConfig, StepKind
+from dronenav.tracking.states import Tracker, TrackerConfig
 from dronenav.types import Fix, TrackMode
 
 T, L, R = TrackMode.TRACKING, TrackMode.LOST, TrackMode.RELOCALIZING
@@ -114,7 +114,8 @@ def test_repeated_outliers_lose_the_track_and_the_next_fix_relocalizes_there():
     tr = Tracker()
     for i in range(3):
         tr.update(i, float(i), _fix(i, _truth(i)))
-    far = [(np.add(_truth(i), (800.0, 0.0))) for i in range(3, 7)]
+    # 3000 px: clearly outside the gate even after 3 s of coasting (σ grows to ~300 px at the default sigma_acc)
+    far = [(np.add(_truth(i), (3000.0, 0.0))) for i in range(3, 7)]
     modes = [tr.update(i, float(i), _fix(i, xy)).mode for i, xy in zip(range(3, 6), far, strict=False)]
     assert modes == [T, T, L]
     up = tr.update(6, 6.0, _fix(6, far[3]))
