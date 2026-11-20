@@ -19,8 +19,15 @@ import cv2
 import numpy as np
 import pytest
 
-from dronenav.sim import (CutoutPose, CutoutSource, FlightSource, FlightTruth, cutout_homography, cutout_route,
-                          render_cutout)
+from dronenav.sim import (
+    CutoutPose,
+    CutoutSource,
+    FlightSource,
+    FlightTruth,
+    cutout_homography,
+    cutout_route,
+    render_cutout,
+)
 from dronenav.telemetry import Record, record_to_dict
 from dronenav.types import FrameSource, TrackState
 
@@ -283,17 +290,24 @@ def _dots(w, h, points, sigma=1.6):
 
 
 def _centroids(img):
+    """Intensity centroids of the blobs, skipping blobs the frame edge cuts (their centroid is pulled inwards)."""
     g = img[..., 0].astype(np.float32)
     n, labels = cv2.connectedComponents((g > 20).astype(np.uint8))
     ys, xs = np.mgrid[0:g.shape[0], 0:g.shape[1]].astype(np.float32) + 0.5
-    return [((xs * g)[labels == k].sum() / g[labels == k].sum(), (ys * g)[labels == k].sum() / g[labels == k].sum())
-            for k in range(1, n)]
+    out = []
+    for k in range(1, n):
+        m = labels == k
+        r, c = np.nonzero(m)
+        if r.min() == 0 or c.min() == 0 or r.max() == g.shape[0] - 1 or c.max() == g.shape[1] - 1:
+            continue
+        out.append(((xs * g)[m].sum() / g[m].sum(), (ys * g)[m].sum() / g[m].sum()))
+    return out
 
 
 @pytest.mark.parametrize("tilt", [0.0, 6.0, 12.0])
 def test_the_truth_maps_frame_pixels_back_onto_the_map_within_half_a_pixel(tilt):
-    rng = np.random.default_rng(1)
-    dots = [(float(x), float(y)) for x, y in rng.uniform(380, 620, (12, 2))]
+    # dots on a grid 24 px apart (sub-pixel offsets): random dots merged into one blob and moved its centroid
+    dots = [(380.3 + 24 * i, 380.7 + 24 * j) for i in range(11) for j in range(11)]
     world = _dots(1000, 1000, dots)
     pose = CutoutPose(x=500.3, y=499.7, heading_deg=37.0, scale=0.9, tilt_deg=tilt, tilt_dir_deg=60.0)
     H = cutout_homography(pose, (320, 240))
@@ -361,4 +375,16 @@ def test_the_cutout_source_carries_each_frames_truth():
     assert [f.idx for f in frames] == list(range(5)) and [f.t for f in frames] == [0, 0.5, 1.0, 1.5, 2.0]
     for f in frames:
         assert np.allclose(src.truth(f.idx), cutout_homography(poses[f.idx], (160, 120)))
-        assert registration_ncc(f.image, src.truth(f.idx), world) >= 0.99
+        # a sanity check that the frame shows the right place (a misplaced one scores near 0): at scale s > 1 the
+        # frame holds s² fewer pixels than its footprint, so warped back it is softer than the map: 0.97–1.0 here
+        assert registration_ncc(f.image, src.truth(f.idx), world) >= 0.95
+
+
+
+def test_shrinking_the_map_does_not_alias():
+    # scale 2: each frame pixel covers 2 x 2 map pixels; a 1 px checkerboard must come out as even grey, not moiré
+    board = (np.indices((400, 400)).sum(axis=0) % 2 * 255).astype(np.uint8)
+    world = cv2.cvtColor(board, cv2.COLOR_GRAY2BGR)
+    for heading in (0.0, 17.0, 45.0):
+        frame = render_cutout(world, cutout_homography(CutoutPose(200, 200, heading, 2.0), (64, 48)), (64, 48))
+        assert frame.std() < 12 and abs(frame.mean() - 127.5) < 10, (heading, frame.std())
