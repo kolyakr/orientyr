@@ -98,12 +98,21 @@ def test_the_fps_argument_overrides_meta_json(tmp_path):
     assert [f.t for f in FolderSource(tmp_path / "frames", fps=15)] == [2.0]
 
 
-@pytest.mark.parametrize("meta", ['{"fps": 0}', '{"fps": "fast"}', "not json", '{"frames": 10}'])
-def test_a_meta_json_without_a_usable_fps_is_a_clear_error(tmp_path, meta):
+@pytest.mark.parametrize("meta", ['{"fps": 0}', '{"fps": "fast"}', '{"fps": true}', "not json", "[30]"])
+def test_a_meta_json_with_a_broken_fps_is_a_clear_error(tmp_path, meta):
     (tmp_path / "meta.json").write_text(meta)
     _img(tmp_path / "frames" / "frame_00000.png")
     with pytest.raises(ValueError, match="meta.json"):
         FolderSource(tmp_path / "frames")
+
+
+def test_a_meta_json_that_says_nothing_about_fps_is_ignored(tmp_path):
+    # another tool's meta.json (no "fps" key) is not about timing: the next place, or 1 fps, applies
+    (tmp_path / "meta.json").write_text(json.dumps({"fps": 30}))
+    (tmp_path / "frames").mkdir()
+    (tmp_path / "frames" / "meta.json").write_text(json.dumps({"frames": 10}))
+    _img(tmp_path / "frames" / "frame_00030.png")
+    assert [f.t for f in FolderSource(tmp_path / "frames")] == [1.0]
 
 
 @pytest.mark.parametrize("fps", [0, -1])
@@ -159,8 +168,8 @@ def test_the_sidecar_next_to_the_map_and_its_matching_block(tmp_path):
 
 
 def test_a_hires_layer_finds_its_block_in_the_dataset_maps_folder(tmp_path):
+    _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))                # creates maps/ first
     side = _sidecar(tmp_path / "maps" / "m.json", (30, 20), hires_size=(60, 40))
-    _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))
     m = load_map(_img(tmp_path / "hires" / "m_z18.png", shape=(40, 60, 3)))
     assert m.sidecar == side and m.level == side["hires"]
 
