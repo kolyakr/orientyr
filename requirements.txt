@@ -1,0 +1,11 @@
+# Orientyr / dronenav runtime and dev stack. Python 3.11+.
+# Install: pip install -r requirements.txt && pip install -e .
+opencv-contrib-python>=4.9
+numpy>=1.26
+scipy>=1.11
+torch>=2.2          # uses MPS on Apple Silicon, falls back to CPU
+kornia>=0.7
+lightglue @ git+https://github.com/cvg/LightGlue.git   # not on PyPI
+# dev
+pytest>=8
+ruff>=0.4
