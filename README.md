@@ -278,3 +278,55 @@ With the tracker on, the search window comes from the filter, not from M1's fixe
 - **In the telemetry:** each record's `extra["predicted_window"]` and `extra["window_sigma_px"]` (the larger axis σ).
 - **On the task's 50 frames:** σ goes 92 → 64 → 63 px and stays there. All 49 frames after the first are found in
   their window, 50/50 localized.
+
+### Frame preprocessing (M4-05)
+
+[src/dronenav/preprocess.py](src/dronenav/preprocess.py) is one function, `preprocess(img, cfg, scale=None)`, for the
+map and for every frame, whatever the matcher. Three steps, each with its own switch:
+- **CLAHE on luminance** (the Y channel), the same settings for map and frame, with tiles given in pixels (64 px);
+- **scale normalisation**: the frame is shrunk by the M1-03 rule from the last fix's scale or from a prior,
+  `nadir_gsd_m / m_per_px` (0.51 for the Irpin flights). The map is never resized;
+- **grey-world** colour balance, optional.
+
+Measured with `python scripts/preprocess_ablation.py`: 150 evenly spaced keyframes of the Irpin flight `mild/2022`
+(rendered from the 2022 imagery), RootSIFT + MAGSAC++, each frame against a 1600 px window of the map around its
+true position. "Localised" means an accepted fix within 10 px of the truth; "wrong" is an accepted fix further off.
+
+Cross-epoch, the 2025 map (another sensor, season and three years of change):
+
+| step | localised | wrong fixes | inliers (median) | error px (median) | ms (median) |
+|---|---|---|---|---|---|
+| none | 55/150 | 1 | 35 | 2.24 | 390 |
+| CLAHE | 57/150 | 1 | 44 | 2.10 | 851 |
+| scale | 53/150 | 0 | 35 | 2.18 | 320 |
+| scale to 1.0 | 51/150 | 0 | 35 | 2.23 | 311 |
+| grey-world | 54/150 | 0 | 38 | 2.19 | 426 |
+| CLAHE + scale | 62/150 | 0 | 42 | 2.21 | 1065 |
+| all | 58/150 | 1 | 42 | 2.23 | 794 |
+
+Control, the flight's own 2022 map:
+
+| step | localised | wrong fixes | inliers (median) | error px (median) | ms (median) |
+|---|---|---|---|---|---|
+| none | 150/150 | 0 | 986 | 0.52 | 298 |
+| CLAHE | 150/150 | 0 | 2206 | 0.51 | 866 |
+| scale | 150/150 | 0 | 960 | 0.53 | 292 |
+| scale to 1.0 | 150/150 | 0 | 850 | 0.56 | 206 |
+| grey-world | 150/150 | 0 | 894 | 0.52 | 304 |
+| CLAHE + scale | 150/150 | 0 | 2226 | 0.49 | 738 |
+| all | 150/150 | 0 | 2182 | 0.53 | 654 |
+
+On the 2017 map no variant localises a single frame (0/150 in every row).
+
+What the numbers say:
+- CLAHE more than doubles the inliers on the same-epoch map and adds about a quarter across epochs, for 2 to 3
+  times the matching time (more keypoints). CLAHE with scale normalisation is the best row across epochs: 62
+  frames against 55. That is 7 frames of 150, a small gain; it does not turn the cross-epoch case around.
+- Scale normalisation alone changes little here: the Irpin prior gives a factor of only 0.78. Aiming at one map
+  pixel per frame pixel ("scale to 1.0") is a little worse than the M1-03 target of 0.65.
+- Grey-world does nothing for an intensity-based matcher; it stays off by default.
+- Times are medians of preprocessing plus matching on a laptop that was also running other work during the 2025
+  rows, so read them as rough.
+
+The defaults follow this: CLAHE and scale normalisation on, grey-world off.
+
