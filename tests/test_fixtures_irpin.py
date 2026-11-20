@@ -69,7 +69,7 @@ def test_the_bundle_is_complete_and_small():
 
 def test_there_are_three_jpeg_keyframes():
     meta = _meta()
-    assert len(meta["frames"]) == 4   # DELIBERATELY BROKEN (M0-08 red demo): reverted in the next commit
+    assert len(meta["frames"]) == 3
     assert all(f["file"].endswith(".jpg") for f in meta["frames"]) and meta["crop"]["file"].endswith(".jpg")
 
 
