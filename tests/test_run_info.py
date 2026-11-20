@@ -4,6 +4,8 @@ Renderers take only ``--run <dir>``, so the run folder must name its map. The pa
 run folder (a run folder moved together with its map, or read from another working directory, still works).
 """
 import json
+import os
+from pathlib import Path
 
 import pytest
 
@@ -76,3 +78,24 @@ def test_malformed_run_json_names_the_field(tmp_path, case):
 def test_missing_run_json_is_a_clear_error(tmp_path):
     with pytest.raises(FileNotFoundError):
         read_run_info(tmp_path)
+
+
+@pytest.mark.skipif(not hasattr(os, "symlink"), reason="needs symlinks")
+def test_map_resolves_however_the_run_folder_is_spelled(tmp_path):
+    # written through a symlinked folder (macOS /var -> /private/var, a symlinked outputs/), read through the
+    # real path: a path made from the text of the folder name pointed at a map that does not exist
+    (tmp_path / "real" / "deep").mkdir(parents=True)
+    m = _map(tmp_path)
+    os.symlink(tmp_path / "real" / "deep", tmp_path / "link")
+    write_run_info(tmp_path / "link" / "run", RunInfo(map=str(m), map_size=(10, 10), generator="t"))
+    for spelled in (tmp_path / "link" / "run", tmp_path / "real" / "deep" / "run", (tmp_path / "link" / "run").resolve()):
+        assert read_run_info(spelled).map_path.samefile(m), spelled
+    # and the OS itself, joining the stored path to the real folder (as a browser resolving a relative URL)
+    stored = json.loads((tmp_path / "real" / "deep" / "run" / "run.json").read_text())["map"]
+    assert (tmp_path / "real" / "deep" / "run" / stored).exists()
+
+
+@pytest.mark.parametrize("empty", ["", Path(""), "."])
+def test_an_empty_map_path_is_refused(empty):
+    with pytest.raises(TelemetryError, match="map"):
+        RunInfo(map=empty, map_size=(10, 10), generator="t")

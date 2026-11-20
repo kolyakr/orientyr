@@ -48,15 +48,22 @@ def _texture_map(path: Path, seed: int = 1) -> Path:
     return path
 
 
-@pytest.fixture(scope="module")
-def run(tmp_path_factory):
-    """One default run made through the CLI (also the test of item 1's command line)."""
+# The default square run, and a wide one: with square frames a w/h mix-up in the homography or the renderer
+# would go unnoticed.
+RUNS = {"default": ([], (640, 640)), "wide": (["--frame-size", "400x200", "--scale", "0.4"], (400, 200))}
+
+
+@pytest.fixture(scope="module", params=list(RUNS))
+def run(request, tmp_path_factory):
+    """A run made through the CLI (also the test of item 1's command line)."""
+    args, frame_size = RUNS[request.param]
     d = tmp_path_factory.mktemp("fake")
     map_path = _texture_map(d / "map.png")
     out = d / "run"
-    res = _cli("--map", map_path, "--out", out)
+    res = _cli("--map", map_path, "--out", out, *args)
     assert res.returncode == 0, res.stderr
-    return {"dir": out, "map": map_path, "records": read_run(out / "run.jsonl"), "info": read_run_info(out)}
+    return {"dir": out, "map": map_path, "records": read_run(out / "run.jsonl"), "info": read_run_info(out),
+            "frame_size": frame_size}
 
 
 def _route_shape(run_dir: Path):
@@ -111,14 +118,14 @@ def _apply(H, pts):
 def test_cli_writes_a_complete_run_folder(run):
     info, recs = run["info"], run["records"]
     assert info.map_path.samefile(run["map"])
-    assert info.map_size == (MAP_W, MAP_H) and info.frame_size == (640, 640)
+    assert info.map_size == (MAP_W, MAP_H) and info.frame_size == run["frame_size"]
     assert info.generator == "fake_run" and info.seed == 0 and info.fps == 1.0
     assert [r.idx for r in recs] == list(range(50))
     assert all(r.t == pytest.approx(r.idx / info.fps) for r in recs)
     for r in recs:
         img = cv2.imread(str(run["dir"] / r.source))
         assert img is not None, r.source
-        assert img.shape == (640, 640, 3)
+        assert img.shape == (run["frame_size"][1], run["frame_size"][0], 3)
     assert sorted(p.name for p in (run["dir"] / "frames").iterdir()) == [Path(r.source).name for r in recs]
 
 
@@ -133,6 +140,7 @@ def test_options_change_the_run(tmp_path):
 
 
 @pytest.mark.parametrize("args, words", [
+    (["--frame-size", "640x480x3"], ["frame size"]),                         # extra parts are not ignored
     (["--frames", "8", "--jam-start", "5", "--jam-len", "3"], ["jam"]),    # no room to relocalize and track again
     (["--jam-start", "0"], ["jam"]),                                         # must start after a tracked frame
     (["--scale", "5"], ["map", "small"]),                                    # footprint larger than the map
@@ -260,7 +268,8 @@ def _expected_view(map_img, truth, frame_size):
 def test_frames_are_the_map_seen_through_the_true_homography(run):
     map_img = cv2.imread(str(run["map"]))
     seen = [r for r in run["records"] if r.track.state is not TrackMode.LOST]
-    for r in seen[::6]:
+    reloc = [r for r in seen if r.track.state is TrackMode.RELOCALIZING]   # a stride alone skipped both
+    for r in seen[::6] + reloc:
         frame = cv2.imread(str(run["dir"] / r.source)).astype(np.float32)
         expected = _expected_view(map_img, r.extra["truth"], run["info"].frame_size).astype(np.float32)
         assert np.abs(frame - expected).mean() < 3.0, r.idx           # grey levels; PNG is lossless
@@ -308,6 +317,24 @@ def test_the_drift_shows_for_every_seed(tmp_path):
     for seed in range(40):
         make_fake_run(m, tmp_path / f"s{seed}", FakeRunConfig(seed=seed, frame_size=(96, 96), scale=1.7))
         assert _lost_drift(tmp_path / f"s{seed}") > 5, seed
+
+
+def test_the_drift_shows_at_the_default_settings_too(tmp_path):
+    m = _texture_map(tmp_path / "map.png")
+    for seed in range(8):
+        make_fake_run(m, tmp_path / f"s{seed}", FakeRunConfig(seed=seed))
+        assert _lost_drift(tmp_path / f"s{seed}") > 5, seed
+
+
+def test_the_rejected_fix_is_somewhere_else(tmp_path):
+    # a false match next to the truth would look like a good fix that was rejected for nothing
+    m = _texture_map(tmp_path / "map.png")
+    for seed in range(40):
+        cfg = FakeRunConfig(seed=seed, frame_size=(96, 96), scale=1.7)
+        make_fake_run(m, tmp_path / f"s{seed}", cfg)
+        (r,) = [r for r in read_run(tmp_path / f"s{seed}" / "run.jsonl") if r.track.fix and not r.track.fix.accepted]
+        diag = cfg.scale * math.hypot(*cfg.frame_size)
+        assert math.hypot(r.track.fix.x - r.extra["truth"]["x"], r.track.fix.y - r.extra["truth"]["y"]) > diag, seed
 
 
 def test_a_portrait_map_gets_a_smooth_route_too(tmp_path):
