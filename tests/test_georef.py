@@ -25,10 +25,10 @@ TASK_MAP = ROOT / "data" / "hackatons-data" / "global_map.png"
 # --- the Web-Mercator math itself: synthetic, no data/ needed ----------------------------------
 
 def _block(**over) -> GeorefBlock:
-    base = dict(file="irpin_2025.png", zoom=17, m_per_px=0.7593316812880911, size_px=(3936, 3936),
-                merc_origin_px=(19592192.0, 11301728.0),
-                bounds_lonlat=(30.201416015625, 50.508623285115206, 30.24364471435547, 50.53547149911047),
-                capture_coverage=1.0, alignment_to_2025={"shift_px": [0.0, 0.0], "reference": True})
+    base = {"file": "irpin_2025.png", "zoom": 17, "m_per_px": 0.7593316812880911, "size_px": (3936, 3936),
+            "merc_origin_px": (19592192.0, 11301728.0),
+            "bounds_lonlat": (30.201416015625, 50.508623285115206, 30.24364471435547, 50.53547149911047),
+            "capture_coverage": 1.0, "alignment_to_2025": {"shift_px": [0.0, 0.0], "reference": True}}
     base.update(over)
     return GeorefBlock(**base)
 
@@ -74,10 +74,10 @@ def test_doubling_zoom_doubles_world_pixel_position():
 # --- sidecar parsing: synthetic malformed inputs, no data/ needed -------------------------------
 
 def _valid_sidecar() -> dict:
-    block = dict(file="irpin_2025.png", zoom=17, m_per_px=0.75, size_px=[3936, 3936],
-                 merc_origin_px=[19592192, 11301728],
-                 bounds_lonlat=[30.2014, 50.5086, 30.2436, 50.5355],
-                 capture_coverage=1.0, alignment_to_2025={"shift_px": [0.0, 0.0], "reference": True})
+    block = {"file": "irpin_2025.png", "zoom": 17, "m_per_px": 0.75, "size_px": [3936, 3936],
+             "merc_origin_px": [19592192, 11301728],
+             "bounds_lonlat": [30.2014, 50.5086, 30.2436, 50.5355],
+             "capture_coverage": 1.0, "alignment_to_2025": {"shift_px": [0.0, 0.0], "reference": True}}
     return {"capture": {"date": "2025-04-11", "sensor": "WV02"}, "source": "test",
             "map": block, "hires": dict(block, zoom=18)}
 
