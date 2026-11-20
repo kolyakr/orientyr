@@ -14,7 +14,7 @@
 #   tools/task.sh notify [--throttle SEC]  tasks unblocked for me since the last check (run by Claude Code hooks)
 set -euo pipefail
 
-ROOT=$(git rev-parse --show-toplevel)
+ROOT=$(cd "$(git rev-parse --show-toplevel)" && pwd)  # posix form: git-bash on Windows mis-splits PYTHONPATH otherwise
 # shellcheck source=tools/task.env
 source "${TASK_ENV:-$ROOT/tools/task.env}"
 OWNER="${REPO%/*}"; NAME="${REPO#*/}"
