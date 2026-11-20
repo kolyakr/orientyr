@@ -100,17 +100,87 @@ main ◄──── release PR (owner only) ──── develop ◄───�
 | `develop` | Integration: the default branch. All finished tasks land here. | Anyone, **only through a PR** from a task branch. No direct pushes, no force-push. |
 | `M<n>-<nn>-<slug>` | One task = one branch, e.g. `M1-04-geometry`. | Its owner. Branch off `develop`, PR back into `develop`. Deleted after merge. |
 
-### Workflow for a task (humans and agents alike)
+### One-time setup per person
+
+```bash
+gh auth login                      # as your own GitHub user
+gh auth refresh -s project         # lets gh move cards on the board
+git clone git@github.com:kolyakr/orientyr.git && cd orientyr   # lands on develop (the default branch)
+git config user.name "<you>" && git config user.email "<your GitHub email>"
+```
+
+Open Claude Code (or any agent) at the repo root: `CLAUDE.md` imports this file, so the agent starts with these rules.
+
+### Task lifecycle: always through `tools/task.sh`
+
+Every step that touches GitHub goes through [`tools/task.sh`](tools/task.sh), so the board, issues and branches never
+drift apart. In Claude Code the same flow is `/start-task` and `/finish-task` (in `.claude/skills/`).
+
+| Step | Command | What it does |
+|---|---|---|
+| 1. Pick | `tools/task.sh ready` | tasks you can start now: unblocked and unassigned, or unblocked and claimed by you; prefer the critical path M0 → M1 → M4 → M5 → M7 |
+| 2. Start | `tools/task.sh start <issue#>` | refuses if blocked, taken or the tree is dirty; assigns you; board → **In Progress**; branch `M1-04-<slug>` off fresh `develop`, pushed (resumes it if it exists); prints the spec |
+| 3. Tests (red) | write tests, `tools/task.sh test` shows them fail, `git commit -m "M1-04: tests for … (red)"` | see TDD rules below |
+| 4. Implement (green) | code until `tools/task.sh test` passes; `git commit -m "M1-04: …"` | small commits, ID first |
+| 5. PR | `tools/task.sh pr [body.md]` | rebases on `develop`, runs the tests on the result (refuses if red), pushes, opens the PR into `develop` titled like the issue with `Closes #N`; rerun to update it |
+| 6. Merge | `tools/task.sh finish` | refuses on red tests, unpushed commits, failing checks or a PR not into `develop`; squash-merges, deletes the branch, board → **Done**, back on fresh `develop` |
+
+Other commands: `tools/task.sh mine` (my tasks and what blocks them), `claim <issue#>` (reserve a task, blocked or
+not), `drop` (give the current task back: board → Todo, unassigned; then say why in the issue),
+`status <issue#> <Todo|In Progress|Done>`. One task in progress per person at a time.
+
+### Blocked tasks and notifications
+
+- A task's blockers are its GitHub "blocked by" links (from "Depends on"). Open tasks with an open blocker carry the
+  label **`blocked`**, kept in sync automatically: filter the board by it.
+- **Want a blocked task? Claim it:** `tools/task.sh claim <issue#>`. It's assigned to you but stays in Todo.
+- **When a task closes** (its PR merged with `Closes #N`), the workflow `.github/workflows/unblock.yml` checks every
+  task it was blocking. If that was the last open blocker, it removes `blocked` and comments on the task
+  **@mentioning the assignee** ("🔓 Unblocked … start with `tools/task.sh start N`"), which arrives as a GitHub
+  notification and email. An unclaimed task gets a "free to take" comment instead, and the closed task gets a list of
+  what it unblocked. Reopening a task re-blocks its dependants.
+- Make sure GitHub notifications for this repo reach you (Watch → Participating and @mentions, or All Activity).
+- Edited a "blocked by" link by hand? Labels re-sync every 6 hours, or at once with `gh workflow run unblock.yml`.
+
+### Workflow for a task: the rules behind the commands (humans and agents alike)
 
 1. **Pick a task** on the board whose blockers are all closed; assign yourself and move it to *In Progress*.
 2. **Branch off the latest `develop`:** `git switch develop && git pull && git switch -c M1-04-geometry`.
-3. **Work only within the task's scope.** Don't edit another milestone's module without a linked task; if you find
-   needed work outside the scope, open or reference an issue instead of doing it silently.
-4. **Commit** with the ID first: `M1-04: add MAGSAC++ homography and sanity checks`.
-5. **Keep up to date:** `git fetch && git rebase origin/develop` (or merge `develop` into your branch) before opening the PR.
-6. **Open the PR into `develop`** (never into `main`): title `M1-04 · <title>`, body with what changed, how it was
-   tested, and `Closes #<issue>`. CI must pass.
-7. **Done means the issue's "Done when" is met**, not "code exists". Merge (squash), delete the branch, the issue closes.
+3. **Spec first.** The issue (What / Depends on / Done when) is the spec. If it is ambiguous or wrong, settle it in
+   the issue *before* coding and edit the issue text, so the spec always matches what gets built.
+4. **Tests first (TDD), see below.** Write the tests that encode "Done when", run them, see them **fail**, and commit
+   them before any implementation: `M1-04: tests for homography checks (red)`.
+5. **Implement until the tests pass**, then refactor with the tests green. Work only within the task's scope; don't
+   edit another milestone's module without a linked task; open or reference an issue for anything outside it.
+6. **Commit** with the ID first: `M1-04: add MAGSAC++ homography and sanity checks`.
+7. **Keep up to date:** `git fetch && git rebase origin/develop` (or merge `develop` into your branch) before opening the PR.
+8. **Open the PR into `develop`** (never into `main`): title `M1-04 · <title>`, body with what changed, which tests
+   cover each "Done when" item, and `Closes #<issue>`. The tests commit must come before the implementation commits.
+   CI must pass.
+9. **Done means the issue's "Done when" is met and proven by tests**, not "code exists". Merge (squash), delete the
+   branch, the issue closes.
+
+### Spec-driven development and TDD
+
+No implementation without a failing test that the spec demands. Every "Done when" item maps to at least one test.
+
+What makes a test reliable here:
+
+- **Derived from the spec, not from the code.** Test the contract (inputs → outputs, errors), not internals, so a
+  refactor doesn't break it. It must fail before the implementation exists; a test that can't fail is not a test.
+- **Ground truth you control.** Prefer synthetic data with exact answers: warp a map patch with a known homography,
+  generate a flight with a known route (seeded), then assert the recovered pose within an **explicit tolerance**
+  (e.g. `≤ 2 px`, `≤ 1°`) with the reason for that tolerance in a comment.
+- **Edge and failure cases too:** degenerate / mirrored homographies, empty or blank frames, no matches, lost track,
+  wrong input paths. The rejection path is as much part of the spec as the happy path.
+- **Deterministic and fast:** fixed seeds, CPU only, no network, no full dataset. Unit tests run in seconds; tiny
+  fixtures live in `tests/fixtures/` (a few KB). Tests that need the full data are marked `@pytest.mark.data` and
+  skip cleanly when `data/` is missing; CI runs everything else.
+- **Never weaken a test to make it pass.** If a test or the spec is wrong, say so in the issue, fix the spec first,
+  then the test, and mention it in the PR.
+- **Visual and data tasks** (renderers, UI, recordings, area choice): test the contract that can be checked (file
+  exists, size, frame count, codec, schema, runs on the fake `run.jsonl`) and add a screenshot or a checklist in the PR
+  for the part only a human can judge.
 
 ### Releasing to `main`
 
@@ -121,7 +191,14 @@ main ◄──── release PR (owner only) ──── develop ◄───�
 ### Rules for coding agents
 
 - Never commit or push to `main` or `develop` directly; never force-push a shared branch; never merge into `main`.
-- Before starting, confirm the task ID with the human; if there is none, ask for one rather than inventing work.
+- At the start of a session, run `git status` and `tools/task.sh mine`. If the human already has a task in
+  progress, continue it on its branch; otherwise propose tasks from `tools/task.sh ready` and let the human choose.
+  If the work asked for matches no task, ask for one (or ask the human to open an issue) rather than inventing work.
+- Use `tools/task.sh` for start / PR / finish / status; don't hand-edit the board or invent branch names.
+- Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.
+  Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
+- Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). Run the full suite before `tools/task.sh pr` and before `finish`; never merge red.
+- `finish` merges into `develop` only after the human says so.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
 
