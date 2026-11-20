@@ -7,14 +7,18 @@ map seen through the true homography, so a real matcher could localise them. A j
     TRACKING ... → LOST × jam_len → RELOCALIZING × 2 → TRACKING ...
     (window       (camera jammed:    (global search:     (window
      search,       noise frames, no    one rejected fix,   search)
-     accepted      fix, dead-reckoned  then one accepted)
-     fixes)        position, σ grows)
+     accepted      fix; coasting on a  then one accepted)
+     fixes)        slightly wrong
+                   velocity, so the
+                   position drifts
+                   off; σ grows)
 
 Fixes are the true pose plus a little noise. ``extra`` carries ``truth`` (x, y, heading_deg, scale),
 ``search`` (window / global / none) and an ``event`` caption on each state change. Defaults copy the task
 data (experiments/data_probe): 50 frames of 640 × 640, 0.2535 map px per frame px, 120–384 inliers, 1 fps.
 
-Everything comes from one seeded generator, so the same settings give byte-identical output.
+The route runs along the map's long side. Everything comes from one seeded generator, so the same settings
+give byte-identical output (on the same machine and library versions: PNG encoding may differ elsewhere).
 """
 from __future__ import annotations
 
@@ -34,6 +38,7 @@ __all__ = ["FakeRunConfig", "make_fake_run"]
 RELOC_FRAMES = 2            # global search: one miss, then the hit
 INLIERS = (120, 384)        # the range of the 50 task crops (experiments/data_probe/README.md)
 SCALE_WOBBLE = 0.04         # true scale varies ±4 % along the route (altitude changes)
+COAST_BIAS_DEG = 6.0        # the filter's velocity is this far off when the jam starts: visible drift on any route
 
 
 @dataclass(frozen=True)
@@ -84,6 +89,7 @@ def make_fake_run(map_path: str | Path, out_dir: str | Path, cfg: FakeRunConfig 
             old.unlink()
 
     last_x = last_y = vx = vy = 0.0
+    coast = np.zeros(2)                                 # the velocity the filter coasts on during the jam
     prev_state: TrackMode | None = None
     with RunWriter(out_dir / "run.jsonl") as writer:
         for i in range(cfg.frames):
@@ -95,8 +101,11 @@ def make_fake_run(map_path: str | Path, out_dir: str | Path, cfg: FakeRunConfig 
             if jam_start <= i < jam_end:
                 # camera jammed: noise frames, no homography; coast on the last velocity, σ grows every frame
                 state, fix, search, ms = TrackMode.LOST, None, "none", rng.uniform(3, 6)
+                if i == jam_start:
+                    coast = _coast_velocity(math.hypot(vx, vy), (last_x, last_y), route, jam_start, cfg)
+                    vx, vy = coast
                 k = i - jam_start + 1
-                x, y = last_x + vx * k / cfg.fps, last_y + vy * k / cfg.fps
+                x, y = last_x + coast[0] * k / cfg.fps, last_y + coast[1] * k / cfg.fps
                 cov = _cov(6.0 + 10.0 * k)
                 image = _jammed_frame(fw, fh, rng)
             elif i == jam_end:
@@ -104,7 +113,7 @@ def make_fake_run(map_path: str | Path, out_dir: str | Path, cfg: FakeRunConfig 
                 state, search, ms = TrackMode.RELOCALIZING, "global", rng.uniform(230, 260)
                 fix = _rejected_fix(i, cfg, map_w, map_h, rng)
                 k = i - jam_start + 1
-                x, y = last_x + vx * k / cfg.fps, last_y + vy * k / cfg.fps
+                x, y = last_x + coast[0] * k / cfg.fps, last_y + coast[1] * k / cfg.fps
                 cov = _cov(6.0 + 10.0 * k)
                 image = _render(map_img, truth, cfg.frame_size)
             elif i == jam_end + 1:
@@ -128,7 +137,8 @@ def make_fake_run(map_path: str | Path, out_dir: str | Path, cfg: FakeRunConfig 
             event = _event(state, prev_state)
             if event:
                 extra["event"] = event
-            cv2.imwrite(str(out_dir / source), image)
+            if not cv2.imwrite(str(out_dir / source), image):   # OpenCV only logs a warning on failure
+                raise OSError(f"cannot write the frame {out_dir / source}")
             track = TrackState(idx=i, state=state, x=x, y=y, vx=float(vx), vy=float(vy), cov=cov, fix=fix)
             writer.write(Record(idx=i, t=t, source=source, track=track, backend="fake", ms=round(float(ms), 2),
                                 extra=extra))
@@ -177,10 +187,15 @@ def _heading(dx: float, dy: float) -> float:
 
 
 def _route(cfg: FakeRunConfig, map_w: int, map_h: int, rng: np.random.Generator) -> list[_Pose]:
-    """A sine across the map, like the task route, with a random phase, size and direction."""
+    """A sine along the map's long side, like the task route, with a random phase, size and direction.
+
+    Built along a "long" axis a and a "short" axis b, then mapped to x, y (swapped on a portrait map).
+    """
+    portrait = map_h > map_w
+    long_, short = (map_h, map_w) if portrait else (map_w, map_h)
     m = _margin(cfg)
-    span = map_w - 2 * m
-    amp = (map_h / 2 - m) * rng.uniform(0.6, 0.9)
+    span = long_ - 2 * m
+    amp = (short / 2 - m) * rng.uniform(0.6, 0.9)
     cycles = rng.uniform(0.7, 1.2)
     phase = rng.uniform(0, 2 * math.pi)
     wobble_phase = rng.uniform(0, 2 * math.pi)
@@ -188,10 +203,11 @@ def _route(cfg: FakeRunConfig, map_w: int, map_h: int, rng: np.random.Generator)
     poses = []
     for i in range(cfg.frames):
         u = i / (cfg.frames - 1) if cfg.frames > 1 else 0.5
-        x = map_w / 2 + sign * span * (u - 0.5)
-        y = map_h / 2 + amp * math.sin(2 * math.pi * cycles * u + phase)
-        dx = sign * span                                 # d/du
-        dy = amp * 2 * math.pi * cycles * math.cos(2 * math.pi * cycles * u + phase)
+        a = long_ / 2 + sign * span * (u - 0.5)
+        b = short / 2 + amp * math.sin(2 * math.pi * cycles * u + phase)
+        da = sign * span                                 # d/du
+        db = amp * 2 * math.pi * cycles * math.cos(2 * math.pi * cycles * u + phase)
+        x, y, dx, dy = (b, a, db, da) if portrait else (a, b, da, db)
         scale = cfg.scale * (1 + SCALE_WOBBLE * math.sin(math.pi * u + wobble_phase))
         poses.append(_Pose(x, y, _heading(dx, dy), scale))
     return poses
@@ -203,6 +219,27 @@ def _velocity(route: list[_Pose], i: int, fps: float) -> np.ndarray:
     if a == b:
         return np.zeros(2)
     return np.array([route[b].x - route[a].x, route[b].y - route[a].y]) * fps / (b - a)
+
+
+def _coast_velocity(speed: float, start: tuple[float, float], route: list[_Pose], jam_start: int,
+                    cfg: FakeRunConfig) -> np.ndarray:
+    """The velocity the filter coasts on during the jam: the estimated speed, COAST_BIAS_DEG off the true heading.
+
+    Of the two directions (bias left or right), the one that leaves the route faster is used, so the drift
+    shows on any stretch: coasting exactly straight would hide it where the route is straight, and a fixed
+    bias can be cancelled by the route turning the other way.
+    """
+    h0 = route[jam_start - 1].heading_deg
+    best, best_drift = np.zeros(2), -math.inf
+    for sign in (1.0, -1.0):
+        a = math.radians(h0 + sign * COAST_BIAS_DEG)
+        v = speed * np.array([math.sin(a), -math.cos(a)])          # heading → map px direction (y down)
+        err = [math.hypot(start[0] + v[0] * k / cfg.fps - route[jam_start - 1 + k].x,
+                          start[1] + v[1] * k / cfg.fps - route[jam_start - 1 + k].y)
+               for k in range(1, cfg.jam_len + 1)]
+        if err[-1] - err[0] > best_drift:
+            best, best_drift = v, err[-1] - err[0]
+    return best
 
 
 def _homography(pose: _Pose, frame_size: tuple[int, int]) -> np.ndarray:

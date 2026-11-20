@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
                         jam_start=a.jam_start, jam_len=a.jam_len)
     try:
         info = make_fake_run(a.map, a.out, cfg)
-    except (FileNotFoundError, ValueError) as e:
+    except (OSError, ValueError) as e:   # unreadable map, unwritable output, impossible settings
         print(f"fake_run: error: {e}", file=sys.stderr)
         return 2
     print(f"fake_run: {cfg.frames} frames over {info.map} ({info.map_size[0]}x{info.map_size[1]}) -> {a.out}")

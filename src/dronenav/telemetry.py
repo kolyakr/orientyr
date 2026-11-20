@@ -327,8 +327,8 @@ def read_run_info(run_dir: str | Path) -> RunInfo:
         if not isinstance(d, dict):
             raise TelemetryError(f"must be a JSON object, got {type(d).__name__}")
         _check_keys(d, _INFO_REQUIRED, _INFO_OPTIONAL, prefix="")
-        if not isinstance(d["map"], str):
-            raise TelemetryError(f"map must be a str, got {type(d['map']).__name__}")
+        if not isinstance(d["map"], str) or not d["map"]:
+            raise TelemetryError(f"map must be a non-empty path, got {d['map']!r}")
         return RunInfo(map=os.path.normpath(os.path.join(os.path.abspath(run_dir), d["map"])),
                        map_size=d["map_size"], generator=d["generator"], frame_size=d.get("frame_size"),
                        fps=d.get("fps"), seed=d.get("seed"))
