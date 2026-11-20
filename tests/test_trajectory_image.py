@@ -47,7 +47,7 @@ def _corners(H, frame):
 
 
 def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), frame=(64, 64), scale=1.0,
-              interpolated_with_fix=()):
+              interpolated_with_fix=(), idxs=None, heading=None):
     """A run folder over a plain grey map. Points in ``missed`` have no fix (LOST); in ``rejected`` a rejected
     fix far away (RELOCALIZING); in ``interpolated`` an accepted-looking position marked interpolated, no fix."""
     w, h = map_size
@@ -61,7 +61,8 @@ def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), 
             nxt = pts[min(i + 1, len(pts) - 1)] if i + 1 < len(pts) else pts[i]
             prv = pts[i - 1] if i > 0 else pts[i]
             dx, dy = (nxt[0] - prv[0], nxt[1] - prv[1])
-            head = math.degrees(math.atan2(dx, -dy)) % 360 if (dx or dy) else 90.0
+            head = heading if heading is not None else math.degrees(math.atan2(dx, -dy)) % 360 if (dx or dy) else 90.0
+            fi = idxs[i] if idxs is not None else i
             fix, state = None, TrackMode.TRACKING
             if i in missed:
                 state = TrackMode.LOST
@@ -69,14 +70,14 @@ def _make_run(tmp_path, map_size, pts, missed=(), rejected=(), interpolated=(), 
                 state = TrackMode.RELOCALIZING
                 fx, fy = w * 0.5, h * 0.12          # a false match away from the route
                 H = _H(fx, fy, 0.0, scale, frame)
-                fix = Fix(idx=i, H=H, x=fx, y=fy, heading_deg=0.0, scale=scale, footprint=_corners(H, frame),
+                fix = Fix(idx=fi, H=H, x=fx, y=fy, heading_deg=0.0, scale=scale, footprint=_corners(H, frame),
                           inliers=6, inlier_ratio=0.05, reproj_px=7.0, accepted=False, reject_reason="too_few_inliers")
             elif i not in interpolated or i in interpolated_with_fix:
                 H = _H(x, y, head, scale, frame)
-                fix = Fix(idx=i, H=H, x=x, y=y, heading_deg=head, scale=scale, footprint=_corners(H, frame),
+                fix = Fix(idx=fi, H=H, x=x, y=y, heading_deg=head, scale=scale, footprint=_corners(H, frame),
                           inliers=200, inlier_ratio=0.6, reproj_px=0.8, accepted=True)
-            track = TrackState(idx=i, state=state, x=x, y=y, vx=0.0, vy=0.0, cov=np.eye(2), fix=fix)
-            wr.write(Record(idx=i, t=float(i), source=f"frames/frame_{i:05d}.png", track=track,
+            track = TrackState(idx=fi, state=state, x=x, y=y, vx=0.0, vy=0.0, cov=np.eye(2), fix=fix)
+            wr.write(Record(idx=fi, t=float(i), source=f"frames/frame_{fi:05d}.png", track=track,
                             interpolated=i in interpolated or i in interpolated_with_fix))
     return d
 
@@ -97,10 +98,11 @@ def _changed(px, tol=30):
 
 @pytest.fixture(scope="module")
 def plain(tmp_path_factory):
-    """10 points on a 1600 x 1000 map: 4 and 5 missed (no fix), 6 rejected, 8 interpolated."""
+    """10 points on a 1600 x 1000 map: 4 and 5 missed (no fix), 6 rejected, 8 interpolated (with an accepted
+    fix, so only the interpolated flag makes it missed)."""
     size = (1600, 1000)
     pts = _line(size)
-    d = _make_run(tmp_path_factory.mktemp("plain"), size, pts, missed={4, 5}, rejected={6}, interpolated={8})
+    d = _make_run(tmp_path_factory.mktemp("plain"), size, pts, missed={4, 5}, rejected={6}, interpolated_with_fix={8})
     img, layout = ti.render_trajectory(d)
     return {"dir": d, "pts": pts, "img": img, "layout": layout, "missed": {4, 5, 6, 8}}
 
@@ -124,7 +126,7 @@ def test_cli_writes_full_size_and_a_1600_px_preview(tmp_path):
 
 def test_a_small_map_is_not_upscaled_for_the_preview(tmp_path):
     d = _make_run(tmp_path, (1000, 700), _line((1000, 700)))
-    full, prev = ti.write_trajectory(d)
+    full, prev, _ = ti.write_trajectory(d)
     assert cv2.imread(str(prev)).shape == cv2.imread(str(full)).shape == (700, 1000, 3)
 
 
@@ -197,10 +199,10 @@ def test_footprints_of_accepted_fixes_only(plain):
         mids = [m for m in mids if abs(m[1] - route_y) > 10]       # off the route line, which runs through two
         for m in mids:
             px = img[round(m[1]), round(m[0])]
-            if f.accepted:
+            if f.accepted and not r.interpolated:
                 assert _changed(px), (r.idx, m)
-            else:
-                assert not _changed(px), (r.idx, m)                # a rejected fix is a false match: not drawn
+            else:   # a rejected fix is a false match, an interpolated position was not measured: not drawn
+                assert not _changed(px), (r.idx, m)
 
 
 def test_start_and_finish_are_labelled(plain):
@@ -284,7 +286,7 @@ def test_legend_avoids_the_corner_the_route_passes(tmp_path):
 
 def _stroke_in_preview(tmp_path, size):
     d = _make_run(tmp_path, size, _line(size, n=5), frame=(16, 16), scale=size[0] / 1600)
-    _, prev_path = ti.write_trajectory(d)
+    _, prev_path, _ = ti.write_trajectory(d)
     prev = cv2.imread(str(prev_path))
     k = prev.shape[1] / size[0]
     x = int((size[0] * 0.2) * k)                              # between points 0 and 1, away from markers
@@ -307,7 +309,7 @@ def test_renders_a_fake_run(tmp_path):
     m = tmp_path / "map.png"
     cv2.imwrite(str(m), cv2.GaussianBlur(rng.uniform(0, 255, (900, 1400, 3)).astype(np.uint8), (0, 0), 2))
     make_fake_run(m, tmp_path / "run")
-    full, _ = ti.write_trajectory(tmp_path / "run")
+    full, _, _ = ti.write_trajectory(tmp_path / "run")
     assert cv2.imread(str(full)).shape == (900, 1400, 3)
     _, layout = ti.render_trajectory(tmp_path / "run")
     assert {lab.idx for lab in layout.labels if lab.idx is not None} == set(range(50))
@@ -321,7 +323,7 @@ TASK_MAP = ROOT / "data" / "hackatons-data" / "global_map.png"
 def test_task_map_renders_quickly(tmp_path):
     make_fake_run(TASK_MAP, tmp_path / "run")
     t0 = time.perf_counter()
-    _, prev = ti.write_trajectory(tmp_path / "run")
+    _, prev, _ = ti.write_trajectory(tmp_path / "run")
     assert time.perf_counter() - t0 < 10
     assert cv2.imread(str(prev)).shape == (810, 1600, 3)
 
@@ -367,8 +369,8 @@ def test_ends_outside_the_map_still_get_start_and_finish(tmp_path):
     assert set(tags) == {"START", "FINISH"}
     for box in tags.values():
         assert _inside(box, img.shape)
-    left, right = img[480:521, :30].reshape(-1, 3), img[480:521, -30:].reshape(-1, 3)
-    assert any(_close(px, ti.START) for px in left) and any(_close(px, ti.FINISH) for px in right)
+    edge = round((ti.END_R + 2) * layout.unit)                       # the marker's centre, pinned to the edge
+    assert _close(img[500, edge], ti.START) and _close(img[500, 1600 - edge], ti.FINISH)
 
 
 def test_the_legend_is_left_out_when_the_map_is_too_small(tmp_path):
@@ -379,9 +381,9 @@ def test_the_legend_is_left_out_when_the_map_is_too_small(tmp_path):
 
 
 def test_the_legend_fits_a_narrow_map(tmp_path):
-    d = _make_run(tmp_path, (500, 4000), [(250, 400 + 400 * i) for i in range(9)])
+    d = _make_run(tmp_path, (1400, 4000), [(700, 400 + 400 * i) for i in range(9)])
     img, layout = ti.render_trajectory(d)
-    assert layout.legend is None or _inside(layout.legend, img.shape)
+    assert layout.legend is not None and _inside(layout.legend, img.shape)
 
 
 def _hits_route(box, pts, step=1.0):
@@ -448,7 +450,7 @@ def test_an_interpolated_point_gets_no_footprint(tmp_path):
 @pytest.mark.parametrize("size", [(3001, 1777), (1777, 3001), (1601, 1601)])
 def test_the_preview_long_side_is_exactly_the_preview_size(tmp_path, size):
     d = _make_run(tmp_path, size, _line(size, n=4), frame=(16, 16))
-    _, prev = ti.write_trajectory(d)
+    _, prev, _ = ti.write_trajectory(d)
     assert max(cv2.imread(str(prev)).shape[:2]) == 1600
 
 
@@ -489,7 +491,9 @@ def test_dense_points_are_dots_so_the_dashed_route_stays_visible(tmp_path):
               if not under_a_label(pts[i][0], pts[i][1] - 4)]
     assert len(beside) > 15
     assert sum(beside) / len(beside) < 0.1
-    # along the line: gaps between dashes must show (a solid line, or one buried under markers, has none)
+    # along the line: gaps between dashes must show (a solid line, or one buried under markers, has none);
+    # numbered markers' black outlines would also make "gaps", so this run is redrawn with only the ends numbered
+    img, _ = ti.render_trajectory(tmp_path / "run_1600x1000", label_every=10_000)
     row = [_close(img[500, x], ti.MISSED) for x in range(round(pts[30][0]), round(pts[270][0]))]
     gaps = sum(1 for a, b in itertools.pairwise(row) if a and not b)
     assert gaps >= 20, gaps                                     # ≈ 720 px of dash + gap periods of 14 px
@@ -533,3 +537,108 @@ def test_long_runs_space_numbers_by_the_width_of_their_longest_number(tmp_path):
     assert widest > ti.MIN_LABEL_SPACING * layout.unit                 # the case this is about
     for a, b in itertools.combinations(labs, 2):
         assert math.hypot(pts[a.idx][0] - pts[b.idx][0], pts[a.idx][1] - pts[b.idx][1]) >= widest, (a.text, b.text)
+
+
+
+# --- fourth review: rules that agree with each other, tests that catch mutations, an API for run.py ----------
+
+def test_the_colours_are_far_apart():
+    # "a second colour" for missed points: the tests compare with these constants, so they must differ clearly
+    palette = {"FIXED": ti.FIXED, "MISSED": ti.MISSED, "START": ti.START, "FINISH": ti.FINISH,
+               "FOOTPRINT": ti.FOOTPRINT}
+    for (a, ca), (b, cb) in itertools.combinations(palette.items(), 2):
+        assert np.abs(np.array(ca) - np.array(cb)).max() >= 100, (a, b)
+
+
+def test_a_typo_in_the_run_folder_creates_nothing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        ti.write_trajectory(tmp_path / "typo")
+    assert not (tmp_path / "typo").exists()
+
+
+def test_footprints_follow_the_numbering_with_label_every_too(tmp_path):
+    pts = [(200 + 3 * i, 500.0) for i in range(300)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)), label_every=100)
+    assert layout.footprints == [0, 100, 200, 299]
+
+
+def test_the_summary_adds_up(tmp_path):
+    # off-map points are dead-reckoned, so they are also missed: "(K off the map)" is a note, not a category
+    pts = [(-300 + 2200 * i / 19, 500) for i in range(20)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, missed={1, 2, 3}, frame=(16, 16)))
+    assert layout.summary == f"20 frames, 17 fixed, 3 missed ({len(layout.off_map)} off the map)"
+
+
+def test_the_legend_tries_the_middle_of_an_edge_when_the_corners_are_taken(tmp_path):
+    pts = [(60, 60), (1540, 60), (1540, 940), (60, 940), (800, 500)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    assert layout.legend is not None
+    x0, y0, x1, y1 = layout.legend
+    r = ti.END_R * layout.unit
+    assert not any(x0 - r <= x <= x1 + r and y0 - r <= y <= y1 + r for x, y in pts)
+
+
+def test_the_legend_takes_the_free_corner_the_route_does_not_cross(tmp_path):
+    # top-left holds a point; top-right is crossed by the route; bottom-left and bottom-right are free, and the
+    # route clips bottom-right: the legend goes bottom-left
+    pts = [(60, 60), (1700, 60), (1700, 950), (1300, 950), (800, 500)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    x0, y0, _, _ = layout.legend
+    assert x0 < 800 and y0 > 500
+
+
+def test_numbers_are_frame_numbers_when_frames_are_skipped(tmp_path):
+    # a video sampled every 3rd frame: point N is frame N, and label_every counts frames, not records
+    size = (1600, 1000)
+    idxs = [100 + 3 * i for i in range(20)]
+    d = _make_run(tmp_path, size, _line(size, n=20), idxs=idxs)
+    _, layout = ti.render_trajectory(d)
+    assert {lab.text for lab in layout.labels if lab.idx is not None} == {str(i) for i in idxs}
+    _, layout = ti.render_trajectory(d, label_every=15)
+    assert sorted(lab.idx for lab in layout.labels if lab.idx is not None) == [115, 130, 145, 157]
+
+
+def test_an_end_near_the_edge_stays_where_it_is(tmp_path):
+    # only ends off the map are pinned to the edge; one on the map is drawn at its position
+    d = _make_run(tmp_path, (1600, 1000), [(2, 500), (800, 500), (1500, 500)], frame=(16, 16))
+    img, _ = ti.render_trajectory(d)
+    assert _close(img[500, 2], ti.START) and not _close(img[500, 12], ti.START)
+
+
+def test_footprints_are_rotated(tmp_path):
+    # a wide frame at 30°: its edge midpoints are drawn, the corners of its axis-aligned box are not
+    frame, head = (96, 32), 30.0
+    d = _make_run(tmp_path, (1600, 1000), [(400, 500), (800, 500), (1200, 500)], frame=frame, heading=head)
+    img, _ = ti.render_trajectory(d)
+    H = _H(800, 500, head, 1.0, frame)
+    c = _corners(H, frame)
+    for k in (1, 3):                                                   # the long sides, off the route line
+        mx, my = (c[k] + c[(k + 1) % 4]) / 2
+        assert _changed(img[round(my), round(mx)]), k
+    for x, y in ((c[:, 0].min(), c[:, 1].min()), (c[:, 0].max(), c[:, 1].max())):
+        assert not _changed(img[round(y), round(x)])
+
+
+@pytest.mark.parametrize("kind", ["grey+alpha", "uint16"])
+def test_more_map_formats_in_memory(plain, kind):
+    grey = np.full((1000, 1600), GREY, np.uint8)
+    m = np.dstack([grey, np.full_like(grey, 255)]) if kind == "grey+alpha" else np.dstack([grey.astype(np.uint16) * 257] * 3)
+    img, _ = ti.render_trajectory(plain["dir"], map_img=m)
+    assert img.dtype == np.uint8 and img.shape == (1000, 1600, 3)
+    assert abs(int(img[100, 100, 0]) - GREY) <= 1                      # the map itself, unchanged in brightness
+
+
+def test_render_from_memory_matches_the_folder(plain):
+    # run.py has the records and the map in memory already: no second read, same picture
+    from dronenav.telemetry import read_run, read_run_info
+    records = read_run(plain["dir"] / "run.jsonl")
+    info = read_run_info(plain["dir"])
+    img, layout = ti.render_records(records, info, np.full((1000, 1600, 3), GREY, np.uint8))
+    assert np.array_equal(img, plain["img"]) and layout == plain["layout"]
+
+
+def test_write_takes_a_map_in_memory_and_returns_the_layout(tmp_path):
+    d = _make_run(tmp_path, (1000, 700), _line((1000, 700)))
+    (d / "map.png").unlink()                                           # proof that the file is not read
+    full, prev, layout = ti.write_trajectory(d, map_img=np.full((700, 1000, 3), GREY, np.uint8))
+    assert full.exists() and prev.exists() and layout.unlabelled == []
