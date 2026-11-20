@@ -81,6 +81,50 @@ tests/                  quick sanity tests (homography math, synthetic GT)
 - Never commit `data/`, large videos, or model weights; keep curated results small.
 - Prefer a working end-to-end slice first, then improve components. Always keep `main` demo-able.
 
+## How we work: tasks, branches, PRs
+
+Every change belongs to a task. Tasks are GitHub issues titled `M<n>-<nn> · <title>` (e.g. `M1-04 · Geometry: homography, checks, pose`),
+tracked on the board <https://github.com/users/kolyakr/projects/1>. An issue's "blocked by" links show what must be merged first.
+
+### Branches
+
+```
+main ◄──── release PR (owner only) ──── develop ◄──── PR ──── M1-04-geometry
+                                                 ◄──── PR ──── M2-03-quality-gate
+                                                 ◄──── PR ──── …
+```
+
+| Branch | Role | Who changes it |
+|---|---|---|
+| `main` | Release: always runnable and demo-able; what the judges see. | Only the repo owner (@kolyakr), only by merging a PR **from `develop`**. No direct pushes. |
+| `develop` | Integration: the default branch. All finished tasks land here. | Anyone, **only through a PR** from a task branch. No direct pushes, no force-push. |
+| `M<n>-<nn>-<slug>` | One task = one branch, e.g. `M1-04-geometry`. | Its owner. Branch off `develop`, PR back into `develop`. Deleted after merge. |
+
+### Workflow for a task (humans and agents alike)
+
+1. **Pick a task** on the board whose blockers are all closed; assign yourself and move it to *In Progress*.
+2. **Branch off the latest `develop`:** `git switch develop && git pull && git switch -c M1-04-geometry`.
+3. **Work only within the task's scope.** Don't edit another milestone's module without a linked task; if you find
+   needed work outside the scope, open or reference an issue instead of doing it silently.
+4. **Commit** with the ID first: `M1-04: add MAGSAC++ homography and sanity checks`.
+5. **Keep up to date:** `git fetch && git rebase origin/develop` (or merge `develop` into your branch) before opening the PR.
+6. **Open the PR into `develop`** (never into `main`): title `M1-04 · <title>`, body with what changed, how it was
+   tested, and `Closes #<issue>`. CI must pass.
+7. **Done means the issue's "Done when" is met**, not "code exists". Merge (squash), delete the branch, the issue closes.
+
+### Releasing to `main`
+
+- Only the owner opens and merges a PR **`develop` → `main`** (merge commit, not squash, so history stays shared),
+  after checking that `develop` runs end to end (`scripts/run.py` on the task data at least).
+- Hotfix on `main`: branch `hotfix-<slug>` off `main`, PR into `main`, then merge `main` back into `develop`.
+
+### Rules for coding agents
+
+- Never commit or push to `main` or `develop` directly; never force-push a shared branch; never merge into `main`.
+- Before starting, confirm the task ID with the human; if there is none, ask for one rather than inventing work.
+- Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
+- When a command becomes real, update the **Commands** section below in the same PR.
+
 ## Commands (fill in as they become real)
 
 ```bash
