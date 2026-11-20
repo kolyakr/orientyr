@@ -7,9 +7,11 @@ source.
 Every test films its own tiny take into a tmp dir. Each video frame carries its own number as a 4 x 3 grid of black
 or white blocks (12 bits), which survives the codec and a resize, so a test can prove WHICH source frame was kept.
 """
+import itertools
 import shutil
 import subprocess
 from pathlib import Path
+from typing import ClassVar
 
 import cv2
 import numpy as np
@@ -84,8 +86,10 @@ def _vfr_take(tmp_path: Path) -> Path:
         lines += [f"file '{i}.png'", f"duration {d}"]
     (tmp_path / "list.txt").write_text("\n".join(lines) + "\n")
     out = tmp_path / "vfr.mp4"
+    # check=False on purpose: the assert below fails with what ffmpeg said, which CalledProcessError's message hides
     done = subprocess.run([_ffmpeg(), "-y", "-f", "concat", "-safe", "0", "-i", str(tmp_path / "list.txt"),
-                           "-fps_mode", "vfr", "-c:v", "mpeg4", "-q:v", "2", str(out)], capture_output=True)
+                           "-fps_mode", "vfr", "-c:v", "mpeg4", "-q:v", "2", str(out)], capture_output=True,
+                          check=False)
     assert done.returncode == 0, done.stderr[-500:]
     return out
 
@@ -93,7 +97,7 @@ def _vfr_take(tmp_path: Path) -> Path:
 class _Backend:
     """A real cv2.VideoCapture whose chosen properties lie, as some containers and backends do."""
     real = cv2.VideoCapture
-    lies: dict = {}
+    lies: ClassVar[dict] = {}                 # property -> function of the true value; set per test, never mutated
 
     def __init__(self, *args, **kwargs):
         self._cap = self.real(*args, **kwargs)
@@ -258,7 +262,7 @@ def test_times_that_stop_half_way_carry_on_at_the_frame_rate(tmp_path, monkeypat
     _lying_backend(monkeypatch, {cv2.CAP_PROP_POS_MSEC: lambda ms: ms if ms < 500 else 0.0})   # dies at frame 15
     frames = list(VideoSource(take, every=5))
     ts = [f.t for f in frames]
-    assert all(b > a for a, b in zip(ts, ts[1:], strict=False))         # time never runs back or stands still
+    assert all(b > a for a, b in itertools.pairwise(ts))               # time never runs back or stands still
     assert ts == pytest.approx([f.idx / FPS for f in frames], abs=T_TOL)   # the same clock, carried on
 
 
@@ -325,8 +329,9 @@ def test_a_take_filmed_with_the_phone_upright_comes_out_upright(tmp_path):
     """Phones store portrait video as landscape pixels plus a rotation flag; players (and we) turn it."""
     stored = _take(tmp_path / "stored.mp4", frames=6)                   # 64 x 48 pixels in the file
     flagged = tmp_path / "portrait.mp4"
+    # check=False on purpose: the assert below fails with what ffmpeg said, which CalledProcessError's message hides
     done = subprocess.run([_ffmpeg(), "-y", "-display_rotation", "90", "-i", str(stored), "-c", "copy",
-                           str(flagged)], capture_output=True)
+                           str(flagged)], capture_output=True, check=False)
     assert done.returncode == 0, done.stderr[-500:]
     src = VideoSource(flagged, every=1)
     assert src.size == (H, W)                                           # 48 x 64: turned, and size says so
