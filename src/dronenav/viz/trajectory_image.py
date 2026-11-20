@@ -10,8 +10,9 @@ What is drawn, bottom to top:
   **missed** (no accepted fix, or interpolated);
 - **points**, one per frame, filled in the fixed or the missed colour; START and FINISH on top;
 - **labels**: each point numbered by its frame index (the task's ``crop_N`` is point N), placed where they cover
-  no route, no marker and no other label; on a dense run every k-th point is labelled;
-- **a legend** in the corner the route uses least.
+  no route, no marker and no other label; on a dense run a point is numbered only when it is far enough from the
+  last numbered one (MIN_LABEL_SPACING); START and FINISH always, at the map's edge if the route leaves the map;
+- **a legend** in the corner the route uses least, left out when the map is too small for it.
 
 Sizes (lines, markers, fonts) are fixed in *preview* pixels and multiplied by ``unit`` = map size / preview size,
 so the preview looks the same for any map and the full image is the same picture, just sharper.
@@ -46,7 +47,7 @@ POINT_R = 4.5
 END_R = 7.5
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.42            # ≈ 10 px digits in the preview
-MIN_LABEL_SPACING = 22.0     # preview px between labelled points, below which labels are thinned
+MIN_LABEL_SPACING = 18.0     # preview px from the last numbered point (a 2-digit label is ≈ 18 px wide)
 MARGIN = 12.0                # legend distance from the image edge
 FOOTPRINT_ALPHA = 0.55
 LEGEND_ALPHA = 0.78
@@ -68,16 +69,17 @@ class Layout:
     """Where things went, in full-image pixels; returned so placement can be checked and reused."""
 
     labels: list[Label]
-    legend: tuple[float, float, float, float]
+    legend: tuple[float, float, float, float] | None   # None: the map is too small for one
     unit: float
-    label_every: int
+    label_every: int | None                             # None: numbered by spacing
+    unlabelled: list[int]                               # frames meant to be numbered that found no free spot
 
 
 def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, preview_px: int = 1600,
                       map_img: np.ndarray | None = None) -> tuple[np.ndarray, Layout]:
     """Draw the run over its map at full size; returns the image (BGR uint8) and the layout.
 
-    label_every: label every k-th point (plus the last); None picks k so labels do not crowd.
+    label_every: number every k-th point (plus the last); None numbers points spaced far enough apart.
     map_img: the map, if already loaded; otherwise it is read from the path in run.json.
     """
     run_dir = Path(run_dir)
@@ -106,11 +108,9 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     _draw_route(img, obstacles, pts, missed, unit)
     _draw_points(img, obstacles, pts, missed, unit)
 
-    if label_every is None:
-        label_every = _auto_label_every(pts, unit)
-    legend_box = _place_legend(img, obstacles, records, missed, unit)
-    labels = _place_labels(img, obstacles, records, pts, label_every, unit)
-    return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every)
+    legend_box = _place_legend(img, obstacles, records, pts, missed, unit)
+    labels, unlabelled = _place_labels(img, obstacles, records, pts, label_every, unit)
+    return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every, unlabelled=unlabelled)
 
 
 def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, preview_px: int = 1600,
@@ -122,8 +122,10 @@ def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, 
     out_dir.mkdir(parents=True, exist_ok=True)
     img, _ = render_trajectory(run_dir, label_every=label_every, preview_px=preview_px)
     full, preview = out_dir / "trajectory.png", out_dir / "trajectory_preview.jpg"
-    k = preview_px / max(img.shape[:2])
-    small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA) if k < 1 else img
+    h, w = img.shape[:2]
+    k = preview_px / max(w, h)
+    size = (preview_px, max(1, round(h * k))) if w >= h else (max(1, round(w * k)), preview_px)
+    small = cv2.resize(img, size, interpolation=cv2.INTER_AREA) if k < 1 else img
     for path, image, params in ((full, img, []), (preview, small, [cv2.IMWRITE_JPEG_QUALITY, 92])):
         if not cv2.imwrite(str(path), image, params):   # OpenCV only logs a warning on failure
             raise OSError(f"cannot write {path}")
@@ -163,7 +165,7 @@ def _draw_footprints(img: np.ndarray, records: list[Record], unit: float) -> Non
     layer = img.copy()
     for r in records:
         f = r.track.fix
-        if f is not None and f.accepted:
+        if f is not None and f.accepted and not r.interpolated:   # interpolated: not measured, no footprint
             poly = np.array([_px(x, y) for x, y in f.footprint], np.int32)
             cv2.polylines(layer, [poly], True, FOOTPRINT, _t(1.2, unit), cv2.LINE_AA, _SHIFT)
     cv2.addWeighted(layer, FOOTPRINT_ALPHA, img, 1 - FOOTPRINT_ALPHA, 0, dst=img)
@@ -202,7 +204,9 @@ def _draw_points(img, obstacles, pts, missed, unit) -> None:
         cv2.circle(img, _px(x, y), r << _SHIFT, MISSED if missed[i] else FIXED, -1, cv2.LINE_AA, _SHIFT)
         cv2.circle(img, _px(x, y), r << _SHIFT, OUTLINE, edge, cv2.LINE_AA, _SHIFT)
         obstacles.disc(x, y, POINT_R + 1.5)
+    h, w = img.shape[:2]
     for (x, y), colour in ((pts[0], START), (pts[-1], FINISH)):   # on top of everything else on the route
+        x, y = _clamp_end(x, y, w, h, unit)                         # off the map: shown at its edge
         r = _t(END_R, unit)
         cv2.circle(img, _px(x, y), r << _SHIFT, colour, -1, cv2.LINE_AA, _SHIFT)
         cv2.circle(img, _px(x, y), r << _SHIFT, TEXT, _t(1.6, unit), cv2.LINE_AA, _SHIFT)
@@ -211,30 +215,45 @@ def _draw_points(img, obstacles, pts, missed, unit) -> None:
 
 # --- labels ----------------------------------------------------------------------------------------------------
 
-def _auto_label_every(pts: np.ndarray, unit: float) -> int:
-    """Label every k-th point so labelled points are at least MIN_LABEL_SPACING preview px apart (median)."""
-    if len(pts) < 2:
-        return 1
-    steps = np.hypot(*np.diff(pts, axis=0).T) / unit
-    step = float(np.median(steps))
-    return 1 if step <= 0 else max(1, math.ceil(MIN_LABEL_SPACING / step))
+def _clamp_end(x: float, y: float, w: int, h: int, unit: float) -> tuple[float, float]:
+    """An end point kept inside the image (with room for its marker), so START/FINISH show even off the map."""
+    r = (END_R + 2) * unit
+    return min(max(x, r), w - r), min(max(y, r), h - r)
 
 
-def _place_labels(img, obstacles, records, pts, every, unit) -> list[Label]:
+def _numbered(pts: np.ndarray, every: int | None, unit: float) -> list[int]:
+    """Which points get their frame number: every k-th (plus the last), or by spacing: a point is numbered when it
+    is at least MIN_LABEL_SPACING preview px from the last numbered one (a hover is numbered once)."""
     n = len(pts)
+    if every is not None:
+        return [i for i in range(n) if i % every == 0 or i == n - 1]
+    chosen = [0]
+    for i in range(1, n):
+        if np.hypot(*(pts[i] - pts[chosen[-1]])) / unit >= MIN_LABEL_SPACING:
+            chosen.append(i)
+    if chosen[-1] != n - 1:
+        chosen.append(n - 1)
+    return chosen
+
+
+def _place_labels(img, obstacles, records, pts, every, unit) -> tuple[list[Label], list[int]]:
+    n = len(pts)
+    h, w = img.shape[:2]
+    ends = {0: _clamp_end(*pts[0], w, h, unit), n - 1: _clamp_end(*pts[-1], w, h, unit)}
     wanted = [(None, "START", 0), (None, "FINISH", n - 1)]          # always, and first: they matter most
-    wanted += [(r.idx, str(r.idx), i) for i, r in enumerate(records) if i % every == 0 or i == n - 1]
-    labels = []
+    wanted += [(records[i].idx, str(records[i].idx), i) for i in _numbered(pts, every, unit)]
+    labels, unlabelled = [], []
     for idx, text, i in wanted:
-        x, y = pts[i]
-        radius = END_R if i in (0, n - 1) else POINT_R
+        x, y = ends.get(i, pts[i])
+        radius = END_R if i in ends else POINT_R
         box = _find_label_spot(img, obstacles, text, x, y, radius, unit, force=idx is None)
         if box is None:
+            unlabelled.append(idx)
             continue
         _draw_text(img, text, box, unit, tag=START if text == "START" else FINISH if text == "FINISH" else None)
         obstacles.box(box)
         labels.append(Label(idx=idx, text=text, box=box))
-    return labels
+    return labels, unlabelled
 
 
 def _text_size(text: str, unit: float) -> tuple[float, float, int, float]:
@@ -248,9 +267,10 @@ def _text_size(text: str, unit: float) -> tuple[float, float, int, float]:
 def _find_label_spot(img, obstacles, text, x, y, radius, unit, force) -> tuple[float, float, float, float] | None:
     """The first free box around (x, y): right, left, above, below, then the diagonals, then further out.
 
-    ``force`` (START/FINISH) takes the least-covered spot when none is free.
+    ``force`` (START/FINISH) takes the least-covered spot when none is free, moved inside the image if needed.
     """
     bw, bh, _, _ = _text_size(text, unit)
+    h, w = img.shape[:2]
     best, best_cover = None, math.inf
     for reach in (1.0, 2.2, 3.6):
         d = (radius + 3.0) * unit * reach
@@ -258,8 +278,12 @@ def _find_label_spot(img, obstacles, text, x, y, radius, unit, force) -> tuple[f
             cx = x + dx * (d + bw / 2)
             cy = y + dy * (d + bh / 2)
             box = (cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)
-            if box[0] < 0 or box[1] < 0 or box[2] > img.shape[1] or box[3] > img.shape[0]:
-                continue
+            if box[0] < 0 or box[1] < 0 or box[2] > w or box[3] > h:
+                if not force:
+                    continue
+                dx0 = min(max(box[0], 0), max(w - bw, 0)) - box[0]
+                dy0 = min(max(box[1], 0), max(h - bh, 0)) - box[1]
+                box = (box[0] + dx0, box[1] + dy0, box[2] + dx0, box[3] + dy0)
             cover = obstacles.cover(box)
             if cover == 0:
                 return box
@@ -285,7 +309,7 @@ def _draw_text(img, text, box, unit, tag: tuple | None = None) -> None:
 
 # --- legend ----------------------------------------------------------------------------------------------------
 
-def _place_legend(img, obstacles, records, missed, unit) -> tuple[float, float, float, float]:
+def _place_legend(img, obstacles, records, pts, missed, unit) -> tuple[float, float, float, float] | None:
     n_missed = sum(missed)
     rows = [("line", FIXED, "route, fixed point"),
             ("dash", MISSED, "missed: no fix / interpolated"),
@@ -302,9 +326,14 @@ def _place_legend(img, obstacles, records, missed, unit) -> tuple[float, float, 
     bh = pad * 2 + row_h * (len(rows) + 1)
     h, w = img.shape[:2]
     m = MARGIN * unit
+    if bw + 2 * m > 0.5 * w or bh + 2 * m > 0.5 * h:      # it would hide too much of a small map: leave it out
+        return None
     corners = [(m, m), (w - m - bw, m), (m, h - m - bh), (w - m - bw, h - m - bh)]
-    box = min((( x, y, x + bw, y + bh) for x, y in corners), key=lambda b: obstacles.cover(b))
+    box = min(((x, y, x + bw, y + bh) for x, y in corners), key=lambda b: obstacles.cover(b))
     x0, y0, x1, y1 = box
+    reach = END_R * unit                                   # no point marker under the legend, even partly
+    if any(x0 - reach <= x <= x1 + reach and y0 - reach <= y <= y1 + reach for x, y in pts):
+        return None
 
     layer = img.copy()
     cv2.rectangle(layer, (round(x0), round(y0)), (round(x1), round(y1)), (20, 20, 20), -1)
