@@ -15,6 +15,7 @@ at run time on top of FlightSource frames and on the cut-out generator's frames.
 8. scripts/chaos_sheet.py writes one check sheet per degradation, with no data/ at all and on a flight folder.
 """
 import dataclasses
+import itertools
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.synth import make_map
+from tests.test_sim import fixture_flight  # noqa: F401 - the CI fixture laid out as a flight folder
 
 from dronenav.sim import CutoutSource, FlightSource, cutout_route
 from dronenav.sim.chaos import (
@@ -39,8 +42,6 @@ from dronenav.sim.chaos import (
     degrade,
 )
 from dronenav.types import Frame, FrameSource
-from tests.synth import make_map
-from tests.test_sim import fixture_flight  # noqa: F401 - the CI fixture laid out as a flight folder
 
 ROOT = Path(__file__).resolve().parents[1]
 STRENGTHS = (0.0, 0.25, 0.5, 0.75, 1.0)
@@ -106,7 +107,7 @@ def test_strength_zero_leaves_the_stream_alone(cls, cutouts):
 # --- 2. the effect grows with the strength ---------------------------------------------------------------------
 
 def _steps(values):
-    return list(zip(values, values[1:], strict=False))
+    return list(itertools.pairwise(values))
 
 
 def test_blur_removes_detail(image):

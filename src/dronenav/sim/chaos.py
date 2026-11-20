@@ -33,7 +33,7 @@ from typing import ClassVar
 import cv2
 import numpy as np
 
-from dronenav.fake_run import _jammed_frame      # one look for a jammed camera, in the fake run and here
+from dronenav.fake_run import _jammed_frame  # one look for a jammed camera, in the fake run and here
 from dronenav.io import FolderSource
 from dronenav.types import Frame, FrameSource
 
