@@ -118,8 +118,9 @@ def _irpin_fixes(tmp_path, flight: str, year: str, n: int):
 @pytest.mark.data
 @pytest.mark.skipif(not (IRPIN / "maps" / "irpin_2022.json").exists(), reason="data/ not downloaded")
 def test_low_confidence_fixes_have_clearly_larger_errors_on_irpin(tmp_path):
-    # the harsh flight on its own map (good fixes) and on the 2022 map (cross-season: weak fixes)
-    pairs = _irpin_fixes(tmp_path, "harsh", "2025", 40) + _irpin_fixes(tmp_path, "harsh", "2022", 80)
+    # one flight on its own map (good fixes) and on the 2022 map (cross-season: weak fixes). mild_30mps gives the
+    # most accepted fixes on 2022 (49 of 80 keyframes; the others 17-26), so the thirds are not tiny
+    pairs = _irpin_fixes(tmp_path, "mild_30mps", "2025", 40) + _irpin_fixes(tmp_path, "mild_30mps", "2022", 80)
     pairs = [(f, t) for f, t in pairs if f is not None and f.accepted]
     conf = np.array([fix_confidence(f) for f, _ in pairs])
     err = np.array([math.hypot(f.x - t[0], f.y - t[1]) for f, t in pairs])
