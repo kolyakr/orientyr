@@ -642,3 +642,14 @@ def test_write_takes_a_map_in_memory_and_returns_the_layout(tmp_path):
     (d / "map.png").unlink()                                           # proof that the file is not read
     full, prev, layout = ti.write_trajectory(d, map_img=np.full((700, 1000, 3), GREY, np.uint8))
     assert full.exists() and prev.exists() and layout.unlabelled == []
+
+
+def test_start_and_finish_are_shown_even_where_every_spot_is_taken(tmp_path):
+    # the route radiates from the start in 16 directions: no free spot for its tag, which must still show
+    pts = [(800, 500)]
+    for k in range(16):
+        a = 2 * math.pi * k / 16
+        pts += [(800 + 90 * math.cos(a), 500 + 90 * math.sin(a)), (800, 500)]
+    pts.append((1400, 500))
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    assert {"START", "FINISH"} <= {lab.text for lab in layout.labels}
