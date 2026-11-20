@@ -10,6 +10,7 @@ import math
 
 import numpy as np
 import pytest
+
 from dronenav.telemetry import (
     Record,
     RunWriter,
@@ -20,7 +21,6 @@ from dronenav.telemetry import (
     record_to_dict,
     write_run,
 )
-
 from dronenav.types import Fix, TrackMode, TrackState
 
 # --- fixtures: records shaped like the ones the pipeline will write ------------------------------------------
@@ -185,6 +185,9 @@ MALFORMED = {
     "source not a string": (_set(["source"], 7), ["source", "str"]),
     "nan x": (_set(["x"], math.nan), ["x", "finite"]),
     "inf in cov": (_set(["cov"], [[math.inf, 0], [0, 1]]), ["cov", "finite"]),
+    # an integer too large for a float64 (JSON allows any number of digits) must not escape as OverflowError
+    "huge int x": (_set(["x"], 10**400), ["x", "finite"]),
+    "huge int in H": (_set(["fix", "H"], [[10**400, 0, 0], [0, 1, 0], [0, 0, 1]]), ["fix.H", "finite"]),
 }
 
 
@@ -241,6 +244,55 @@ def test_writing_a_non_finite_value_fails_and_names_the_field(tmp_path):
     path = tmp_path / "run.jsonl"
     with pytest.raises(TelemetryError, match=r"\bx\b.*finite"):
         write_run(path, [Record(idx=0, t=0.0, source="a.png", track=track)])
+
+
+@pytest.mark.parametrize("extra", [{"pt": (1, 2)}, {5: "a"}, {"a": np.float64(1.0)}, {"a": math.inf}])
+def test_extra_that_json_would_change_or_reject_fails_on_write(tmp_path, extra):
+    # a tuple comes back as a list and an int key as a string: the round trip would silently not be equal
+    with pytest.raises(TelemetryError, match="extra"):
+        write_run(tmp_path / "run.jsonl", [_record(0, extra=extra)])
+
+
+def test_record_to_dict_does_not_share_extra_with_the_record():
+    rec = _record(0, extra={"truth": {"x": 1.0}})
+    record_to_dict(rec)["extra"]["truth"]["x"] = 99.0
+    assert rec.extra == {"truth": {"x": 1.0}}
+
+
+@pytest.mark.parametrize("order", [[3, 1], [1, 1]], ids=["backwards", "duplicate"])
+def test_writer_refuses_records_out_of_frame_order(tmp_path, order):
+    with pytest.raises(TelemetryError, match="order"):
+        write_run(tmp_path / "run.jsonl", [_record(i) for i in order])
+
+
+def test_writer_allows_gaps_in_idx(tmp_path):
+    # a video source keeping every N-th frame skips indices; order is what matters
+    write_run(tmp_path / "run.jsonl", [_record(0), _record(10), _record(20)])
+    assert [r.idx for r in read_run(tmp_path / "run.jsonl")] == [0, 10, 20]
+
+
+@pytest.mark.parametrize("order", [[3, 1], [1, 1]], ids=["backwards", "duplicate"])
+def test_reader_refuses_records_out_of_frame_order(tmp_path, order):
+    path = tmp_path / "run.jsonl"
+    path.write_text("".join(json.dumps(record_to_dict(_record(i))) + "\n" for i in order))
+    with pytest.raises(TelemetryError, match=r"line 2.*order"):
+        read_run(path)
+
+
+def test_time_must_not_go_backwards(tmp_path):
+    a, b = _record(0), _record(1)
+    b = Record(idx=1, t=a.t - 1.0, source=b.source, track=b.track)
+    with pytest.raises(TelemetryError, match=r"\bt\b.*order"):
+        write_run(tmp_path / "run.jsonl", [a, b])
+
+
+def test_an_incomplete_last_line_says_so(tmp_path):
+    # live mode can catch the writer mid-line; a crashed run ends the same way
+    path = tmp_path / "run.jsonl"
+    line = json.dumps(record_to_dict(_record(0)))
+    path.write_text(line + "\n" + line[:40])
+    with pytest.raises(TelemetryError, match=r"line 2.*incomplete"):
+        read_run(path)
 
 
 def test_record_checks_that_its_parts_belong_to_the_same_frame():
