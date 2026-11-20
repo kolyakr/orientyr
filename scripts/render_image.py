@@ -19,16 +19,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default=None, help="folder for the images (default: the run folder)")
     ap.add_argument("--preview", type=int, default=1600, help="longest side of the preview, px (default 1600)")
     ap.add_argument("--label-every", type=int, default=None,
-                    help="number every k-th point (default: as dense as stays readable)")
+                    help="number frames divisible by k (default: as dense as stays readable)")
     a = ap.parse_args(argv)
     if a.preview < 1 or (a.label_every is not None and a.label_every < 1):
         ap.error("--preview and --label-every must be positive")
     try:
-        full, preview = write_trajectory(a.run, a.out, preview_px=a.preview, label_every=a.label_every)
+        full, preview, layout = write_trajectory(a.run, a.out, preview_px=a.preview, label_every=a.label_every)
     except (OSError, ValueError) as e:   # missing run or map, unwritable output, malformed run (TelemetryError)
         print(f"render_image: error: {e}", file=sys.stderr)
         return 2
-    print(f"render_image: {full} and {preview}")
+    print(f"render_image: {full} and {preview} ({layout.summary})")
+    if layout.unlabelled:
+        print(f"render_image: no room for the numbers of frames {layout.unlabelled}", file=sys.stderr)
     return 0
 
 

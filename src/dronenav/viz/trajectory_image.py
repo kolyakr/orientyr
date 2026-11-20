@@ -5,8 +5,8 @@ needed). Output is the full-size image and a preview whose longest side is ``pre
 
 What is drawn, bottom to top:
 
-- **footprints** of accepted fixes, at true size and rotation (thin, translucent): every one on a sparse run, one
-  per numbered point on a dense run (all of them would merge into a solid band);
+- **footprints** at true size and rotation (thin, translucent), for numbered points with an accepted, measured
+  fix: on a sparse run that is every such frame, on a dense run one per number (all would merge into a band);
 - **the route** through each record's filtered position: solid between fixed points, dashed where a point is
   **missed** (no accepted fix, or interpolated);
 - **points**, filled in the fixed or the missed colour: a full marker for numbered points, a small dot for the
@@ -14,9 +14,10 @@ What is drawn, bottom to top:
 - **labels**: points numbered by their frame index (the task's ``crop_N`` is point N), placed where they cover no
   route, no marker and no other label. A point is numbered when it is at least a label's width (the run's widest
   number, MIN_LABEL_SPACING at least) from every numbered point, so hovers, loops, zigzags and long runs stay
-  readable. Points off the map are not numbered; the legend
-  counts them. START and FINISH always show, at the map's edge if the route leaves the map;
-- **a legend** in the corner the route uses least, left out when the map is too small for it.
+  readable. Points off the map are not numbered; the legend counts them. START and FINISH always show, pinned to
+  the map's edge if they are off the map;
+- **a legend** with a summary line, in a corner (else the middle of an edge) where it hides no point and covers
+  the least route; left out when the map is too small for it or every such spot would hide a point.
 
 Sizes (lines, markers, fonts) are fixed in *preview* pixels and multiplied by ``unit`` = map size / preview size,
 so the preview looks the same for any map and the full image is the same picture, just sharper.
@@ -26,14 +27,15 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import cv2
 import numpy as np
 
-from dronenav.telemetry import Record, read_run, read_run_info
+from dronenav.telemetry import Record, RunInfo, read_run, read_run_info
 
-__all__ = ["FINISH", "FIXED", "FOOTPRINT", "MISSED", "START", "Label", "Layout", "render_trajectory",
-           "write_trajectory"]
+__all__ = ["FINISH", "FIXED", "FOOTPRINT", "MISSED", "START", "Label", "Layout", "Written", "render_records",
+           "render_trajectory", "write_trajectory"]
 
 # Colours, BGR. Chosen to stand out on satellite imagery (greens, greys, browns) and from each other.
 FIXED = (255, 170, 0)        # azure: route and points with an accepted fix
@@ -81,24 +83,32 @@ class Layout:
     unlabelled: list[int]                               # frames meant to be numbered that found no free spot
     off_map: list[int]                                  # frames whose position is outside the map (not numbered)
     footprints: list[int]                               # frames whose footprint was drawn
+    summary: str                                        # the legend's first line, e.g. "50 frames, 44 fixed, 6 missed"
 
 
-def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, preview_px: int = 1600,
-                      map_img: np.ndarray | None = None) -> tuple[np.ndarray, Layout]:
-    """Draw the run over its map at full size; returns the image (BGR uint8) and the layout.
+class Written(NamedTuple):
+    """What write_trajectory wrote, and the layout of the picture."""
 
-    label_every: number every k-th point (plus the last); None numbers points spaced far enough apart.
-    map_img: the map, if already loaded; otherwise it is read from the path in run.json.
+    full: Path
+    preview: Path
+    layout: Layout
+
+
+def render_records(records: list[Record], info: RunInfo, map_img: np.ndarray | None = None, *,
+                   label_every: int | None = None, preview_px: int = 1600) -> tuple[np.ndarray, Layout]:
+    """Draw records over their map at full size; returns the image (BGR uint8) and the layout.
+
+    The core of the renderer, for callers that already hold the run in memory (scripts/run.py).
+    map_img: the map, if already loaded; otherwise it is read from ``info.map_path``.
+    label_every: number every k-th frame (frame numbers divisible by k, plus the last point); None numbers points
+    spaced at least a label apart.
     """
     if label_every is not None and label_every < 1:
         raise ValueError(f"label_every must be at least 1, got {label_every}")
     if preview_px < 1:
         raise ValueError(f"preview_px must be at least 1, got {preview_px}")
-    run_dir = Path(run_dir)
-    info = read_run_info(run_dir)
-    records = read_run(run_dir / "run.jsonl")
     if not records:
-        raise ValueError(f"{run_dir / 'run.jsonl'} has no records")
+        raise ValueError("the run has no records")
     if map_img is None:
         map_img = cv2.imread(str(info.map_path), cv2.IMREAD_COLOR)
         if map_img is None:
@@ -113,33 +123,49 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     img = map_img.copy()
 
     pts = np.array([[r.track.x, r.track.y] for r in records])
+    idxs = np.array([r.idx for r in records])
     missed = [_is_missed(r) for r in records]
     on_map = (pts[:, 0] >= 0) & (pts[:, 0] <= w) & (pts[:, 1] >= 0) & (pts[:, 1] <= h)
     # numbered points at least one label apart: the widest number of the run sets the spacing (5 digits ≈ 45 px)
-    widest = _text_size(str(max(r.idx for r in records)), unit)[0]
-    numbered = _numbered(pts, on_map, label_every, max(MIN_LABEL_SPACING * unit, widest))
+    widest = _text_size(str(int(idxs.max())), unit)[0]
+    numbered = _numbered(pts, idxs, on_map, label_every, max(MIN_LABEL_SPACING * unit, widest))
     ends = [_clamp_end(*pts[0], w, h, unit), _clamp_end(*pts[-1], w, h, unit)]
 
-    footprints = _draw_footprints(img, records, set(numbered), label_every is None and len(numbered) < len(pts), unit)
+    footprints = _draw_footprints(img, records, set(numbered), unit)
     obstacles = _Obstacles(w, h, unit)
     _draw_route(img, obstacles, pts, missed, unit)
     _draw_points(img, obstacles, pts, missed, set(numbered), ends, unit)
 
+    n_missed, n_off = sum(missed), int((~on_map).sum())
+    summary = f"{len(records)} frames, {len(records) - n_missed} fixed, {n_missed} missed"
+    if n_off:
+        summary += f" ({n_off} off the map)"      # off the map = dead-reckoned, so already counted as missed
     markers = [tuple(p) for p in pts[on_map]] + ends
-    legend_box = _place_legend(img, obstacles, records, markers, missed, int((~on_map).sum()), unit)
+    legend_box = _place_legend(img, obstacles, summary, markers, unit)
     labels, unlabelled = _place_labels(img, obstacles, records, pts, numbered, ends, unit)
     return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every, unlabelled=unlabelled,
-                       off_map=[records[i].idx for i in np.flatnonzero(~on_map)], footprints=footprints)
+                       off_map=[int(i) for i in idxs[~on_map]], footprints=footprints, summary=summary)
 
 
-def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, preview_px: int = 1600,
-                     label_every: int | None = None) -> tuple[Path, Path]:
-    """Render and write ``trajectory.png`` (full size) and ``trajectory_preview.jpg`` (longest side preview_px,
-    never upscaled) into ``out_dir`` (default: the run folder). Returns both paths."""
+def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, preview_px: int = 1600,
+                      map_img: np.ndarray | None = None) -> tuple[np.ndarray, Layout]:
+    """Draw the run in ``run_dir`` (run.json + run.jsonl) over its map; see :func:`render_records`."""
     run_dir = Path(run_dir)
+    info = read_run_info(run_dir)
+    records = read_run(run_dir / "run.jsonl")
+    if not records:
+        raise ValueError(f"{run_dir / 'run.jsonl'} has no records")
+    return render_records(records, info, map_img, label_every=label_every, preview_px=preview_px)
+
+
+def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, map_img: np.ndarray | None = None,
+                     preview_px: int = 1600, label_every: int | None = None) -> Written:
+    """Render and write ``trajectory.png`` (full size) and ``trajectory_preview.jpg`` (longest side preview_px,
+    never upscaled) into ``out_dir`` (default: the run folder). Returns both paths and the layout."""
+    run_dir = Path(run_dir)
+    img, layout = render_trajectory(run_dir, label_every=label_every, preview_px=preview_px, map_img=map_img)
     out_dir = Path(out_dir) if out_dir is not None else run_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
-    img, _ = render_trajectory(run_dir, label_every=label_every, preview_px=preview_px)
+    out_dir.mkdir(parents=True, exist_ok=True)          # only after rendering: a typo must not leave a folder
     full, preview = out_dir / "trajectory.png", out_dir / "trajectory_preview.jpg"
     h, w = img.shape[:2]
     k = preview_px / max(w, h)
@@ -148,12 +174,16 @@ def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, 
     for path, image, params in ((full, img, []), (preview, small, [cv2.IMWRITE_JPEG_QUALITY, 92])):
         if not cv2.imwrite(str(path), image, params):   # OpenCV only logs a warning on failure
             raise OSError(f"cannot write {path}")
-    return full, preview
+    return Written(full, preview, layout)
 
 
 def _bgr(img: np.ndarray) -> np.ndarray:
     """The map as 3-channel BGR uint8: a grey or BGRA map would lose the colours of everything drawn on it."""
-    if img.ndim == 3 and img.shape[2] == 1:
+    if img.dtype == np.uint16:                          # a 16-bit PNG loaded unchanged
+        img = (img // 257).astype(np.uint8)
+    elif img.dtype != np.uint8:
+        raise ValueError(f"the map must be uint8 or uint16, got {img.dtype}")
+    if img.ndim == 3 and img.shape[2] in (1, 2):         # grey, or grey + alpha
         img = img[..., 0]
     if img.ndim == 2:
         return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -180,15 +210,15 @@ def _t(v: float, unit: float) -> int:
     return max(1, round(v * unit))
 
 
-def _draw_footprints(img: np.ndarray, records: list[Record], numbered: set[int], dense: bool, unit: float) -> list[int]:
-    """Footprints of accepted, measured fixes; on a dense run only at numbered points. Returns the frames drawn."""
+def _draw_footprints(img: np.ndarray, records: list[Record], numbered: set[int], unit: float) -> list[int]:
+    """Footprints of numbered points with an accepted, measured fix. Returns the frames drawn."""
     layer = img.copy()
     drawn = []
     for i, r in enumerate(records):
         f = r.track.fix
         if f is None or not f.accepted or r.interpolated:       # interpolated: not measured, no footprint
             continue
-        if dense and i not in numbered:
+        if i not in numbered:
             continue
         poly = np.array([_px(x, y) for x, y in f.footprint], np.int32)
         cv2.polylines(layer, [poly], True, FOOTPRINT, _t(1.2, unit), cv2.LINE_AA, _SHIFT)
@@ -253,22 +283,25 @@ def _draw_points(img, obstacles, pts, missed, numbered: set[int], ends, unit) ->
 # --- labels ----------------------------------------------------------------------------------------------------
 
 def _clamp_end(x: float, y: float, w: int, h: int, unit: float) -> tuple[float, float]:
-    """An end point kept inside the image (with room for its marker), so START/FINISH show even off the map."""
+    """An end point off the map, pinned just inside its edge so START/FINISH still show; one on the map stays."""
+    if 0 <= x <= w and 0 <= y <= h:
+        return x, y
     r = (END_R + 2) * unit
     return min(max(x, r), w - r), min(max(y, r), h - r)
 
 
-def _numbered(pts: np.ndarray, on_map: np.ndarray, every: int | None, gap: float) -> list[int]:
+def _numbered(pts: np.ndarray, idxs: np.ndarray, on_map: np.ndarray, every: int | None, gap: float) -> list[int]:
     """Which points get their frame number (only points on the map can be numbered).
 
-    With ``every``: every k-th point, plus the last. Otherwise by spacing: a point is numbered when it is at least
+    With ``every``: frames whose number is divisible by k (point N is frame N, also when frames are skipped),
+    plus the last point. Otherwise by spacing: a point is numbered when it is at least
     ``gap`` full-size px from every numbered point, so hovers, loops and zigzags do not pile up numbers.
     The first and last points on the map are tried first.
     """
     n = len(pts)
     idx = np.flatnonzero(on_map)
     if every is not None:
-        return [i for i in idx if i % every == 0 or i == n - 1]
+        return [int(i) for i in idx if idxs[i] % every == 0 or i == n - 1]
     if len(idx) == 0:
         return []
     order = [idx[0], idx[-1]] + list(idx[1:-1]) if len(idx) > 1 else [idx[0]]
@@ -351,18 +384,14 @@ def _draw_text(img, text, box, unit, tag: tuple | None = None) -> None:
 
 # --- legend ----------------------------------------------------------------------------------------------------
 
-def _place_legend(img, obstacles, records, markers, missed, n_off, unit) -> tuple[float, float, float, float] | None:
-    """In the corner with the least drawn under it, among corners where it hides no point marker; None if the
-    map is too small for it or every corner has a marker."""
-    n_missed = sum(missed)
+def _place_legend(img, obstacles, title, markers, unit) -> tuple[float, float, float, float] | None:
+    """In a corner, else the middle of an edge, where it hides no point marker and covers the least route; None if
+    the map is too small for it or every such spot would hide a point."""
     rows = [("line", FIXED, "route, fixed point"),
-            ("dash", MISSED, "missed: no fix / interpolated"),
+            ("dash", MISSED, "missed or interpolated"),
             ("box", FOOTPRINT, "camera footprint"),
             ("dot", START, "start"),
             ("dot", FINISH, "finish")]
-    title = f"{len(records)} frames, {len(records) - n_missed} fixed, {n_missed} missed"
-    if n_off:
-        title += f", {n_off} off the map"
     scale, thick = FONT_SCALE * unit, _t(1.0, unit)
     row_h = 17 * unit
     swatch = 26 * unit
@@ -380,8 +409,12 @@ def _place_legend(img, obstacles, records, markers, missed, n_off, unit) -> tupl
         return any(b[0] - reach <= x <= b[2] + reach and b[1] - reach <= y <= b[3] + reach for x, y in markers)
 
     corners = [(m, m), (w - m - bw, m), (m, h - m - bh), (w - m - bw, h - m - bh)]
-    free = [b for b in ((x, y, x + bw, y + bh) for x, y in corners) if not hides_a_marker(b)]
-    if not free:
+    edges = [((w - bw) / 2, m), ((w - bw) / 2, h - m - bh), (m, (h - bh) / 2), (w - m - bw, (h - bh) / 2)]
+    for spots in (corners, edges):                       # a corner if any is free, else the middle of an edge
+        free = [b for b in ((x, y, x + bw, y + bh) for x, y in spots) if not hides_a_marker(b)]
+        if free:
+            break
+    else:
         return None
     box = min(free, key=obstacles.cover)
     x0, y0, x1, y1 = box
