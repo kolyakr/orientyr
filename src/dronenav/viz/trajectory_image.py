@@ -5,7 +5,8 @@ needed). Output is the full-size image and a preview whose longest side is ``pre
 
 What is drawn, bottom to top:
 
-- **footprints** of accepted fixes, at true size and rotation (thin, translucent);
+- **footprints** of accepted fixes, at true size and rotation (thin, translucent): every one on a sparse run, one
+  per numbered point on a dense run (all of them would merge into a solid band);
 - **the route** through each record's filtered position: solid between fixed points, dashed where a point is
   **missed** (no accepted fix, or interpolated);
 - **points**, filled in the fixed or the missed colour: a full marker for numbered points, a small dot for the
@@ -78,6 +79,7 @@ class Layout:
     label_every: int | None                             # None: numbered by spacing
     unlabelled: list[int]                               # frames meant to be numbered that found no free spot
     off_map: list[int]                                  # frames whose position is outside the map (not numbered)
+    footprints: list[int]                               # frames whose footprint was drawn
 
 
 def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, preview_px: int = 1600,
@@ -115,7 +117,7 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     numbered = _numbered(pts, on_map, label_every, unit)
     ends = [_clamp_end(*pts[0], w, h, unit), _clamp_end(*pts[-1], w, h, unit)]
 
-    _draw_footprints(img, records, unit)
+    footprints = _draw_footprints(img, records, set(numbered), label_every is None and len(numbered) < len(pts), unit)
     obstacles = _Obstacles(w, h, unit)
     _draw_route(img, obstacles, pts, missed, unit)
     _draw_points(img, obstacles, pts, missed, set(numbered), ends, unit)
@@ -124,7 +126,7 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     legend_box = _place_legend(img, obstacles, records, markers, missed, int((~on_map).sum()), unit)
     labels, unlabelled = _place_labels(img, obstacles, records, pts, numbered, ends, unit)
     return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every, unlabelled=unlabelled,
-                       off_map=[records[i].idx for i in np.flatnonzero(~on_map)])
+                       off_map=[records[i].idx for i in np.flatnonzero(~on_map)], footprints=footprints)
 
 
 def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, preview_px: int = 1600,
@@ -175,14 +177,21 @@ def _t(v: float, unit: float) -> int:
     return max(1, round(v * unit))
 
 
-def _draw_footprints(img: np.ndarray, records: list[Record], unit: float) -> None:
+def _draw_footprints(img: np.ndarray, records: list[Record], numbered: set[int], dense: bool, unit: float) -> list[int]:
+    """Footprints of accepted, measured fixes; on a dense run only at numbered points. Returns the frames drawn."""
     layer = img.copy()
-    for r in records:
+    drawn = []
+    for i, r in enumerate(records):
         f = r.track.fix
-        if f is not None and f.accepted and not r.interpolated:   # interpolated: not measured, no footprint
-            poly = np.array([_px(x, y) for x, y in f.footprint], np.int32)
-            cv2.polylines(layer, [poly], True, FOOTPRINT, _t(1.2, unit), cv2.LINE_AA, _SHIFT)
+        if f is None or not f.accepted or r.interpolated:       # interpolated: not measured, no footprint
+            continue
+        if dense and i not in numbered:
+            continue
+        poly = np.array([_px(x, y) for x, y in f.footprint], np.int32)
+        cv2.polylines(layer, [poly], True, FOOTPRINT, _t(1.2, unit), cv2.LINE_AA, _SHIFT)
+        drawn.append(r.idx)
     cv2.addWeighted(layer, FOOTPRINT_ALPHA, img, 1 - FOOTPRINT_ALPHA, 0, dst=img)
+    return drawn
 
 
 def _draw_route(img, obstacles, pts, missed, unit) -> None:
