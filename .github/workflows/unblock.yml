@@ -1,0 +1,99 @@
+# Blocked-task notifications.
+# When a task closes (usually its PR merged into develop with "Closes #N"), every task it was blocking is checked:
+# if that was the last open blocker, the `blocked` label comes off and the assignee is @mentioned on the issue
+# (a GitHub notification + email); unassigned tasks get a "free to take" note. A reopened task re-blocks its
+# dependants. A scheduled / manual run re-syncs the `blocked` label on all open issues, because adding or removing
+# a "blocked by" link in the GitHub UI does not trigger any workflow.
+name: unblock
+
+on:
+  issues:
+    types: [closed, reopened]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: unblock
+  cancel-in-progress: false
+
+jobs:
+  unblock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const LABEL = 'blocked';
+            const openBlockers = (i) => i.blockedBy.nodes.filter((b) => b.state === 'OPEN');
+
+            async function ensureLabel() {
+              try { await github.rest.issues.getLabel({ owner, repo, name: LABEL }); }
+              catch { await github.rest.issues.createLabel({ owner, repo, name: LABEL, color: 'b60205',
+                       description: 'has open "blocked by" tasks (set automatically)' }); }
+            }
+            async function setBlocked(issue, blocked) {
+              const has = issue.labels.nodes.some((l) => l.name === LABEL);
+              if (blocked && !has) await github.rest.issues.addLabels({ owner, repo, issue_number: issue.number, labels: [LABEL] });
+              if (!blocked && has) await github.rest.issues.removeLabel({ owner, repo, issue_number: issue.number, name: LABEL }).catch(() => {});
+            }
+            const FIELDS = `number title state assignees(first: 10) { nodes { login } }
+                            labels(first: 30) { nodes { name } } blockedBy(first: 50) { nodes { number state } }`;
+
+            await ensureLabel();
+
+            if (context.eventName === 'issues') {
+              const n = context.payload.issue.number;
+              const { repository } = await github.graphql(
+                `query($owner: String!, $repo: String!, $n: Int!) { repository(owner: $owner, name: $repo) {
+                   issue(number: $n) { title blocking(first: 50) { nodes { ${FIELDS} } } } } }`, { owner, repo, n });
+              const dependants = repository.issue.blocking.nodes.filter((i) => i.state === 'OPEN');
+
+              if (context.payload.action === 'reopened') {
+                for (const i of dependants) await setBlocked(i, true);
+                core.info(`#${n} reopened: re-blocked ${dependants.map((i) => '#' + i.number).join(', ') || 'nothing'}`);
+                return;
+              }
+
+              const unblocked = [];
+              for (const i of dependants) {
+                const still = openBlockers(i);
+                if (still.length) { core.info(`#${i.number} still blocked by ${still.map((b) => '#' + b.number)}`); continue; }
+                await setBlocked(i, false);
+                const who = i.assignees.nodes.map((a) => '@' + a.login);
+                const body = who.length
+                  ? `🔓 **Unblocked.** #${n} (${repository.issue.title}) is closed and was the last open blocker of this task.\n\n` +
+                    `${who.join(' ')}: it's yours and ready. Start with \`tools/task.sh start ${i.number}\` (or \`/start-task ${i.number}\`).`
+                  : `🔓 **Unblocked.** #${n} (${repository.issue.title}) is closed and was the last open blocker of this task.\n\n` +
+                    `Nobody has claimed it yet: \`tools/task.sh start ${i.number}\` to take it.`;
+                await github.rest.issues.createComment({ owner, repo, issue_number: i.number, body });
+                unblocked.push(i);
+              }
+              if (unblocked.length) {
+                const list = unblocked.map((i) => `- #${i.number}` +
+                  (i.assignees.nodes.length ? ` (${i.assignees.nodes.map((a) => '@' + a.login).join(' ')})` : ' (unclaimed)')).join('\n');
+                await github.rest.issues.createComment({ owner, repo, issue_number: n,
+                  body: `🔓 Closing this unblocked:\n${list}` });
+              }
+              core.info(`#${n} closed: unblocked ${unblocked.map((i) => '#' + i.number).join(', ') || 'nothing'}`);
+              return;
+            }
+
+            // schedule / workflow_dispatch: re-sync the label on every open issue
+            let cursor = null, changed = 0;
+            do {
+              const { repository } = await github.graphql(
+                `query($owner: String!, $repo: String!, $after: String) { repository(owner: $owner, name: $repo) {
+                   issues(states: OPEN, first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { ${FIELDS} } } } }`,
+                { owner, repo, after: cursor });
+              for (const i of repository.issues.nodes) {
+                const want = openBlockers(i).length > 0;
+                if (want !== i.labels.nodes.some((l) => l.name === LABEL)) { await setBlocked(i, want); changed++; }
+              }
+              cursor = repository.issues.pageInfo.hasNextPage ? repository.issues.pageInfo.endCursor : null;
+            } while (cursor);
+            core.info(`label sync: ${changed} issue(s) changed`);

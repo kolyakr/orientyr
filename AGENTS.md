@@ -118,15 +118,29 @@ drift apart. In Claude Code the same flow is `/start-task` and `/finish-task` (i
 
 | Step | Command | What it does |
 |---|---|---|
-| 1. Pick | `tools/task.sh ready` | lists open, unassigned tasks whose blockers are all closed; pick one (prefer the critical path M0 → M1 → M4 → M5 → M7) |
-| 2. Start | `tools/task.sh start <issue#>` | refuses if blocked or taken; assigns you; board → **In Progress**; branch `M1-04-<slug>` off fresh `develop`, pushed; prints the spec |
-| 3. Tests (red) | write tests, see them fail, `git commit -m "M1-04: tests for … (red)"` | see TDD rules below |
-| 4. Implement (green) | code until all tests pass; `git commit -m "M1-04: …"` | small commits, ID first |
-| 5. PR | `tools/task.sh pr` | rebases on `develop`, pushes, opens PR into `develop` titled like the issue, `Closes #N` |
-| 6. Merge | `tools/task.sh finish` | after tests and CI are green: squash-merge, delete branch, board → **Done**, back on fresh `develop` |
+| 1. Pick | `tools/task.sh ready` | tasks you can start now: unblocked and unassigned, or unblocked and claimed by you; prefer the critical path M0 → M1 → M4 → M5 → M7 |
+| 2. Start | `tools/task.sh start <issue#>` | refuses if blocked, taken or the tree is dirty; assigns you; board → **In Progress**; branch `M1-04-<slug>` off fresh `develop`, pushed (resumes it if it exists); prints the spec |
+| 3. Tests (red) | write tests, `tools/task.sh test` shows them fail, `git commit -m "M1-04: tests for … (red)"` | see TDD rules below |
+| 4. Implement (green) | code until `tools/task.sh test` passes; `git commit -m "M1-04: …"` | small commits, ID first |
+| 5. PR | `tools/task.sh pr [body.md]` | rebases on `develop`, runs the tests on the result (refuses if red), pushes, opens the PR into `develop` titled like the issue with `Closes #N`; rerun to update it |
+| 6. Merge | `tools/task.sh finish` | refuses on red tests, unpushed commits, failing checks or a PR not into `develop`; squash-merges, deletes the branch, board → **Done**, back on fresh `develop` |
 
-Blocked midway, or giving a task up? `tools/task.sh status <issue#> Todo`, unassign yourself, and say why in the issue.
-One task in progress per person at a time.
+Other commands: `tools/task.sh mine` (my tasks and what blocks them), `claim <issue#>` (reserve a task, blocked or
+not), `drop` (give the current task back: board → Todo, unassigned; then say why in the issue),
+`status <issue#> <Todo|In Progress|Done>`. One task in progress per person at a time.
+
+### Blocked tasks and notifications
+
+- A task's blockers are its GitHub "blocked by" links (from "Depends on"). Open tasks with an open blocker carry the
+  label **`blocked`**, kept in sync automatically: filter the board by it.
+- **Want a blocked task? Claim it:** `tools/task.sh claim <issue#>`. It's assigned to you but stays in Todo.
+- **When a task closes** (its PR merged with `Closes #N`), the workflow `.github/workflows/unblock.yml` checks every
+  task it was blocking. If that was the last open blocker, it removes `blocked` and comments on the task
+  **@mentioning the assignee** ("🔓 Unblocked … start with `tools/task.sh start N`"), which arrives as a GitHub
+  notification and email. An unclaimed task gets a "free to take" comment instead, and the closed task gets a list of
+  what it unblocked. Reopening a task re-blocks its dependants.
+- Make sure GitHub notifications for this repo reach you (Watch → Participating and @mentions, or All Activity).
+- Edited a "blocked by" link by hand? Labels re-sync every 6 hours, or at once with `gh workflow run unblock.yml`.
 
 ### Workflow for a task: the rules behind the commands (humans and agents alike)
 
@@ -183,7 +197,7 @@ What makes a test reliable here:
 - Use `tools/task.sh` for start / PR / finish / status; don't hand-edit the board or invent branch names.
 - Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.
   Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
-- Run the full test suite (`pytest`) before `tools/task.sh pr` and before `finish`; never merge red.
+- Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). Run the full suite before `tools/task.sh pr` and before `finish`; never merge red.
 - `finish` merges into `develop` only after the human says so.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
