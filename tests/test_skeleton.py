@@ -50,7 +50,7 @@ def test_layout_dirs_exist():
 
 def _ignored(path: str) -> bool:
     # git check-ignore exits 0 when the path is ignored, 1 when not; --no-index also checks tracked paths
-    r = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=ROOT)
+    r = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=ROOT, check=False)
     assert r.returncode in (0, 1), r
     return r.returncode == 0
 
