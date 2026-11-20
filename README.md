@@ -102,3 +102,18 @@ The σ is honest: the truth is within 2 σ for 87.4% of the fixes (86.5% for a 2
 for 95.1% (95%).
 
 ![Reliability plot: error against confidence, and covariance coverage](results/m4-08/reliability.png)
+
+### Kalman filter (M5-01)
+
+[src/dronenav/tracking/kalman.py](src/dronenav/tracking/kalman.py) tracks (x, y, vx, vy) in map px.
+- It predicts to each frame's timestamp, gates each fix by its Mahalanobis distance (χ² 13.8, 99.9%), updates with
+  the fix's own covariance (M4-08), and coasts when there is no fix.
+- Measured on the Irpin truth at one fix per second, the image centre does not move smoothly: turns and camera
+  sway put a one-second prediction 34 px (mild) to 70 px (harsh) away. The fixes are sub-pixel, so on this data the
+  filter's job is to reject wrong matches and to bridge gaps, not to remove jitter.
+- **Process noise:** a small value makes the filter gate good fixes, and it never recovers. The default
+  `sigma_acc = 80` takes every true fix on all four flights. The predicted 95% circle holds the truth for 97%
+  (harsh) to 100% (mild) of keyframes.
+- **Noise model:** the prototype's piecewise-constant noise model (`Q = G Gᵀ σ²`) makes the velocity ring at that
+  level: with 0.5 px fixes, its velocity error is 3.9 px/s and changes sign almost every frame. A continuous
+  white-noise acceleration model is damped (0.96 px/s), and it is the one used.

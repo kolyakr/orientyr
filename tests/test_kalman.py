@@ -7,7 +7,10 @@ threshold. The filter is constant velocity on (x, y, vx, vy) in map px and secon
 
 All data is synthetic with a fixed seed: a drone flying a known straight line, fixes = truth + Gaussian noise.
 """
+import itertools
+import json
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -16,6 +19,8 @@ from dronenav.confidence import fix_covariance
 from dronenav.tracking.kalman import KalmanConfig, KalmanFilter, StepKind
 from dronenav.types import Fix, TrackMode
 
+ROOT = Path(__file__).resolve().parents[1]
+SMOOTH = KalmanConfig(sigma_acc=0.25)    # for synthetic flights that are exactly straight
 START, VEL = np.array([500.0, 800.0]), np.array([30.0, -12.0])   # px, px/s: a plausible slow flight
 
 
@@ -41,7 +46,9 @@ def _noisy_line(n=60, dt=0.5, sigma=2.0, seed=0):
 
 def test_a_straight_line_is_tracked():
     ts, zs = _noisy_line()
-    kf, R = KalmanFilter(), 2.0 ** 2 * np.eye(2)
+    # an exactly straight synthetic flight, so a near-zero process noise. The default (80) is set for the real
+    # flights, whose image centre sways by tens of px per second; with it the filter trusts these fixes almost fully
+    kf, R = KalmanFilter(SMOOTH), 2.0 ** 2 * np.eye(2)
     est = []
     for t, z in zip(ts, zs, strict=True):
         r = kf.step(t, z, R)
@@ -128,7 +135,7 @@ def test_sigma_grows_while_coasting_and_shrinks_on_a_fix():
         r = kf.step(t, None)
         assert r.kind is StepKind.COAST
         sig.append(kf.sigma)
-    assert all(b > a for a, b in zip(sig, sig[1:], strict=False))  # strictly growing
+    assert all(b > a for a, b in itertools.pairwise(sig))  # strictly growing
     before = kf.sigma
     t += 0.5
     kf.step(t, truth(t), R)
@@ -143,14 +150,15 @@ def test_a_rejected_fix_is_coasted_through():
 
 
 def test_a_weak_fix_moves_the_state_less_than_a_strong_one():
-    # the update uses the fix's own covariance (M4-08): the same 3 px offset pulls less when the fix is weak
+    # the update uses the fix's own covariance (M4-08): the same 0.5 px offset pulls less when the fix is weak.
+    # With a confident prediction (smooth setting); with the wide default both fixes are trusted almost fully
     pulls = []
-    for f in (dict(inliers=2000, ratio=0.9, reproj=0.5), dict(inliers=20, ratio=0.15, reproj=2.8)):
-        kf = KalmanFilter()
+    for f in ({"inliers": 2000, "ratio": 0.9, "reproj": 0.5}, {"inliers": 20, "ratio": 0.15, "reproj": 2.8}):
+        kf = KalmanFilter(SMOOTH)
         for t in (0.0, 0.5, 1.0, 1.5):
             kf.step(t, _fix(truth(t)))
         pred, _ = kf.predict_to(2.0)
-        z = _fix(truth(2.0) + [3.0, 0.0], **f)
+        z = _fix(truth(2.0) + [0.5, 0.0], **f)       # small enough to pass the gate for both
         r = kf.step(2.0, z)
         assert r.kind is StepKind.HIT
         pulls.append(r.x[0] - pred[0])
@@ -210,3 +218,39 @@ def test_reset_restarts_from_a_new_fix():
 def test_config_rejects_bad_values(bad):
     with pytest.raises(ValueError):
         KalmanConfig(**bad)
+
+
+# --- found on the Irpin flights: the default must neither ring nor lock out -------------------------------------
+
+def test_precise_fixes_with_the_default_setting_do_not_make_the_velocity_ring():
+    # once per second, 0.5 px fixes, the wide default: the velocity is then close to the difference of the last two
+    # fixes, whose error is √2·0.5/1 s per axis = 1.0 px/s in 2D. The prototype's piecewise-constant noise model
+    # amplifies it instead (β -> 2: 3.9 px/s here, the sign flipping every frame); the continuous one gives 0.96
+    rng = np.random.default_rng(0)
+    kf = KalmanFilter()
+    vs = np.array([kf.step(t, truth(t) + rng.normal(0, 0.5, 2), 0.25 * np.eye(2)).x[2:] for t in np.arange(60.0)])
+    assert np.sqrt(np.mean(np.sum((vs[10:] - VEL) ** 2, axis=1))) < 2.0
+
+
+IRPIN_FLIGHTS = ROOT / "data" / "irpin" / "flights"
+
+
+@pytest.mark.data
+@pytest.mark.skipif(not IRPIN_FLIGHTS.exists(), reason="data/ not downloaded")
+@pytest.mark.parametrize("flight", ["mild", "harsh", "mild_30mps", "harsh_30mps"])
+def test_the_default_setting_takes_every_true_fix_on_the_irpin_flights(flight):
+    # fixes at the true image centre once per keyframe (1 s), with a typical accepted-fix σ of 0.5 px: the image
+    # centre sways by tens of px per second, and a too-confident filter gates good fixes and never recovers
+    f = IRPIN_FLIGHTS / flight / "2025"
+    rows = [json.loads(line) for line in (f / "truth.jsonl").read_text().splitlines() if line]
+    keys = [k["i"] for k in json.loads((f / "meta.json").read_text())["keyframes"]]
+    kf, inside = KalmanFilter(), []
+    for i in keys:
+        z = np.array(rows[i]["center_map_px"])
+        r = kf.step(rows[i]["t"], z, 0.25 * np.eye(2))
+        assert r.kind in (StepKind.INIT, StepKind.HIT), f"keyframe {i}: {r.kind.value}, d²={r.d2:.1f}"
+        if r.kind is StepKind.HIT:
+            d = r.x_pred[:2] - z
+            inside.append(d @ np.linalg.solve(r.P_pred[:2, :2], d) < 5.991)     # χ²(2) 95 %
+    # the prediction's 95 % circle is honest or cautious (measured: 97 % on harsh, 100 % on mild)
+    assert np.mean(inside) >= 0.93
