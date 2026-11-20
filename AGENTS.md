@@ -265,7 +265,8 @@ python scripts/fake_run.py --map data/hackatons-data/global_map.png --out output
 (cd ui && npm test)                                      # the console's own tests (vitest); pytest also runs them on a fresh fake run
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)
-python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
+python scripts/render_video.py --run outputs/fake          # trajectory.mp4, HUD video: confidence trail, 3-sigma ellipse, state badge, captions
+python scripts/render_video.py --run outputs/fake --style classic   # the plain M1 video; for a demo add --size 1920x1080 --speed 6
 python scripts/scale_table.py --task data/hackatons-data --probe experiments/data_probe/results/probe.json \
     --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png   # M1-03 scale table (README notes)
 python scripts/search_run.py --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png --miss 200   # M1-05 search modes

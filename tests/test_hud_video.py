@@ -30,6 +30,7 @@ from dronenav.viz import hud_video as hv
 
 ROOT = Path(__file__).resolve().parents[1]
 GREY = 128
+BG = round(GREY * hv.MAP_DIM)   # the HUD video darkens the map: this is what bare map looks like in it
 FRAME = (96, 64)            # frame px
 SCALE = 2.0                 # map px per frame px: a 192 x 128 map px footprint
 STEP = 30.0                 # map px between records
@@ -88,10 +89,10 @@ def _write(tmp_path, rows, map_size=MAP, write_frames=True, name="run"):
 
 
 def _jam_rows(x0=1500.0, y0=1200.0, matches=False):
-    """14 records flying east. 0-3 sure, 4-5 unsure, 6 sure, 7-9 LOST (the ellipse grows), 10 RELOCALIZING with a
-    rejected fix above the route, 11 RELOCALIZING with a good fix, 12-13 TRACKING again."""
+    """17 records flying east. 0-3 sure, 4-5 unsure, 6 sure, 7-9 LOST (the ellipse grows), 10 RELOCALIZING with a
+    rejected fix above the route, 11 RELOCALIZING with a good fix, 12-16 TRACKING again."""
     rows = []
-    for i in range(14):
+    for i in range(17):
         x, y = x0 + STEP * i, y0
         r = {"x": x, "y": y, "state": TrackMode.TRACKING}
         if i in (7, 8, 9):
@@ -244,7 +245,7 @@ def test_the_zoom_shows_the_footprint_large(tmp_path):
 def test_the_plan_keeps_the_m1_timing(tmp_path):
     records, info = _load(_write(tmp_path, _jam_rows()))
     plan = hv.plan_hud_video(records, info, fps=10, speed=1.0)
-    assert len(plan.frames) == 13 * 10 + 1 + 10                      # the run, then a 1 s hold
+    assert len(plan.frames) == 16 * 10 + 1 + 10                      # the run, then a 1 s hold
     assert plan.frames[50].rec == 5 and (plan.frames[50].x, plan.frames[50].y) == pytest.approx((1650.0, 1200.0))
 
 
@@ -268,6 +269,18 @@ def test_captions_appear_at_the_event_and_stay_a_couple_of_seconds(jam):
     assert gone < len(plan.frames) and hv.caption_at(plan, gone) is None
     fading = hv.caption_at(plan, gone - 2)
     assert fading is not None and 0 < fading[1] < 1                  # it fades out, it does not blink off
+
+
+def test_a_caption_is_not_replaced_before_it_can_be_read(tmp_path):
+    records, info = _load(_write(tmp_path, _jam_rows()))
+    plan = hv.plan_hud_video(records, info, fps=30, speed=8.0)       # records 10, 11, 12: 1/8 s of video apart
+    starts = [c.frame for c in plan.captions]
+    assert len(starts) == 3                                          # LOST (7), RELOCALIZING (10), TRACKING (12)
+    least = math.ceil(hv.CAPTION_MIN_S * 30)
+    assert all(b - a >= least for a, b in itertools.pairwise(starts))
+    assert hv.CAPTION_MIN_S >= 1.0                                   # a line of text needs about a second
+    k = starts[1]                                                    # the RELOCALIZING caption, while it is up
+    assert "RELOCALIZING" in hv.caption_at(plan, k)[0] and "RELOCALIZING" in hv.caption_at(plan, k + least - 1)[0]
 
 
 def test_a_run_without_events_has_no_captions(tmp_path):
@@ -330,7 +343,7 @@ def test_the_trail_is_green_where_sure_yellow_where_unsure_red_dashed_without_a_
     assert len(sure) > 5 and all(_close(p, hv.GREEN) for p in sure)
     assert all(_close(p, hv.YELLOW) for p in unsure)
     ahead = _px(plan, 60, x + STEP * 8.5, y - 4 * STEP)             # nothing is drawn where the drone has not been
-    assert _close(img[round(ahead[1]), round(ahead[0])], (GREY,) * 3, tol=30)
+    assert _close(img[round(ahead[1]), round(ahead[0])], (BG,) * 3, tol=30)
 
     img, _ = r.draw(95)                                              # inside the jam, halfway from record 9 to 10
     jammed = _row(img, plan, 95, x + STEP * 7.0, x + STEP * 9.0, y)
@@ -348,9 +361,9 @@ def test_the_three_sigma_ellipse_is_drawn_at_its_size(jam):
     assert (a, b) == pytest.approx((180 * s, 90 * s), rel=1e-6) and angle % 180 == pytest.approx(0.0, abs=1e-6)
     cx, cy = fi.drone_px
     top = img[round(cy - b) - 3:round(cy - b) + 4, round(cx)]
-    assert max(np.abs(p.astype(int) - GREY).max() for p in top) > 60          # the outline, 3 sigma above the drone
+    assert max(np.abs(p.astype(int) - BG).max() for p in top) > 60          # the outline, 3 sigma above the drone
     outside = img[round(cy - 1.35 * b), round(cx)]
-    assert _close(outside, (GREY,) * 3, tol=30)
+    assert _close(outside, (BG,) * 3, tol=30)
     # while tracking the ellipse is a few px: reported, not hidden
     _, fi = jam["renderer"].draw(30)
     assert fi.ellipse_px[0] == pytest.approx(3 * s)
@@ -376,7 +389,7 @@ def test_a_rejected_fix_is_drawn_apart_with_its_reason(jam):
     assert f.footprint is not None
     (ax, ay), (bx, by) = _px(plan, 30, *f.footprint[0]), _px(plan, 30, *f.footprint[1])
     edge = [img[round(ay + (by - ay) * u), round(ax + (bx - ax) * u)] for u in np.linspace(0.3, 0.7, 9)]
-    assert all(np.abs(p.astype(int) - GREY).max() > 40 for p in edge)
+    assert all(np.abs(p.astype(int) - BG).max() > 40 for p in edge)
     assert not any(_close(p, hv.RED, tol=60) for p in edge)
 
 
@@ -474,14 +487,14 @@ def _mp4(path: Path) -> dict:
 
 
 def test_the_cli_writes_the_hud_video_by_default(tmp_path):
-    d = _write(tmp_path, _jam_rows())                                # t = 0..13 s
+    d = _write(tmp_path, _jam_rows())                                # t = 0..16 s
     res = _cli("--run", d, "--speed", "4", "--size", "640x360")
     assert res.returncode == 0, res.stderr
     assert "hud" in res.stdout
     info = _mp4(d / "trajectory.mp4")
     assert info["avc1"] and info["moov_first"]
     assert info["size"] == (640, 360) and info["fps"] == pytest.approx(30)
-    assert abs(info["frames"] - (math.floor(13 / 4 * 30) + 1 + 30)) <= 1     # the run at 4x, plus a 1 s hold
+    assert abs(info["frames"] - (math.floor(16 / 4 * 30) + 1 + 30)) <= 1     # the run at 4x, plus a 1 s hold
 
     cap = cv2.VideoCapture(str(d / "trajectory.mp4"))                # the file holds the HUD frames, badge and all
     cap.set(cv2.CAP_PROP_POS_FRAMES, 60)                             # t = 8 s: LOST
@@ -518,13 +531,24 @@ def test_a_fake_run_with_a_jam_renders_on_square_and_wide_maps(tmp_path, map_siz
     assert abs(info["frames"] - (19 * 3 + 1 + 30)) <= 1
     records, run_info = _load(tmp_path / "run")
     plan = hv.plan_hud_video(records, run_info, speed=10, size=(640, 360))
-    half_w, half_h = plan.view_w / 2, plan.view_w * 360 / 640 / 2
+    half_h = plan.view_w * 360 / 640 / 2
     assert plan.view_w <= w + 1e-6 and 2 * half_h <= h + 1e-6        # the view never shows more than the map
-    for f in plan.frames:                                            # ... and stays on it
-        assert half_w - 1e-6 <= f.cx <= w - half_w + 1e-6 and half_h - 1e-6 <= f.cy <= h - half_h + 1e-6
+    for f in plan.frames:                                            # the drone is on screen all the way
+        assert abs(f.x - f.cx) <= 0.45 * plan.view_w and abs(f.y - f.cy) <= 0.9 * half_h
     states = {hv.HudRenderer(tmp_path / "run", records, run_info, plan).draw(k)[1].state
               for k in range(0, len(plan.frames), 3)}
     assert states == {"TRACKING", "LOST", "RELOCALIZING"}
+
+
+def test_along_a_map_edge_the_drone_stays_between_the_panels(tmp_path):
+    # Near a map edge the camera does not stop at the edge (M1 does): that would slide the drone under the side
+    # panels. It stays in the free stage between them: the HUD ends at 26 % of the width, the camera inset
+    # starts at 69 %, so 0.19 of the view to either side of the centre is clear.
+    records, info = _load(_write(tmp_path, _jam_rows(x0=MAP[0] - 16 * STEP - 60, y0=MAP[1] - 80)))
+    plan = hv.plan_hud_video(records, info, fps=10, speed=1.0)
+    view_h = plan.view_w * plan.size[1] / plan.size[0]
+    for f in plan.frames:
+        assert abs(f.x - f.cx) <= 0.19 * plan.view_w and abs(f.y - f.cy) <= 0.3 * view_h
 
 
 def test_a_long_run_plans_fast_and_draws(tmp_path):
