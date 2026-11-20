@@ -38,8 +38,47 @@ def _runs(wf: dict) -> str:
     return "\n".join(s.get("run", "") for s in _steps(wf))
 
 
+def _cancels(concurrency: dict | str | None, event: str) -> bool:
+    """Would a newer run in this concurrency group cancel the running one, for this triggering event?"""
+    if not isinstance(concurrency, dict):            # a bare group string (or none) never cancels
+        return False
+    v = concurrency.get("cancel-in-progress", False)
+    if isinstance(v, bool):
+        return v
+    m = re.fullmatch(r"\$\{\{\s*github\.event_name\s*(==|!=)\s*'(\w+)'\s*\}\}", str(v).strip())
+    assert m, f"cancel-in-progress expression this test can't evaluate: {v!r}"
+    return (event == m[2]) == (m[1] == "==")
+
+
 def test_workflow_file_exists():
     assert WORKFLOW.is_file()
+
+
+def test_stale_pr_runs_are_cancelled():
+    # on a PR only the newest push matters: a stale run would just hold a runner. The runs of one PR must also
+    # share a group (keyed by the PR number), or there is nothing for the newer run to cancel.
+    concurrency = _workflow().get("concurrency")
+    assert _cancels(concurrency, "pull_request")
+    assert "github.event.pull_request.number" in concurrency["group"]
+
+
+@pytest.mark.parametrize("event", ["push", "workflow_dispatch"])
+def test_runs_on_develop_and_main_are_never_cancelled(event):
+    # M0-10: every merge commit gets its own verdict; a cancelled run on develop hides which merge broke it
+    wf = _workflow()
+    assert not _cancels(wf.get("concurrency"), event)
+    for name, job in wf["jobs"].items():
+        assert not _cancels(job.get("concurrency"), event), name
+
+
+def test_pushes_do_not_share_a_concurrency_group():
+    # even with cancel-in-progress false, a group holds one running + one pending run and a third arrival
+    # replaces (cancels) the pending one: outside PRs, every run needs a group of its own (its run id)
+    wf = _workflow()
+    groups = [c["group"] if isinstance(c, dict) else c
+              for c in [wf.get("concurrency"), *(j.get("concurrency") for j in wf["jobs"].values())] if c]
+    for g in groups:
+        assert "github.run_id" in g, g
 
 
 def test_runs_on_prs_into_develop_and_main():
