@@ -108,11 +108,12 @@ def test_matches_empty_is_valid():
     assert len(m) == 0 and m.pts_map.shape == (0, 2) and m.backend == "sift"
 
 
-@pytest.mark.parametrize("kw", [dict(pts_map=np.zeros((3, 2))),          # N differs
-                                dict(scores=np.zeros(3)),
-                                dict(pts_frame=np.zeros((2, 3)))])        # not N x 2
+@pytest.mark.parametrize("kw", [{"pts_map": np.zeros((3, 2))},          # N differs
+                                {"scores": np.zeros(3)},
+                                {"pts_frame": np.zeros((2, 3))}])        # not N x 2
 def test_matches_reject_inconsistent_shapes(kw):
-    base = dict(pts_frame=np.zeros((2, 2)), pts_map=np.zeros((2, 2)), scores=np.zeros(2), backend="b", ms=0.0)
+    base = {"pts_frame": np.zeros((2, 2)), "pts_map": np.zeros((2, 2)), "scores": np.zeros(2),
+            "backend": "b", "ms": 0.0}
     with pytest.raises(ValueError):
         T.Matches(**{**base, **kw})
 
@@ -120,9 +121,9 @@ def test_matches_reject_inconsistent_shapes(kw):
 # --- Fix -------------------------------------------------------------------------------------
 
 def _fix(**kw):
-    base = dict(idx=3, H=np.eye(3), x=100.0, y=200.0, heading_deg=45.0, scale=1.0,
-                footprint=np.array([[0, 0], [64, 0], [64, 48], [0, 48]]), inliers=120,
-                inlier_ratio=0.6, reproj_px=1.2, accepted=True, reject_reason=None)
+    base = {"idx": 3, "H": np.eye(3), "x": 100.0, "y": 200.0, "heading_deg": 45.0, "scale": 1.0,
+                "footprint": np.array([[0, 0], [64, 0], [64, 48], [0, 48]]), "inliers": 120,
+                "inlier_ratio": 0.6, "reproj_px": 1.2, "accepted": True, "reject_reason": None}
     return T.Fix(**{**base, **kw})
 
 
@@ -132,8 +133,8 @@ def test_fix_valid_and_heading_normalised():
     assert f.H.shape == (3, 3) and f.footprint.shape == (4, 2) and f.footprint.dtype == np.float64
 
 
-@pytest.mark.parametrize("kw", [dict(H=np.eye(2)), dict(footprint=np.zeros((3, 2))),
-                                dict(inlier_ratio=1.5), dict(inliers=-1)])
+@pytest.mark.parametrize("kw", [{"H": np.eye(2)}, {"footprint": np.zeros((3, 2))},
+                                {"inlier_ratio": 1.5}, {"inliers": -1}])
 def test_fix_rejects_bad_geometry_and_counts(kw):
     with pytest.raises(ValueError):
         _fix(**kw)
@@ -157,10 +158,11 @@ def test_track_state_accepts_state_name_and_optional_fix():
     assert s2.fix.inliers == 120
 
 
-@pytest.mark.parametrize("kw", [dict(state="FLYING"), dict(cov=np.eye(3))])
+@pytest.mark.parametrize("kw", [{"state": "FLYING"}, {"cov": np.eye(3)}])
 def test_track_state_rejects_unknown_state_and_bad_cov(kw):
     with pytest.raises(ValueError):
-        T.TrackState(**{**dict(idx=0, state="LOST", x=0.0, y=0.0, vx=0.0, vy=0.0, cov=np.eye(2), fix=None), **kw})
+        T.TrackState(**{"idx": 0, "state": "LOST", "x": 0.0, "y": 0.0, "vx": 0.0, "vy": 0.0,
+                        "cov": np.eye(2), "fix": None, **kw})
 
 
 # --- protocols -------------------------------------------------------------------------------
