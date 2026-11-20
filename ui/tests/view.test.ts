@@ -2,7 +2,8 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadRun } from "@/lib/run-server";
-import { confidence, events, headingOf, sigmaPx, stateRuns, trail } from "@/lib/view";
+import type { RunRecord } from "@/lib/run";
+import { type Camera, type Rect, confidence, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail } from "@/lib/view";
 
 const run = loadRun(process.env.ORIENTYR_RUN ?? path.join(__dirname, "fixtures", "run"));
 const recs = run.records;
@@ -79,5 +80,120 @@ describe("timeline", () => {
     const ev = events(recs);
     expect(ev.map((e) => e.frame)).toEqual([firstOf("LOST"), firstOf("RELOCALIZING"), recs.findLastIndex((r, i) => i > 0 && r.state === "TRACKING" && recs[i - 1].state !== "TRACKING")]);
     expect(ev[0].text).toMatch(/jammed/);
+  });
+});
+
+/**
+ * The whole-route camera. Screen px = map px * scale + (x, y). The numbers below are the real layouts:
+ * a 1512 px wide window, panels on the left and on the right, the dock under the map.
+ */
+describe("camera", () => {
+  const at = (x: number, y: number) => ({ x, y, fix: null }) as unknown as RunRecord;
+  const view: Rect = { x: -12, y: -12, width: 1512, height: 945 };   // the window, seen from the stage's corner
+  const free: Rect = { x: 248, y: 50, width: 880, height: 780 };     // the stage without the panels over it
+  const EPS = 1e-6; // floating point only: the camera is exact arithmetic
+
+  const onScreen = (box: Rect, cam: Camera): Rect =>
+    ({ x: box.x * cam.scale + cam.x, y: box.y * cam.scale + cam.y, width: box.width * cam.scale, height: box.height * cam.scale });
+  const expectInside = (inner: Rect, outer: Rect) => {
+    expect(inner.x).toBeGreaterThanOrEqual(outer.x - EPS);
+    expect(inner.y).toBeGreaterThanOrEqual(outer.y - EPS);
+    expect(inner.x + inner.width).toBeLessThanOrEqual(outer.x + outer.width + EPS);
+    expect(inner.y + inner.height).toBeLessThanOrEqual(outer.y + outer.height + EPS);
+  };
+  /** The route box touches the free area on the axis that limits the zoom: a bigger scale would not fit. */
+  const expectTight = (box: Rect, cam: Camera) => {
+    const s = onScreen(box, cam);
+    expect(Math.min(free.width - s.width, free.height - s.height)).toBeCloseTo(0, 6);
+  };
+
+  it("boxes the whole route with a margin, and never leaves the map for the margin", () => {
+    const route = [at(1000, 800), at(3000, 1200), at(2000, 2600)];
+    expect(routeBox(route, [4000, 4000], 300)).toEqual({ x: 700, y: 500, width: 2600, height: 2400 });
+    // near the top-left corner the margin is cut at the map edge
+    expect(routeBox([at(100, 50), at(900, 700)], [4000, 4000], 300)).toEqual({ x: 0, y: 0, width: 1200, height: 1000 });
+    // a point that drifted off the map (dead reckoning) is still inside the box
+    const off = routeBox([at(-40, 500), at(900, 700)], [4000, 4000], 300);
+    expect(off.x).toBe(-40);
+    // one point, no margin: the box is not empty, so the scale stays finite
+    const dot = routeBox([at(500, 500)], [4000, 4000], 0);
+    expect(dot.width).toBeGreaterThan(0);
+    expect(dot.height).toBeGreaterThan(0);
+  });
+
+  it("takes the footprint size from the accepted fixes of the run", () => {
+    const sizes = recs.filter((r) => r.fix?.accepted).map((r) => {
+      const xs = r.fix!.footprint.map((p) => p[0]), ys = r.fix!.footprint.map((p) => p[1]);
+      return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    });
+    const size = footprintSize(recs);
+    expect(size).toBeGreaterThanOrEqual(Math.min(...sizes));
+    expect(size).toBeLessThanOrEqual(Math.max(...sizes));
+    expect(footprintSize([at(1, 1)])).toBe(0); // no fix at all: the caller picks a margin
+  });
+
+  it("square map, route across most of it: the route fits the free area, the map covers the height", () => {
+    const map: [number, number] = [3936, 3936];
+    const box = routeBox([at(594, 571), at(3713, 3116)], map, 340);
+    const cam = fitRoute(box, map, free, view);
+    expectInside(onScreen(box, cam), free);
+    expectTight(box, cam);
+    // 3936 px of map at this scale are narrower than the window: the map cannot cover the width, its edges show
+    expect(map[0] * cam.scale).toBeLessThan(view.width);
+    // but it is taller than the window, and then no edge shows above or below
+    expect(map[1] * cam.scale).toBeGreaterThan(view.height);
+    expect(cam.y).toBeLessThanOrEqual(view.y + EPS);
+    expect(map[1] * cam.scale + cam.y).toBeGreaterThanOrEqual(view.y + view.height - EPS);
+  });
+
+  it("wide map, route along it: the route fits, the map stays a band inside the window", () => {
+    const map: [number, number] = [3645, 1845];
+    const box = routeBox([at(3400, 300), at(130, 483), at(1800, 1548)], map, 110);
+    const cam = fitRoute(box, map, free, view);
+    expectInside(onScreen(box, cam), free);
+    expectTight(box, cam);
+    expect(map[1] * cam.scale).toBeLessThan(view.height);
+    // the band is centred on the route, in the free area: not pushed against the top or the bottom
+    const s = onScreen(box, cam);
+    expect(s.y - free.y).toBeCloseTo(free.y + free.height - (s.y + s.height), 6);
+  });
+
+  it("small route in the middle: zoomed in, and the map covers the whole window", () => {
+    const map: [number, number] = [3936, 3936];
+    const box = routeBox([at(1800, 1900), at(2300, 2200)], map, 200);
+    const cam = fitRoute(box, map, free, view);
+    expectInside(onScreen(box, cam), free);
+    expectTight(box, cam);
+    expectInside(view, onScreen({ x: 0, y: 0, width: map[0], height: map[1] }, cam));
+  });
+
+  it("route near an edge: the route stays in the free area, even if the map edge then shows", () => {
+    const map: [number, number] = [3936, 3936];
+    // a short route in the top-left corner of the map: to cover the window the map would have to move left,
+    // under the left panels, and the route with it. The route wins.
+    const box = routeBox([at(150, 120), at(700, 500)], map, 200);
+    const cam = fitRoute(box, map, free, view);
+    expectInside(onScreen(box, cam), free);
+    expectTight(box, cam);
+    expect(cam.x).toBeGreaterThan(view.x); // the left map edge is inside the window
+    // and the map is pulled as far towards covering as the route allows: the box touches the free area's left side
+    expect(onScreen(box, cam).x).toBeCloseTo(free.x, 6);
+    // the far sides are covered: the map reaches past the right and the bottom of the window
+    expect(map[0] * cam.scale + cam.x).toBeGreaterThanOrEqual(view.x + view.width);
+    expect(map[1] * cam.scale + cam.y).toBeGreaterThanOrEqual(view.y + view.height);
+  });
+
+  it("is written for an svg whose viewBox is the map, fitted into its cell and centred", () => {
+    const map: [number, number] = [3645, 1845];
+    const cell = { width: 1136, height: 833 };
+    const cam: Camera = { scale: 0.4, x: -120.5, y: 33 };
+    const t = inViewBox(cam, map, cell);
+    // what the browser does: the group transform in map units, then the viewBox fit (meet, centred)
+    const fit = Math.min(cell.width / map[0], cell.height / map[1]);
+    const off = [(cell.width - map[0] * fit) / 2, (cell.height - map[1] * fit) / 2];
+    for (const [px, py] of [[0, 0], [3645, 1845], [1000, 400]]) {
+      expect((px * t.scale + t.x) * fit + off[0]).toBeCloseTo(px * cam.scale + cam.x, 6);
+      expect((py * t.scale + t.y) * fit + off[1]).toBeCloseTo(py * cam.scale + cam.y, 6);
+    }
   });
 });
