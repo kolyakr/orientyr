@@ -117,3 +117,55 @@ for 95.1% (95%).
 - **Noise model:** the prototype's piecewise-constant noise model (`Q = G Gᵀ σ²`) makes the velocity ring at that
   level: with 0.5 px fixes, its velocity error is 3.9 px/s and changes sign almost every frame. A continuous
   white-noise acceleration model is damped (0.96 px/s), and it is the one used.
+
+### Accuracy (M1-10)
+
+Every frame's position against the truth, measured with
+[scripts/accuracy.py](scripts/accuracy.py) ([src/dronenav/accuracy.py](src/dronenav/accuracy.py)) on the
+full pipeline (`scripts/run.py`'s localization: RootSIFT, the scale rule, the window search). The Irpin flights
+carry exact truth from the renderer. The task crops are checked against `probe.json`, a full-resolution fit
+(~0.2 px), so their numbers can't go below that.
+
+- **Localized:** the frame got an accepted fix.
+- **Wrong:** accepted, but more than 10 px from the truth. This is the dangerous kind: a miss leaves the route
+  uncertain, while a wrong fix moves it with full confidence.
+- **Error:** in map px; an Irpin map px is 0.76 m on the ground.
+- **Ms:** the median search time per frame on an M-series Mac. A 2025 map has more features, so it is slower.
+
+| sequence | map | frames | localized | wrong | error px median / p95 / max | ms |
+|---|---|---|---|---|---|---|
+| Task crops | task | 50 | 50 | 0 | 0.21 / 0.39 / 0.51 | 41 |
+| Irpin mild 2025 | 2025 | 442 | 442 | 0 | 0.43 / 0.83 / 1.19 | 191 |
+| Irpin mild 2022 | 2022 | 442 | 442 | 0 | 0.52 / 0.94 / 2.64 | 98 |
+| Irpin mild 2017 | 2017 | 442 | 442 | 0 | 0.45 / 1.08 / 2.30 | 86 |
+| Irpin mild, 30 m/s, 2025 | 2025 | 224 | 224 | 0 | 0.42 / 0.86 / 1.23 | 204 |
+| Irpin mild, 30 m/s, 2022 | 2022 | 224 | 224 | 0 | 0.53 / 0.93 / 1.25 | 99 |
+| Irpin mild, 30 m/s, 2017 | 2017 | 224 | 224 | 0 | 0.48 / 1.14 / 2.24 | 75 |
+| Irpin harsh 2025 | 2025 | 280 | 280 | 0 | 0.58 / 1.30 / 1.83 | 227 |
+| Irpin harsh 2022 | 2022 | 280 | 280 | 0 | 0.63 / 1.52 / 2.25 | 89 |
+| Irpin harsh 2017 | 2017 | 280 | 280 | 0 | 0.77 / 1.50 / 2.43 | 70 |
+| Irpin harsh, 30 m/s, 2025 | 2025 | 165 | 165 | 0 | 0.64 / 1.33 / 1.98 | 185 |
+| Irpin harsh, 30 m/s, 2022 | 2022 | 165 | 165 | 0 | 0.68 / 1.75 / 2.28 | 88 |
+| Irpin harsh, 30 m/s, 2017 | 2017 | 165 | 165 | 0 | 0.68 / 1.59 / 2.17 | 70 |
+| **Stale map:** mild 2022 | 2025 | 442 | 146 | **3** | 1.04 / 6.08 / 16.45 | 114 |
+| **Stale map:** mild 2017 | 2025 | 442 | 0 | 0 | none | |
+
+What the table shows:
+- On a map of the same year, every frame of every flight is found, with no wrong fix and a median error under
+  1 px (under 0.6 m). Harsh flights cost a few tenths of a pixel more.
+- The stale map is the open problem. Three years of change (2022 imagery on the 2025 map) leave a third of the
+  frames found, and 3 of those are wrong. Eight years (2017) leave none. This is what the learned matchers (M4)
+  and the filter (M5) are for.
+- Up to ~0.7 px of each error may be the engine's half-pixel convention (#106): it depends on the heading.
+
+Reproduce one row (`--truth` takes `truth.jsonl`, its flight folder or `probe.json`):
+
+```bash
+python scripts/accuracy.py --map data/irpin/maps/irpin_2025.png --frames data/irpin/flights/mild/2025/frames \
+    --run outputs/acc/mild_2025 --truth data/irpin/flights/mild/2025
+```
+
+The regression tests are in [tests/test_accuracy.py](tests/test_accuracy.py):
+- **CI:** the fixture's 3 Irpin keyframes must each stay within 1.5 px (measured 0.24 to 0.53).
+- **Locally, with the data:** the 50 task crops and 40 consecutive Irpin keyframes must keep a median ≤ 0.5 px
+  and a max ≤ 1.5 px, with no wrong fix.
