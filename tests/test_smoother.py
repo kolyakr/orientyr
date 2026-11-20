@@ -13,9 +13,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from dronenav.tracking.smoother import Smoothed, smooth
 
 from dronenav.tracking.kalman import KalmanConfig, KalmanFilter, StepKind
+from dronenav.tracking.smoother import Smoothed, smooth
 
 ROOT = Path(__file__).resolve().parents[1]
 data = pytest.mark.data

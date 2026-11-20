@@ -118,6 +118,23 @@ for 95.1% (95%).
   level: with 0.5 px fixes, its velocity error is 3.9 px/s and changes sign almost every frame. A continuous
   white-noise acceleration model is damped (0.96 px/s), and it is the one used.
 
+### Offline smoother (M5-05)
+
+[src/dronenav/tracking/smoother.py](src/dronenav/tracking/smoother.py) runs a Rauch–Tung–Striebel smoother back over
+a finished run.
+- **What it does:** each state is corrected by the fixes that came after it. A gap becomes an interpolation between
+  the fixes on both sides, instead of a flight on the last velocity.
+- **Labels:** every frame is marked `fix`, `interpolated` (a miss with a fix later) or `extrapolated` (a miss after
+  the last fix).
+- **Restarts:** a restart after LOST is a boundary, so two tracks are never blended.
+- **Measured:** fixes with 3 px noise and 20% drops. RMS error, filtered → smoothed:
+
+| flight | all frames | missed frames |
+|---|---|---|
+| simulated, 5 seeds (an 8-frame gap each) | 7.2–26.6 → 3.8–4.5 px | 13.4–54.4 → 5.4–7.1 px |
+| Irpin mild, real motion | 25.4 → 11.1 px | 55.9 → 23.2 px |
+| Irpin harsh, real motion | 55.8 → 21.8 px | 123.5 → 47.7 px |
+
 ### Accuracy (M1-10)
 
 Every frame's position against the truth, measured with
