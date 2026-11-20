@@ -6,6 +6,8 @@ Done when (issue spec update):
 2. CI end to end: cut-out frames of a textured map -> run.py -> every frame localized within 2 px of its truth;
 3. misses: jammed frames become LOST with coasted positions, the next fix is RELOCALIZING, the run completes;
    jammed frames before the first fix take its position; all frames jammed -> exit 1, clear message;
+   (these are M1's interim states, kept as ``--tracker none``; the default since M5-02 is the Kalman tracker, tested
+   at the end of this file)
 4. errors (missing map/frames, unknown matcher, --video) are clear and leave no output folder.
 """
 import itertools
@@ -82,7 +84,7 @@ def _frames(tmp_path, world, n=12, jam=(), seed=3):
 
 def test_every_cutout_frame_is_localized_within_2_px(tmp_path, world):
     frames, src = _frames(tmp_path, world)
-    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache", "--tracker", "none")
     assert res.returncode == 0, res.stderr
     for name in OUTPUTS:
         assert (tmp_path / "out" / name).is_file(), name
@@ -121,7 +123,7 @@ def test_frames_carry_their_time(tmp_path, world):
 
 def test_jammed_frames_are_lost_and_coast_then_relocalize(tmp_path, world):
     frames, _ = _frames(tmp_path, world, jam={5, 6})
-    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache", "--tracker", "none")
     assert res.returncode == 0, res.stderr
     recs = {r.idx: r for r in read_run(tmp_path / "out" / "run.jsonl")}
     assert recs[5].track.state is TrackMode.LOST and recs[6].track.state is TrackMode.LOST
@@ -137,7 +139,7 @@ def test_jammed_frames_are_lost_and_coast_then_relocalize(tmp_path, world):
 def test_jammed_frames_before_the_first_fix_take_its_position(tmp_path, world):
     frames, _ = _frames(tmp_path, world, n=6, jam={0, 1})
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
-                "--cache", tmp_path / "cache").returncode == 0
+                "--cache", tmp_path / "cache", "--tracker", "none").returncode == 0
     recs = read_run(tmp_path / "out" / "run.jsonl")
     assert [r.track.state for r in recs[:3]] == [TrackMode.LOST, TrackMode.LOST, TrackMode.TRACKING]
     for r in recs[:2]:
@@ -200,7 +202,7 @@ def test_coasting_stops_after_a_few_seconds(tmp_path, world):
     from dronenav.pipeline import COAST_MAX_S
     frames, _ = _frames(tmp_path, world, n=14, jam=set(range(4, 13)))      # 9 s lost at 1 fps
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
-                "--cache", tmp_path / "cache").returncode == 0
+                "--cache", tmp_path / "cache", "--tracker", "none").returncode == 0
     recs = {r.idx: r for r in read_run(tmp_path / "out" / "run.jsonl")}
     held = (recs[3 + COAST_MAX_S].track.x, recs[3 + COAST_MAX_S].track.y)   # the last fix was frame 3
     for i in range(4 + COAST_MAX_S, 13):
@@ -229,7 +231,7 @@ def test_time_not_frame_numbers_drives_coasting_and_uncertainty(tmp_path, world)
     from dronenav.pipeline import LOST_SIGMA_GROWTH_PX_PER_S
     frames = _gapped_frames(tmp_path, world, [0, 30, 60, 90, 120, 150], jam={90, 120})
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--fps", 30,
-                "--cache", tmp_path / "cache").returncode == 0
+                "--cache", tmp_path / "cache", "--tracker", "none").returncode == 0
     r = {x.idx: x for x in read_run(tmp_path / "out" / "run.jsonl")}
     assert [r[i].t for i in sorted(r)] == pytest.approx([0, 1, 2, 3, 4, 5])
     # velocity in map px per second between the last two fixes, and the coast uses seconds
@@ -243,7 +245,7 @@ def test_time_not_frame_numbers_drives_coasting_and_uncertainty(tmp_path, world)
 def test_a_fix_carries_its_velocity_and_uncertainty(tmp_path, world):
     frames, _ = _frames(tmp_path, world, n=4)
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
-                "--cache", tmp_path / "cache").returncode == 0
+                "--cache", tmp_path / "cache", "--tracker", "none").returncode == 0
     recs = read_run(tmp_path / "out" / "run.jsonl")
     assert (recs[0].track.vx, recs[0].track.vy) == (0, 0)                   # one fix: no motion yet
     for a, b in itertools.pairwise(recs):
@@ -353,3 +355,43 @@ def test_a_looser_fit_is_a_less_certain_position(tmp_path):
                         inlier_ratio=0.5, reproj_px=2.5, accepted=True), "global", None, 1.0, 5.0)]
     (rec,) = _records(found, tmp_path, "rootsift")
     assert math.sqrt(rec.track.cov[0, 0]) == pytest.approx(2.5)
+
+
+# --- M5-02: the tracker writes the states (the default) -------------------------------------------------------
+
+def test_the_tracker_states_reach_the_telemetry(tmp_path, world):
+    # three jammed frames: two coasted while TRACKING, LOST at the third miss, then RELOCALIZING and TRACKING
+    frames, src = _frames(tmp_path, world, n=12, jam={5, 6, 7})
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
+    assert res.returncode == 0, res.stderr
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    T, L, R = TrackMode.TRACKING, TrackMode.LOST, TrackMode.RELOCALIZING
+    assert [r.track.state for r in recs] == [R, T, T, T, T, T, T, L, R, T, T, T]
+    assert [r.extra["step"] for r in recs] == ["INIT", "HIT", "HIT", "HIT", "HIT", "COAST", "COAST", "COAST",
+                                               "INIT", "HIT", "HIT", "HIT"]
+    for r in recs:
+        if r.track.fix is not None and r.track.fix.accepted:
+            tr = src.truth(r.idx)
+            # 2 px as M1-09: the filter follows sub-pixel fixes closely at sigma_acc 80
+            assert math.hypot(r.track.x - tr.center[0], r.track.y - tr.center[1]) <= 2.0, r.idx
+    sig = [r.track.cov[0, 0] for r in recs[4:8]]
+    assert all(b > a for a, b in itertools.pairwise(sig))                   # coasting: less and less sure
+
+
+def test_frames_before_the_first_fix_are_lost_at_its_position(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=5, jam={0, 1})
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    assert [r.track.state for r in recs] == [TrackMode.LOST, TrackMode.LOST, TrackMode.RELOCALIZING,
+                                             TrackMode.TRACKING, TrackMode.TRACKING]
+    assert [r.extra["step"] for r in recs[:2]] == ["NONE", "NONE"]
+    for r in recs[:2]:
+        assert (r.track.x, r.track.y) == (recs[2].track.x, recs[2].track.y)
+
+
+def test_an_unknown_tracker_is_a_clear_error(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=2)
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--tracker", "magic")
+    assert res.returncode != 0 and "tracker" in res.stderr and "Traceback" not in res.stderr
+    assert not (tmp_path / "out").exists()
