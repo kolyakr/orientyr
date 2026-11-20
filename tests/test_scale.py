@@ -20,6 +20,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.synth import apply, make_h, make_map, render_frame
+
+from dronenav.geometry import localize
+from dronenav.matching import RootSiftMatcher
 from dronenav.scale import (
     ScaleConfig,
     ScaleTracker,
@@ -28,15 +32,11 @@ from dronenav.scale import (
     match_scaled,
     resize_frame,
 )
-from tests.synth import apply, make_h, make_map, render_frame
-
-from dronenav.geometry import localize
-from dronenav.matching import RootSiftMatcher
 from dronenav.types import Fix, Matches
 
 ROOT = Path(__file__).resolve().parents[1]
 FRAME_SIZE = (640, 480)
-GROUND = make_map(2400, 1800, seed=3)
+GROUND = make_map(2400, 1800, seed=3, shapes=3600)   # 4x the default area, so 4x the shapes: same density
 MAP = cv2.resize(GROUND, (1200, 900), interpolation=cv2.INTER_AREA)        # 1 map px = 2 ground px
 TO_MAP = np.diag([0.5, 0.5, 1.0])                                          # ground px -> map px
 # frame -> ground at scale 0.5, so frame -> map at 0.25: one frame px covers a quarter of a map px

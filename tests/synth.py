@@ -12,8 +12,9 @@ import cv2
 import numpy as np
 
 
-def make_map(w: int = 1200, h: int = 900, seed: int = 0) -> np.ndarray:
-    """A BGR uint8 map of seeded random shapes; same seed, same pixels."""
+def make_map(w: int = 1200, h: int = 900, seed: int = 0, shapes: int = 900) -> np.ndarray:
+    """A BGR uint8 map of seeded random shapes; same seed, same pixels. Scale ``shapes`` with the area to keep
+    the density of the default 1200 x 900 map."""
     rng = np.random.default_rng(seed)
     # background: noise smoothed at several scales, like fields and roofs seen from above; corners at every
     # scale, so a frame rendered at another zoom still shares features with the map
@@ -21,7 +22,7 @@ def make_map(w: int = 1200, h: int = 900, seed: int = 0) -> np.ndarray:
     for k, amp in ((3, 25), (9, 40), (27, 50)):
         base += amp * cv2.GaussianBlur(rng.normal(0, 1, (h, w)).astype(np.float32), (0, 0), k) * k ** 0.5
     img = np.repeat(np.clip(120 + base, 0, 255).astype(np.uint8)[:, :, None], 3, axis=2)
-    for _ in range(900):
+    for _ in range(shapes):
         color = tuple(int(c) for c in rng.integers(0, 256, 3))
         kind = rng.integers(3)
         x, y = int(rng.integers(0, w)), int(rng.integers(0, h))
