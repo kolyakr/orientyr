@@ -25,9 +25,9 @@ from dronenav.config import CommonArgs, add_arguments, add_shared_args, arg, ini
 from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("fake_run.py", "render_image.py", "render_video.py", "scale_table.py", "search_run.py")
+SCRIPTS = ("check_data.py", "fake_run.py", "render_image.py", "render_video.py", "scale_table.py", "search_run.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
-# The other three only draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
+# The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
 DEVICE_SCRIPTS = ("scale_table.py", "search_run.py")
 
 
