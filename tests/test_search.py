@@ -18,10 +18,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
-from dronenav.search import SearchConfig, Searcher, SearchMode, search_window
 from tests.synth import make_h, make_map, render_frame
 
 from dronenav.matching import RootSiftMatcher
+from dronenav.search import SearchConfig, Searcher, SearchMode, search_window
 from dronenav.types import Fix
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,7 +121,7 @@ def test_windows_follow_the_step(searcher):
     for i in range(3):
         r = searcher.locate(i, FRAMES[i])
     x0, y0, x1, y1 = r.window
-    (xa, ya, _), (xb, yb, _), (xc, yc, _) = PATH[:3]
+    _, (xb, yb, _), (xc, yc, _) = PATH[:3]
     centre = ((x0 + x1) / 2, (y0 + y1) / 2)
     # the window centre follows the predicted frame centre, up to the footprint's asymmetry under rotation and
     # the map clip (the flight is well inside the map here)
