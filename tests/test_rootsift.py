@@ -15,10 +15,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.synth import apply, make_h, make_map, render_frame
 
 from dronenav.geometry import localize
 from dronenav.matching import RootSiftConfig, RootSiftMatcher, rootsift
-from tests.synth import apply, make_h, make_map, render_frame
 
 ROOT = Path(__file__).resolve().parents[1]
 FRAME_SIZE = (480, 360)
@@ -78,7 +78,9 @@ def test_another_map_is_extracted(tmp_path):
 def test_a_one_pixel_change_is_another_map(tmp_path):
     RootSiftMatcher(MAP, cache_dir=tmp_path)
     edited = MAP.copy()
-    edited[10, 10] ^= 1
+    # a change SIFT can see (it works on intensity): one pixel turned from its value to its inverse in every
+    # channel. A colour change that leaves the grey value equal gives identical features and may share the cache.
+    edited[10, 10] = 255 - edited[10, 10]
     assert RootSiftMatcher(edited, cache_dir=tmp_path).map_extractions == 1
 
 

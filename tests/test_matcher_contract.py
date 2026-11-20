@@ -10,11 +10,11 @@ Ground truth: a synthetic map and a frame rendered from it through a known homog
 """
 import numpy as np
 import pytest
+from tests.synth import apply, make_h, make_map, render_frame
 
 from dronenav.geometry import localize
 from dronenav.matching import RootSiftMatcher
 from dronenav.types import Matcher, Matches
-from tests.synth import apply, make_h, make_map, render_frame
 
 FRAME_SIZE = (480, 360)
 MAP = make_map()
