@@ -80,6 +80,29 @@ frame as a forced miss:
 Every frame after frame 0 is found in its window, except the forced miss. The miss falls back to the whole
 map, finds nothing (correctly), and the next frame is found again by the global search.
 
+### Any heading (M2-05)
+
+A drone can face any way, so a frame can be turned any amount against the north-up map. RootSIFT gives each
+keypoint its own orientation, so the matcher needs no heading. [src/dronenav/rotation.py](src/dronenav/rotation.py)
+measures that instead of trusting it: each frame goes through the same search the pipeline uses, and the results
+are grouped by the frame's true heading, so a matcher that fails only when the drone flies south shows up as one
+bad bin. A fix counts as localized if it is accepted and within 10 px of the truth, and as wrong if it is accepted
+and further off.
+
+Measured with `python scripts/rotation_check.py`: the Irpin flights turn through every heading.
+
+| flight | frames | localized | wrong | median error px, per 45° bin | max heading error |
+|---|---|---|---|---|---|
+| mild 2025 | 442 | 442, all 8 bins at 100% | 0 | 0.26 – 0.55 | 0.30° |
+| harsh 2025 | 280 | 280, all 8 bins at 100% | 0 | 0.42 – 0.68 | 0.43° |
+
+The bins are uneven (the flights spend little time heading 90–135° and 315–360°: 1 to 8 frames each), but each has
+frames. The tests add a synthetic full turn in 15° steps and real keyframes turned by 90°, 180° and 270°. The 360°
+phone take re-checks this once it is filmed. The learned matchers (M4) are not rotation-invariant; M4-04 uses this
+same report to show what turning the frame north-up by the compass gives them.
+
+![Success by heading bin, Irpin mild and harsh 2025](results/m2-05/rotation.png)
+
 ### Per-fix confidence (M4-08)
 
 [src/dronenav/confidence.py](src/dronenav/confidence.py) gives every accepted fix two numbers:

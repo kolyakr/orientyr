@@ -46,14 +46,15 @@ def plot(results: dict[str, list[HeadingBin]], path: Path) -> None:
     width = 0.8 / max(1, len(results))
     for k, (name, bins) in enumerate(results.items()):
         xs = [i + k * width for i in range(len(bins))]
-        ax.bar(xs, [100 * (b.success or 0) for b in bins], width, label=name)
+        bars = ax.bar(xs, [100 * (b.success or 0) for b in bins], width, label=name)
+        ax.bar_label(bars, [f"n={b.frames}" for b in bins], fontsize=7)   # the bins are uneven: show the evidence
     first = next(iter(results.values()))
     ax.set_xticks([i + 0.4 - width / 2 for i in range(len(first))],
                   [f"{b.lo_deg:.0f}–{b.hi_deg:.0f}°" for b in first])
-    ax.set_ylim(0, 105)
+    ax.set_ylim(0, 112)
     ax.set_ylabel("localized, %")
     ax.set_xlabel("true heading (clockwise from north)")
-    ax.legend(fontsize=8, ncol=3, loc="lower right")
+    ax.legend(fontsize=8, ncol=len(results), loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False)
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
