@@ -25,15 +25,15 @@ from dronenav.config import CommonArgs, add_arguments, add_shared_args, arg, ini
 from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("chaos_sheet.py", "check_data.py", "confidence_check.py", "fake_run.py", "render_image.py",
-           "render_video.py", "run.py", "scale_table.py", "search_run.py")
+SCRIPTS = ("chaos_sheet.py", "check_data.py", "confidence_check.py", "fake_run.py", "quality_sheet.py",
+           "render_image.py", "render_video.py", "run.py", "scale_table.py", "search_run.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
 # The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
 DEVICE_SCRIPTS = ("scale_table.py", "search_run.py")
-# run.py and confidence_check.py match too and take --device, but their required arguments stop them
-# before any work when called bare,
+# run.py, confidence_check.py and quality_sheet.py (with --map) match too and take --device, but their required
+# arguments stop them before any work when called bare,
 # so only the option itself is checked here; its device line is the same init_cli() call as in the two above.
-DEVICE_OPTION_SCRIPTS = (*DEVICE_SCRIPTS, "run.py", "confidence_check.py")
+DEVICE_OPTION_SCRIPTS = (*DEVICE_SCRIPTS, "run.py", "confidence_check.py", "quality_sheet.py")
 
 
 def _size(text: str) -> tuple[int, int]:
