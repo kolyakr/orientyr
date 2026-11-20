@@ -129,6 +129,10 @@ Other commands: `tools/task.sh mine` (my tasks and what blocks them), `claim <is
 not), `drop` (give the current task back: board → Todo, unassigned; then say why in the issue),
 `status <issue#> <Todo|In Progress|Done>`. One task in progress per person at a time.
 
+**Owner-only tasks** (label `owner-only`, e.g. M8-07: repo clean-up and publishing) are done by @kolyakr alone.
+`tools/task.sh` refuses them for anyone else and hides them from `ready`; the `owner-only` workflow unassigns
+anyone else and fails their PR's check.
+
 ### Blocked tasks and notifications
 
 - A task's blockers are its GitHub "blocked by" links (from "Depends on"). Open tasks with an open blocker carry the
@@ -195,6 +199,7 @@ What makes a test reliable here:
   progress, continue it on its branch; otherwise propose tasks from `tools/task.sh ready` and let the human choose.
   If the work asked for matches no task, ask for one (or ask the human to open an issue) rather than inventing work.
 - Use `tools/task.sh` for start / PR / finish / status; don't hand-edit the board or invent branch names.
+- Never propose, claim or work on an `owner-only` task unless the human is @kolyakr.
 - Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.
   Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
 - Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). Run the full suite before `tools/task.sh pr` and before `finish`; never merge red.

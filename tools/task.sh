@@ -17,6 +17,7 @@ ROOT=$(git rev-parse --show-toplevel)
 # shellcheck source=tools/task.env
 source "${TASK_ENV:-$ROOT/tools/task.env}"
 OWNER="${REPO%/*}"; NAME="${REPO#*/}"
+TASK_OWNER="${TASK_OWNER:-$OWNER}"   # the person who alone may take owner-only tasks
 
 die() { echo "task.sh: $*" >&2; exit 1; }
 
@@ -34,11 +35,18 @@ gql() {  # gql <query> <jq> [extra -F args…]: GraphQL on our repo; $owner, $na
 
 issue_q() {  # issue_q <issue#> <jq filter applied to the issue>
   gql 'query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){issue(number:$n){
-    number title state body assignees(first:10){nodes{login}} blockedBy(first:50){nodes{number title state}}
+    number title state body labels(first:20){nodes{name}} assignees(first:10){nodes{login}} blockedBy(first:50){nodes{number title state}}
     projectItems(first:10){nodes{id project{id}}}}}}' ".data.repository.issue | $2" -F n="$1"
 }
 
 me() { gh api user --jq .login; }
+
+check_owner_only() {  # tasks labelled owner-only (e.g. M8-07, publishing) are for the repo owner alone
+  local labels; labels=$(issue_q "$1" '[.labels.nodes[].name] | join(",")')
+  if [[ ",$labels," == *",owner-only,"* && "$(me)" != "$TASK_OWNER" ]]; then
+    die "#$1 is owner-only: only @$TASK_OWNER can take it"
+  fi
+}
 
 set_status() {  # set_status <issue#> <status name>
   local opt item
@@ -85,6 +93,7 @@ case "${1:-}" in
     gql "$all_issues" ".data.repository.issues.nodes[]
       | select(([.blockedBy.nodes[] | select(.state==\"OPEN\")] | length)==0)
       | select((.assignees.nodes | length)==0 or ([.assignees.nodes[].login] | index(\"$m\")))
+      | select(([.labels.nodes[].name] | index(\"owner-only\") | not) or \"$m\" == \"$TASK_OWNER\")
       | \"#\(.number)\t\(.title)\t\([.labels.nodes[].name | select(. != \"blocked\")] | join(\",\"))\t\(if (.assignees.nodes|length)>0 then \"claimed by you\" else \"\" end)\""
     ;;
 
@@ -98,6 +107,7 @@ case "${1:-}" in
   claim)
     n="${2:?usage: task.sh claim <issue#>}"
     [[ $(issue_q "$n" .state) == OPEN ]] || die "#$n is not open"
+    check_owner_only "$n"
     taken=$(issue_q "$n" '[.assignees.nodes[].login] | join(",")')
     [[ -z "$taken" || "$taken" == "$(me)" ]] || die "#$n is already taken by $taken"
     gh issue edit "$n" -R "$REPO" --add-assignee @me >/dev/null
@@ -109,6 +119,7 @@ case "${1:-}" in
   start)
     n="${2:?usage: task.sh start <issue#>}"
     [[ $(issue_q "$n" .state) == OPEN ]] || die "#$n is not open"
+    check_owner_only "$n"
     m=$(me)
     taken=$(issue_q "$n" '[.assignees.nodes[].login] | join(",")')
     [[ -z "$taken" || "$taken" == "$m" ]] || die "#$n is already taken by $taken"
