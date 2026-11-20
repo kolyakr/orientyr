@@ -302,9 +302,10 @@ def test_dead_reckoning_drifts_from_the_truth_while_lost(run):
 
 def test_the_drift_shows_for_every_seed(tmp_path):
     # the jam can fall on a nearly straight stretch, where coasting straight would not drift at all; the UI
-    # and the HUD video need to show the drift whatever the seed (seed 11 drifted only 4 px before the fix)
+    # and the HUD video need to show the drift whatever the seed (seed 11 drifted only 4 px before the fix; seed
+    # 30 still did with a bias that turned the noisy velocity estimate, because the noise ate half the bias)
     m = _texture_map(tmp_path / "map.png")
-    for seed in range(12):
+    for seed in range(40):
         make_fake_run(m, tmp_path / f"s{seed}", FakeRunConfig(seed=seed, frame_size=(96, 96), scale=1.7))
         assert _lost_drift(tmp_path / f"s{seed}") > 5, seed
 
