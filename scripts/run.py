@@ -25,7 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", required=True, help="run folder to write")
     ap.add_argument("--matcher", default="sift", help=f"feature matcher (available: {', '.join(sorted(MATCHERS))})")
     ap.add_argument("--fps", type=float, default=None,
-                    help="frames per second, for the frames' times (default: meta.json next to them, else 1)")
+                    help="the rate of the numbers in the frame names: t = number / fps (keyframes frame_00030 of a "
+                         "30 fps video: 30). Default: meta.json next to the frames, else 1")
     ap.add_argument("--speed", type=float, default=1.0, help="video: run seconds per video second (default 1)")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
     a = ap.parse_args(argv)
