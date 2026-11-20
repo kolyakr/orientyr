@@ -1,4 +1,4 @@
-"""The shared ``Matcher`` contract: what every backend (RootSIFT, XFeat; LightGlue later) must do.
+"""The shared ``Matcher`` contract: what every backend (RootSIFT, XFeat, LightGlue) must do.
 
 A later backend joins by adding a factory to ``MATCHERS``. A learned backend needs its weights, which are neither
 committed nor downloaded by tests: it gets a mark in ``MARKS`` and skips where the weights are not cached (CI). The contract (dronenav.types.Matcher):
@@ -16,6 +16,7 @@ from tests.weights import needs_xfeat_weights
 
 from dronenav.geometry import localize
 from dronenav.matching import RootSiftMatcher, XFeatMatcher
+from dronenav.matching.lightglue import LightGlueMatcher, weights_available
 from dronenav.types import Matcher, Matches
 
 FRAME_SIZE = (480, 360)
@@ -30,8 +31,11 @@ MATCHERS = {
     "rootsift": lambda cache_dir: RootSiftMatcher(cache_dir=cache_dir),
     # CPU and no download: the contract is the same on every device, and a test never reaches for the network
     "xfeat": lambda cache_dir: XFeatMatcher(cache_dir=cache_dir, device="cpu", download=False),
+    "lightglue": lambda cache_dir: LightGlueMatcher(cache_dir=cache_dir, device="cpu"),
 }
-MARKS = {"xfeat": needs_xfeat_weights}
+# a backend whose weights are not on disk (CI is offline) skips its run of the contract, visibly
+MARKS = {"xfeat": needs_xfeat_weights,
+         "lightglue": pytest.mark.skipif(not weights_available("disk"), reason="DISK/LightGlue weights missing")}
 
 
 @pytest.fixture(params=[pytest.param(name, marks=MARKS.get(name, ())) for name in MATCHERS])
