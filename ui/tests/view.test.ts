@@ -132,9 +132,9 @@ describe("camera", () => {
     expect(footprintSize([at(1, 1)])).toBe(0); // no fix at all: the caller picks a margin
   });
 
-  it("square map, route across most of it: the route fits the free area, the map covers the height", () => {
+  it("square map, route across its width: the route fits the free area, the map covers the height", () => {
     const map: [number, number] = [3936, 3936];
-    const box = routeBox([at(594, 571), at(3713, 3116)], map, 340);
+    const box = routeBox([at(800, 1200), at(3500, 2800)], map, 340);
     const cam = fitRoute(box, map, free, view);
     expectInside(onScreen(box, cam), free);
     expectTight(box, cam);

@@ -130,3 +130,82 @@ export function niceStep(n: number, target: number): number {
 export function drawAngle(deg: number): number {
   return Math.round(deg * 10) / 10;
 }
+
+/** A box in px: on the map, or on the screen. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Where the map is drawn on the screen: screen px = map px * scale + (x, y). */
+export interface Camera {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+/** How big one camera footprint is on the map, in map px: the median larger side over the accepted fixes; 0 without any. */
+export function footprintSize(records: RunRecord[]): number {
+  const sizes = records.flatMap((r) => {
+    if (!r.fix?.accepted) return [];
+    const xs = r.fix.footprint.map((p) => p[0]);
+    const ys = r.fix.footprint.map((p) => p[1]);
+    return [Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))];
+  }).sort((a, b) => a - b);
+  return sizes.length ? sizes[Math.floor(sizes.length / 2)] : 0;
+}
+
+/**
+ * The box around the whole route, in map px, with a margin for what is drawn around the points (the footprint,
+ * the labels). The margin never reaches outside the map; a point that drifted off the map still stays inside.
+ */
+export function routeBox(records: RunRecord[], [w, h]: [number, number], margin: number): Rect {
+  const xs = records.map((r) => r.x);
+  const ys = records.map((r) => r.y);
+  const side = (lo: number, hi: number, size: number) => {
+    const from = Math.min(lo, Math.max(0, lo - margin));
+    const to = Math.max(hi, Math.min(size, hi + margin), from + 1); // never empty: the scale must stay finite
+    return [from, to - from];
+  };
+  const [x, width] = side(Math.min(...xs), Math.max(...xs), w);
+  const [y, height] = side(Math.min(...ys), Math.max(...ys), h);
+  return { x, y, width, height };
+}
+
+/**
+ * The camera of the whole-route view. `free` is the part of the screen no panel covers, `view` the whole window;
+ * both in the same screen px. Three rules, in this order of weight:
+ *   1. the route box lies inside `free`, as large as it can be;
+ *   2. the map covers `view` where rule 1 allows: it slides under the panels, so no map edge shows;
+ *   3. otherwise the route box sits in the middle of `free`.
+ */
+export function fitRoute(box: Rect, [w, h]: [number, number], free: Rect, view: Rect): Camera {
+  const scale = Math.min(free.width / box.width, free.height / box.height);
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+  const along = (b0: number, bLen: number, mapLen: number, f0: number, fLen: number, v0: number, vLen: number) => {
+    let t = f0 + (fLen - bLen * scale) / 2 - b0 * scale;                              // rule 3
+    if (mapLen * scale >= vLen) t = clamp(t, v0 + vLen - mapLen * scale, v0);         // rule 2
+    return clamp(t, f0 - b0 * scale, f0 + fLen - (b0 + bLen) * scale);                // rule 1
+  };
+  return {
+    scale,
+    x: along(box.x, box.width, w, free.x, free.width, view.x, view.width),
+    y: along(box.y, box.height, h, free.y, free.height, view.y, view.height),
+  };
+}
+
+/**
+ * The same camera for a group inside an svg whose viewBox is the map and which the browser fits into its cell
+ * (preserveAspectRatio "xMidYMid meet"): the transform of that group, in map units. The camera's screen px are
+ * counted from the cell's top-left corner.
+ */
+export function inViewBox(camera: Camera, [w, h]: [number, number], cell: { width: number; height: number }): Camera {
+  const fit = Math.min(cell.width / w, cell.height / h);
+  return {
+    scale: camera.scale / fit,
+    x: (camera.x - (cell.width - w * fit) / 2) / fit,
+    y: (camera.y - (cell.height - h * fit) / 2) / fit,
+  };
+}
