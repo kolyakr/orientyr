@@ -382,3 +382,14 @@ def test_the_irpin_hires_layer_gets_its_own_years_zoom_18_block():
     m = load_map(IRPIN / "hires" / "irpin_2025_z18.png")
     assert m.level["zoom"] == 18 and m.level["file"] == "hires/irpin_2025_z18.png"
     assert m.sidecar["capture"]["date"].startswith("2025")
+
+
+@pytest.mark.skipif(not hasattr(Path, "symlink_to"), reason="needs symlinks")
+def test_a_symlinked_hires_folder_keeps_its_sidecar(tmp_path):
+    # big layers are often shared through a link: the sidecar names "hires/...", not the link's target folder
+    _img(tmp_path / "maps" / "m.png", shape=(20, 30, 3))
+    side = _sidecar(tmp_path / "maps" / "m.json", (30, 20), hires_size=(60, 40))
+    _img(tmp_path / "store" / "m_z18.png", shape=(40, 60, 3))
+    (tmp_path / "hires").symlink_to(tmp_path / "store", target_is_directory=True)
+    m = load_map(tmp_path / "hires" / "m_z18.png")
+    assert m.sidecar == side and m.level == side["hires"]
