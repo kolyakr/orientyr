@@ -19,6 +19,8 @@ A line is the ``TrackState`` flattened, plus the frame's identity and a few opti
 - ``extra`` holds fields that later milestones add (simulator truth, GPS, search window, events). Unknown
   top-level keys are rejected, so a typo fails loudly instead of being silently dropped.
 - Numbers must be finite: ``NaN`` and ``Infinity`` are not JSON and break the web viewer.
+- Records are in frame order: ``idx`` strictly increasing (gaps are fine, e.g. every N-th video frame) and ``t``
+  never decreasing. Both the writer and the reader check it.
 
 Every problem raises :class:`TelemetryError` with the field (and, when reading a file, the line) it is about.
 """
@@ -107,13 +109,20 @@ def record_to_dict(rec: Record) -> dict:
         "cov": _array_out("cov", tr.cov),
         "fix": None if tr.fix is None else _fix_to_dict(tr.fix),
         "backend": rec.backend, "ms": rec.ms, "interpolated": rec.interpolated,
-        "extra": rec.extra,
+        "extra": _json_copy("extra", rec.extra),
     }
-    try:
-        json.dumps(rec.extra, allow_nan=False)
-    except (TypeError, ValueError) as e:
-        raise TelemetryError(f"extra must hold only JSON values with finite numbers: {e}") from None
     return d
+
+
+def _json_copy(name: str, value: dict) -> dict:
+    """A deep copy of ``value`` made through JSON, so the line owns its data and the round trip is exact."""
+    try:
+        copy = json.loads(json.dumps(value, allow_nan=False))
+    except (TypeError, ValueError) as e:
+        raise TelemetryError(f"{name} must hold only JSON values with finite numbers: {e}") from None
+    if copy != value:  # a tuple would come back as a list, an int key as a string
+        raise TelemetryError(f"{name} must survive JSON unchanged: use lists, not tuples, and string keys")
+    return copy
 
 
 def record_from_dict(d: dict) -> Record:
@@ -181,12 +190,15 @@ class RunWriter:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._f = self.path.open("w", encoding="utf-8")
+        self._last: Record | None = None
 
     def write(self, rec: Record) -> None:
-        # Serialise before writing, so an invalid record never leaves half a line in the file.
+        # Check and serialise before writing, so an invalid record never leaves half a line in the file.
+        _check_order(self._last, rec)
         line = json.dumps(record_to_dict(rec), allow_nan=False)
         self._f.write(line + "\n")
         self._f.flush()
+        self._last = rec
 
     def close(self) -> None:
         self._f.close()
@@ -211,6 +223,7 @@ def write_run(path: str | Path, records: Iterable[Record]) -> int:
 def iter_run(path: str | Path) -> Iterator[Record]:
     """Read a run lazily, record by record; blank lines are skipped. Errors name the file and the line."""
     path = Path(path)
+    last: Record | None = None
     with path.open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             if not line.strip():
@@ -221,11 +234,17 @@ def iter_run(path: str | Path) -> Iterator[Record]:
             except _NonFinite as e:
                 raise TelemetryError(f"{where}: {e} is not a finite number (NaN and Infinity are not JSON)") from None
             except json.JSONDecodeError as e:
+                if not line.endswith("\n"):  # the writer ends every line with one
+                    raise TelemetryError(f"{where}: incomplete last line (the file is truncated or still "
+                                         f"being written)") from None
                 raise TelemetryError(f"{where}: invalid JSON: {e.msg} at column {e.colno}") from None
             try:
-                yield record_from_dict(d)
+                rec = record_from_dict(d)
+                _check_order(last, rec)
             except TelemetryError as e:
                 raise TelemetryError(f"{where}: {e}") from None
+            last = rec
+            yield rec
 
 
 def read_run(path: str | Path) -> list[Record]:
@@ -234,6 +253,17 @@ def read_run(path: str | Path) -> list[Record]:
 
 
 # --- validation helpers ----------------------------------------------------------------------------------------
+
+def _check_order(prev: Record | None, rec: Record) -> None:
+    """Records follow the flight: idx strictly increasing, t never going back."""
+    if prev is None:
+        return
+    if rec.idx <= prev.idx:
+        raise TelemetryError(f"idx {rec.idx} after idx {prev.idx}: records must be in frame order "
+                             f"(idx strictly increasing)")
+    if rec.t < prev.t:
+        raise TelemetryError(f"t {rec.t:g} after t {prev.t:g}: records must be in frame order (t never decreasing)")
+
 
 class _NonFinite(Exception):
     pass
@@ -261,7 +291,10 @@ def _is_number(v) -> bool:
 def _number(name: str, v, minimum: float | None = None) -> float:
     if not _is_number(v):
         raise TelemetryError(f"{name} must be a number, got {type(v).__name__}")
-    v = float(v)
+    try:
+        v = float(v)
+    except OverflowError:  # an int with hundreds of digits: valid JSON, not a float64
+        raise TelemetryError(f"{name} must be finite, got an integer too large for a float") from None
     if not math.isfinite(v):
         raise TelemetryError(f"{name} must be finite, got {v}")
     if minimum is not None and v < minimum:
@@ -296,6 +329,8 @@ def _array_in(name: str, v, shape: tuple) -> np.ndarray:
         a = np.array(v, dtype=np.float64)
     except ValueError:  # ragged rows
         raise TelemetryError(f"{name} must be {want}, got ragged rows") from None
+    except OverflowError:
+        raise TelemetryError(f"{name} must be finite, got an integer too large for a float") from None
     if a.shape != shape:
         raise TelemetryError(f"{name} must be {want}, got shape {a.shape}")
     if not np.isfinite(a).all():

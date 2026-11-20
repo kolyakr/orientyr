@@ -215,10 +215,10 @@ def test_telemetry_error_is_a_value_error():
 
 def test_read_names_the_line_of_a_bad_record(tmp_path):
     path = tmp_path / "run.jsonl"
-    good = json.dumps(_valid())
-    bad = _valid()
+    good = [json.dumps(record_to_dict(_record(i))) for i in (0, 1)]   # two distinct frames, in order
+    bad = record_to_dict(_record(2))
     bad["fix"]["H"] = [[1, 0, 0], [0, 1, 0]]
-    path.write_text(good + "\n" + good + "\n" + json.dumps(bad) + "\n")
+    path.write_text(good[0] + "\n" + good[1] + "\n" + json.dumps(bad) + "\n")
     with pytest.raises(TelemetryError, match=r"line 3.*fix\.H"):
         read_run(path)
 
@@ -246,7 +246,7 @@ def test_writing_a_non_finite_value_fails_and_names_the_field(tmp_path):
         write_run(path, [Record(idx=0, t=0.0, source="a.png", track=track)])
 
 
-@pytest.mark.parametrize("extra", [{"pt": (1, 2)}, {5: "a"}, {"a": np.float64(1.0)}, {"a": math.inf}])
+@pytest.mark.parametrize("extra", [{"pt": (1, 2)}, {5: "a"}, {"a": np.float32(1.0)}, {"a": math.inf}])
 def test_extra_that_json_would_change_or_reject_fails_on_write(tmp_path, extra):
     # a tuple comes back as a list and an int key as a string: the round trip would silently not be equal
     with pytest.raises(TelemetryError, match="extra"):
