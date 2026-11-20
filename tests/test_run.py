@@ -33,14 +33,21 @@ def _cli(*args, cwd=None):
                           cwd=cwd)
 
 
-def _texture(w, h, seed=3):
-    """Structure at several scales, so SIFT finds plenty of distinctive features (a stand-in for satellite)."""
+def _city(w, h, seed=3):
+    """A stand-in for satellite imagery that SIFT can work with: buildings (rotated boxes of varied brightness)
+    and roads on a noisy ground. Blurred noise alone gave SIFT 6 keypoints on 2000 x 1500 px; this gives ~17 000."""
     rng = np.random.default_rng(seed)
-    img = np.zeros((h, w), np.float32)
-    for sigma, weight in ((1.5, 0.5), (4, 0.8), (12, 1.0)):
-        img += weight * cv2.GaussianBlur(rng.uniform(0, 1, (h, w)).astype(np.float32), (0, 0), sigma)
-    img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    return cv2.merge([img, cv2.GaussianBlur(img, (0, 0), 2), 255 - img])
+    img = cv2.add(np.full((h, w), 90, np.uint8), rng.integers(0, 25, (h, w), dtype=np.uint8))
+    for _ in range(w * h // 900):
+        c = (float(rng.uniform(0, w)), float(rng.uniform(0, h)))
+        size = (float(rng.uniform(6, 40)), float(rng.uniform(6, 40)))
+        box = cv2.boxPoints((c, size, float(rng.uniform(0, 180)))).astype(np.int32)
+        cv2.fillConvexPoly(img, box, int(rng.integers(0, 256)))
+    for _ in range(w * h // 60000):
+        p1 = tuple(int(v) for v in rng.uniform(0, (w, h)))
+        p2 = tuple(int(v) for v in rng.uniform(0, (w, h)))
+        cv2.line(img, p1, p2, int(rng.integers(150, 230)), int(rng.integers(3, 9)))
+    return cv2.cvtColor(cv2.GaussianBlur(img, (0, 0), 0.8), cv2.COLOR_GRAY2BGR)
 
 
 def _jam(shape, seed):
@@ -51,7 +58,7 @@ def _jam(shape, seed):
 @pytest.fixture(scope="module")
 def world(tmp_path_factory):
     d = tmp_path_factory.mktemp("world")
-    img = _texture(1600, 1200)
+    img = _city(2000, 1500)                        # room for a cut-out route to turn around in (M6-01)
     cv2.imwrite(str(d / "map.png"), img)
     return d / "map.png", img
 
