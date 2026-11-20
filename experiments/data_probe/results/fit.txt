@@ -1,0 +1,4 @@
+params a,b,c,amp,P,phase: [ 319.922   63.411  987.64  -492.806   48.997   -0.   ]
+position residual vs analytic path: RMS 0.154 px, max 0.365 px
+image-up vs direction-to-next-frame: mean -0.00 deg, max |dev| 0.34 deg
+mean RGB crop vs map patch: [85.5 86.6 96.1] [88.7 90.3 96.3]

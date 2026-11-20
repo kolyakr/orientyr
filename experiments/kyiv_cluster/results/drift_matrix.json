@@ -1,0 +1,6609 @@
+{
+ "shift_to_2022": {
+  "2020": [
+   -0.08924489310948047,
+   -0.31438598841896237
+  ],
+  "2022": [
+   0.0,
+   0.0
+  ],
+  "2025": [
+   -0.13935871900457641,
+   0.2568526171155554
+  ]
+ },
+ "n_per_stratum": 40,
+ "summary": {
+  "2020->2020|damaged": {
+   "success": 0.975,
+   "median_inliers": 348.0
+  },
+  "2020->2020|random": {
+   "success": 0.95,
+   "median_inliers": 237.0
+  },
+  "2020->2020|all": {
+   "success": 0.9625,
+   "median_inliers": 288.0
+  },
+  "2020->2022|damaged": {
+   "success": 0.275,
+   "median_inliers": 6.0
+  },
+  "2020->2022|random": {
+   "success": 0.1,
+   "median_inliers": 5.0
+  },
+  "2020->2022|all": {
+   "success": 0.1875,
+   "median_inliers": 5.5
+  },
+  "2020->2025|damaged": {
+   "success": 0.1,
+   "median_inliers": 5.0
+  },
+  "2020->2025|random": {
+   "success": 0.0,
+   "median_inliers": 5.0
+  },
+  "2020->2025|all": {
+   "success": 0.05,
+   "median_inliers": 5.0
+  },
+  "2022->2020|damaged": {
+   "success": 0.125,
+   "median_inliers": 5.0
+  },
+  "2022->2020|random": {
+   "success": 0.025,
+   "median_inliers": 5.0
+  },
+  "2022->2020|all": {
+   "success": 0.075,
+   "median_inliers": 5.0
+  },
+  "2022->2022|damaged": {
+   "success": 1.0,
+   "median_inliers": 474.0
+  },
+  "2022->2022|random": {
+   "success": 0.975,
+   "median_inliers": 240.0
+  },
+  "2022->2022|all": {
+   "success": 0.9875,
+   "median_inliers": 397.0
+  },
+  "2022->2025|damaged": {
+   "success": 0.425,
+   "median_inliers": 9.0
+  },
+  "2022->2025|random": {
+   "success": 0.125,
+   "median_inliers": 5.0
+  },
+  "2022->2025|all": {
+   "success": 0.275,
+   "median_inliers": 6.0
+  },
+  "2025->2020|damaged": {
+   "success": 0.025,
+   "median_inliers": 5.0
+  },
+  "2025->2020|random": {
+   "success": 0.0,
+   "median_inliers": 5.0
+  },
+  "2025->2020|all": {
+   "success": 0.0125,
+   "median_inliers": 5.0
+  },
+  "2025->2022|damaged": {
+   "success": 0.525,
+   "median_inliers": 13.0
+  },
+  "2025->2022|random": {
+   "success": 0.15,
+   "median_inliers": 5.0
+  },
+  "2025->2022|all": {
+   "success": 0.3375,
+   "median_inliers": 6.0
+  },
+  "2025->2025|damaged": {
+   "success": 1.0,
+   "median_inliers": 435.5
+  },
+  "2025->2025|random": {
+   "success": 1.0,
+   "median_inliers": 265.5
+  },
+  "2025->2025|all": {
+   "success": 1.0,
+   "median_inliers": 352.0
+  }
+ },
+ "rows": [
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 339,
+   "err_px": 0.6787221056984307,
+   "ok": true
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 292.37140126740564,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 702.7556063579192,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 2.538650546569847,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 689,
+   "err_px": 0.5670635899009309,
+   "ok": true
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 750.465588069471,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 221.18432770163676,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 2951.866765522488,
+   "ok": false
+  },
+  {
+   "i": 0,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 292,
+   "err_px": 0.05477545200855307,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 328,
+   "err_px": 0.3979063302199508,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 31,
+   "err_px": 1.9953175484450605,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 572.7213229799124,
+   "ok": false
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 37,
+   "err_px": 1.173033234894126,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 521,
+   "err_px": 0.15855689126074074,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 19,
+   "err_px": 1.1853801470290106,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 11.352427896399043,
+   "ok": false
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 16,
+   "err_px": 2.374712689616559,
+   "ok": true
+  },
+  {
+   "i": 1,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 464,
+   "err_px": 0.7515437973526137,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 283,
+   "err_px": 0.7048925648915585,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 15,
+   "err_px": 1.4839191925421014,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 2719.6740742416378,
+   "ok": false
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 31,
+   "err_px": 0.5441824504261529,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 655,
+   "err_px": 0.7580696070659684,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 22,
+   "err_px": 1.5066572016533792,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 15,
+   "err_px": 1.3089527527486815,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 13,
+   "err_px": 0.6185207130842886,
+   "ok": true
+  },
+  {
+   "i": 2,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 473,
+   "err_px": 0.15216788323581773,
+   "ok": true
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 902,
+   "err_px": 0.6737643166179101,
+   "ok": true
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 173.5948078761981,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 388.46493876420664,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 148.56692471473656,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 882,
+   "err_px": 0.6049498474619314,
+   "ok": true
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 215.53726437802098,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 270.58684921526293,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 181.3710533465,
+   "ok": false
+  },
+  {
+   "i": 3,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 160,
+   "err_px": 0.6414188579694613,
+   "ok": true
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 170,
+   "err_px": 0.7368349602816722,
+   "ok": true
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 588.0623603166455,
+   "ok": false
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 431.8887391293894,
+   "ok": false
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 497.80978025901277,
+   "ok": false
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 355,
+   "err_px": 0.7610437025265504,
+   "ok": true
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 16,
+   "err_px": 0.5325518263202771,
+   "ok": true
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 1262.354691856513,
+   "ok": false
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 100.27979830978651,
+   "ok": false
+  },
+  {
+   "i": 4,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 176,
+   "err_px": 0.4801645958850806,
+   "ok": true
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 421,
+   "err_px": 0.7070895573507429,
+   "ok": true
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 29,
+   "err_px": 2.247102137522968,
+   "ok": true
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 180.58096864649454,
+   "ok": false
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 24,
+   "err_px": 0.5978774324528288,
+   "ok": true
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 341,
+   "err_px": 0.5929911810696981,
+   "ok": true
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 735.5870582264956,
+   "ok": false
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 320.0852222350773,
+   "ok": false
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 61.20508075648456,
+   "ok": false
+  },
+  {
+   "i": 5,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 381,
+   "err_px": 0.5338634350867144,
+   "ok": true
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 442,
+   "err_px": 0.7626472250481656,
+   "ok": true
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 3.761560827619963,
+   "ok": false
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 225.24472360848856,
+   "ok": false
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 468.462409788168,
+   "ok": false
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 471,
+   "err_px": 0.7588722450302023,
+   "ok": true
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 966.5114468663338,
+   "ok": false
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 18.343027799904423,
+   "ok": false
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 16,
+   "err_px": 0.7297852641040918,
+   "ok": true
+  },
+  {
+   "i": 6,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 596,
+   "err_px": 0.22052073000124242,
+   "ok": true
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 468,
+   "err_px": 0.6526557901287544,
+   "ok": true
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 62.01589211151435,
+   "ok": false
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 481.27967336695093,
+   "ok": false
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 54.39818810457198,
+   "ok": false
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 313,
+   "err_px": 0.5966156079721231,
+   "ok": true
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 1586.6402511953534,
+   "ok": false
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 171.69176361622348,
+   "ok": false
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 13,
+   "err_px": 0.29953928363042936,
+   "ok": true
+  },
+  {
+   "i": 7,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 583,
+   "err_px": 0.1765718060671039,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 699,
+   "err_px": 0.727937252518414,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 15,
+   "err_px": 1.3922073385922216,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 9,
+   "err_px": 2.108646291246431,
+   "ok": false
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 331.6002411126128,
+   "ok": false
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 215,
+   "err_px": 0.4352349185404191,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 31,
+   "err_px": 1.3573763352956545,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 446.8658949893734,
+   "ok": false
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 40,
+   "err_px": 1.429076665338471,
+   "ok": true
+  },
+  {
+   "i": 8,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 310,
+   "err_px": 0.055166549321565984,
+   "ok": true
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 414,
+   "err_px": 0.30900900597759884,
+   "ok": true
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 180.15904675465464,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 9,
+   "err_px": 2.2715146290666177,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 532.7576469916849,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 481,
+   "err_px": 0.695920475652029,
+   "ok": true
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 11,
+   "err_px": 2.440006143385634,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 132.52883830876334,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 354.32357365107293,
+   "ok": false
+  },
+  {
+   "i": 9,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 463,
+   "err_px": 0.4867026810582041,
+   "ok": true
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 644,
+   "err_px": 0.5892016282228275,
+   "ok": true
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 206.58490591190758,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 617.9410851729859,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 455.40843355992035,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 406,
+   "err_px": 0.5696469560325846,
+   "ok": true
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 1288.6948344505543,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 347.2518100934702,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 40.186099894343855,
+   "ok": false
+  },
+  {
+   "i": 10,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 525,
+   "err_px": 0.7272947881795432,
+   "ok": true
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 286,
+   "err_px": 0.7512885724445798,
+   "ok": true
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 299.572420746185,
+   "ok": false
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 688.965898737295,
+   "ok": false
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 466.58193484300045,
+   "ok": false
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 571,
+   "err_px": 0.5538874771379484,
+   "ok": true
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 19,
+   "err_px": 1.3030009696742422,
+   "ok": true
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 584.9928301844516,
+   "ok": false
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 24,
+   "err_px": 0.8149345939423,
+   "ok": true
+  },
+  {
+   "i": 11,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 431,
+   "err_px": 0.3110443327856532,
+   "ok": true
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 302,
+   "err_px": 0.6587964250878166,
+   "ok": true
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 301.8439953760551,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 460.1956886423606,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 673.3782943486856,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 597,
+   "err_px": 0.01648921232075018,
+   "ok": true
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 647.767303286713,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 538.2764148248117,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 324.92501828258855,
+   "ok": false
+  },
+  {
+   "i": 12,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 324,
+   "err_px": 0.6344431028906822,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 600,
+   "err_px": 0.7476224331185443,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 98,
+   "err_px": 1.687139691589895,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 21,
+   "err_px": 1.274899248444622,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 37,
+   "err_px": 1.1788103104382368,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 592,
+   "err_px": 0.7223460417418874,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 20,
+   "err_px": 0.6762129853365634,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 8,
+   "err_px": 1.9467154217932794,
+   "ok": false
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 31,
+   "err_px": 0.9801496604902776,
+   "ok": true
+  },
+  {
+   "i": 13,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 520,
+   "err_px": 0.6171905289192205,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 110,
+   "err_px": 0.5774242891989321,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 21,
+   "err_px": 0.24306993699013732,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 28.716663355534603,
+   "ok": false
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 1014.4830185186619,
+   "ok": false
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 436,
+   "err_px": 0.46485933856697986,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 53,
+   "err_px": 0.7860959550586524,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 571.6841574972005,
+   "ok": false
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 74,
+   "err_px": 0.7793646895597014,
+   "ok": true
+  },
+  {
+   "i": 14,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 572,
+   "err_px": 0.695779197803073,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 153,
+   "err_px": 0.16945481024436268,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 12,
+   "err_px": 0.887353963540831,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 449.0195230104989,
+   "ok": false
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 296.9227485058548,
+   "ok": false
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 172,
+   "err_px": 0.612523990652092,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 17,
+   "err_px": 1.3728498878469446,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 356.21923302265975,
+   "ok": false
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 16,
+   "err_px": 1.3085082368518781,
+   "ok": true
+  },
+  {
+   "i": 15,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 364,
+   "err_px": 0.5924240636337983,
+   "ok": true
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 234,
+   "err_px": 0.0851151932642654,
+   "ok": true
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 5.927377218732995,
+   "ok": false
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 568.7678196557974,
+   "ok": false
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 471.0116778112509,
+   "ok": false
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 449,
+   "err_px": 0.5719668616012574,
+   "ok": true
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 220.6813377903298,
+   "ok": false
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 667.5726852286858,
+   "ok": false
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 21,
+   "err_px": 0.13684538133597277,
+   "ok": true
+  },
+  {
+   "i": 16,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 295,
+   "err_px": 0.5546240125683894,
+   "ok": true
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 429,
+   "err_px": 0.09396918581864792,
+   "ok": true
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 653.6989510540483,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 629.7126016704832,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 245.48805900587863,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 317,
+   "err_px": 0.1364132694622887,
+   "ok": true
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 553.2262851090255,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 26.612597551034828,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 104.05375030009083,
+   "ok": false
+  },
+  {
+   "i": 17,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 243,
+   "err_px": 0.47116996823630275,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 83,
+   "err_px": 0.2071116962396193,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 20,
+   "err_px": 0.6796391119539497,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 16,
+   "err_px": 1.4057624697964346,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 357.67804060040646,
+   "ok": false
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 477,
+   "err_px": 0.3202047818504116,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 54,
+   "err_px": 0.5276316423297777,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 297.0865994679385,
+   "ok": false
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 68,
+   "err_px": 0.918989634584678,
+   "ok": true
+  },
+  {
+   "i": 18,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 266,
+   "err_px": 0.6003068222542993,
+   "ok": true
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 528,
+   "err_px": 0.11570626303765866,
+   "ok": true
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 254.33650411493147,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 402.2403115907161,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 165.07199003412515,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 638,
+   "err_px": 0.5191137345530481,
+   "ok": true
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 112.67560944894667,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 388.6653747746444,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 1.7109555533573677,
+   "ok": false
+  },
+  {
+   "i": 19,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 343,
+   "err_px": 0.550299383012004,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 254,
+   "err_px": 0.1808265227096218,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 24,
+   "err_px": 0.8414546117867391,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 12,
+   "err_px": 1.5884570991774076,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 19,
+   "err_px": 0.8461997228399674,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 834,
+   "err_px": 0.7153058191801293,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 86,
+   "err_px": 1.4683455309211098,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 271.2360185230224,
+   "ok": false
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 69,
+   "err_px": 0.6084688686441181,
+   "ok": true
+  },
+  {
+   "i": 20,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 428,
+   "err_px": 0.6468581212218901,
+   "ok": true
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 660,
+   "err_px": 0.29961908282823535,
+   "ok": true
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 47208.203789037965,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 758.0950479186164,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 138.61420419558922,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 667,
+   "err_px": 0.25636544506302433,
+   "ok": true
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 35.992858114925255,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 804.4474948155499,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 8542.842208497517,
+   "ok": false
+  },
+  {
+   "i": 21,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 492,
+   "err_px": 0.5281812014456386,
+   "ok": true
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 753,
+   "err_px": 0.4631415445188158,
+   "ok": true
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 513.133367840626,
+   "ok": false
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 119.21375700074324,
+   "ok": false
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 139.41576097608166,
+   "ok": false
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 284,
+   "err_px": 0.32486744966696524,
+   "ok": true
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 10,
+   "err_px": 1.9150743642845645,
+   "ok": false
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 8,
+   "err_px": 26.123939069420736,
+   "ok": false
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 17,
+   "err_px": 1.6808749434635413,
+   "ok": true
+  },
+  {
+   "i": 22,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 584,
+   "err_px": 0.10615394968362646,
+   "ok": true
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 287,
+   "err_px": 0.4695876024586619,
+   "ok": true
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 10,
+   "err_px": 0.37874401007415587,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 1070.9388650998455,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 621.1416685869145,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 371,
+   "err_px": 0.6324166760025096,
+   "ok": true
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 4.114624582480693,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 380.5228333759437,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 10,
+   "err_px": 1.3758362435409135,
+   "ok": false
+  },
+  {
+   "i": 23,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 630,
+   "err_px": 0.6837247997862913,
+   "ok": true
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 215,
+   "err_px": 0.6365069127552576,
+   "ok": true
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 801.3054455869591,
+   "ok": false
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 1293.871598724586,
+   "ok": false
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 355.75126077732466,
+   "ok": false
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 221,
+   "err_px": 0.5660332618384272,
+   "ok": true
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 260.97548380358603,
+   "ok": false
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 10,
+   "err_px": 2.3465930159793382,
+   "ok": false
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 25,
+   "err_px": 0.3258857951717794,
+   "ok": true
+  },
+  {
+   "i": 24,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 487,
+   "err_px": 0.1031099887650317,
+   "ok": true
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 380,
+   "err_px": 0.5917415723617162,
+   "ok": true
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 11,
+   "err_px": 1.7238606374916956,
+   "ok": false
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 11.463045136641083,
+   "ok": false
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 633.5530401656322,
+   "ok": false
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 568,
+   "err_px": 0.7324502278323755,
+   "ok": true
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 50,
+   "err_px": 1.5780854804651716,
+   "ok": true
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 564.7782601962148,
+   "ok": false
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 32,
+   "err_px": 1.3376454480144577,
+   "ok": true
+  },
+  {
+   "i": 25,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 339,
+   "err_px": 0.41097064346855733,
+   "ok": true
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 360,
+   "err_px": 0.43198673391196296,
+   "ok": true
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 2611.63562863769,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 564.6970137597725,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 71.20271003675701,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 667,
+   "err_px": 0.3540179040235853,
+   "ok": true
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 866.9694398632655,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 250.36178132767347,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 27.018800408740525,
+   "ok": false
+  },
+  {
+   "i": 26,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 439,
+   "err_px": 0.5154641516510425,
+   "ok": true
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 515,
+   "err_px": 0.07150754730111925,
+   "ok": true
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 1.0241398375409603,
+   "ok": false
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 238.94322704807385,
+   "ok": false
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 513.5697380766576,
+   "ok": false
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 900,
+   "err_px": 0.36193735200211635,
+   "ok": true
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 16,
+   "err_px": 1.3348159019342876,
+   "ok": true
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 588.1848082819505,
+   "ok": false
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 34,
+   "err_px": 1.0010662255256488,
+   "ok": true
+  },
+  {
+   "i": 27,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 546,
+   "err_px": 0.4059924378850705,
+   "ok": true
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 336,
+   "err_px": 0.35756462795791494,
+   "ok": true
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 636.518016315938,
+   "ok": false
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 199.2243292000033,
+   "ok": false
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 959.2605297641119,
+   "ok": false
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 147,
+   "err_px": 0.05123166564229356,
+   "ok": true
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 28,
+   "err_px": 0.9966863721862426,
+   "ok": true
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 571.8374718747161,
+   "ok": false
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 229.92918624496204,
+   "ok": false
+  },
+  {
+   "i": 28,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 132,
+   "err_px": 0.2581682605973808,
+   "ok": true
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 309,
+   "err_px": 0.5110257079994032,
+   "ok": true
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 862.8387176768625,
+   "ok": false
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 616.7591388340946,
+   "ok": false
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 656.2184571115231,
+   "ok": false
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 505,
+   "err_px": 0.6739619203693268,
+   "ok": true
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 24,
+   "err_px": 1.1073002940974324,
+   "ok": true
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 630.41249942086,
+   "ok": false
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 22,
+   "err_px": 0.5431772374769152,
+   "ok": true
+  },
+  {
+   "i": 29,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 335,
+   "err_px": 0.513763594927156,
+   "ok": true
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 801.9095943741831,
+   "ok": false
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 1.5285498722663435,
+   "ok": false
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 527.435834600168,
+   "ok": false
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 748.8282205240089,
+   "ok": false
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 530,
+   "err_px": 0.7148381416284946,
+   "ok": true
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 50,
+   "err_px": 1.066529519280627,
+   "ok": true
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 880.0682500425769,
+   "ok": false
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 34,
+   "err_px": 1.2331247531454956,
+   "ok": true
+  },
+  {
+   "i": 30,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 327,
+   "err_px": 0.3027231074470125,
+   "ok": true
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 158,
+   "err_px": 0.6606871799251786,
+   "ok": true
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 1427.2507386711425,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 322.380480029074,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 215.5838734308428,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 416,
+   "err_px": 0.30151702039081507,
+   "ok": true
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 475.53031018502367,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 552.0296840438169,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 289.02399280508206,
+   "ok": false
+  },
+  {
+   "i": 31,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 522,
+   "err_px": 0.7406720943648336,
+   "ok": true
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 150,
+   "err_px": 0.06758704081419116,
+   "ok": true
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 23,
+   "err_px": 1.8750055713211,
+   "ok": true
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 592.5323002716472,
+   "ok": false
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 529.8475505622988,
+   "ok": false
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 545,
+   "err_px": 0.4773142470028528,
+   "ok": true
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 8,
+   "err_px": 1.200409284884577,
+   "ok": false
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 8,
+   "err_px": 57.25967621216444,
+   "ok": false
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 67,
+   "err_px": 0.9342934329802705,
+   "ok": true
+  },
+  {
+   "i": 32,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 177,
+   "err_px": 0.07746640919245992,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 616,
+   "err_px": 0.5744188381945154,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 49,
+   "err_px": 1.7030359268178994,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 17,
+   "err_px": 0.965865139191277,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 454.4078046963881,
+   "ok": false
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 835,
+   "err_px": 0.683245066842901,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 53,
+   "err_px": 0.8877275656608207,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 315.4601945557204,
+   "ok": false
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 72,
+   "err_px": 0.46794558624013893,
+   "ok": true
+  },
+  {
+   "i": 33,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 1227,
+   "err_px": 0.3813184960753267,
+   "ok": true
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 265,
+   "err_px": 0.40867866477473125,
+   "ok": true
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 97.70051765641865,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 711.621198432238,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 103.96815276415548,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 466,
+   "err_px": 0.6660921950075229,
+   "ok": true
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 724.7793756941751,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 47.131307979467415,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 21094.988550970662,
+   "ok": false
+  },
+  {
+   "i": 34,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 576,
+   "err_px": 0.707434071319791,
+   "ok": true
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 365,
+   "err_px": 0.5488952146578061,
+   "ok": true
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 791.5771680925291,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 232.51531745446596,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 177.779113280097,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 340,
+   "err_px": 0.7035293130190923,
+   "ok": true
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 255.43283781547768,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 887.3910468696232,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 9,
+   "err_px": 16.466292872493902,
+   "ok": false
+  },
+  {
+   "i": 35,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 699,
+   "err_px": 0.7308682357886268,
+   "ok": true
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 373,
+   "err_px": 0.518073093066421,
+   "ok": true
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 294.41766922378304,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 325.004022929723,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 94.00178838483428,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 425,
+   "err_px": 0.3425250860668887,
+   "ok": true
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 505.2582238392877,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 1651.593517805056,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 153.89168691532225,
+   "ok": false
+  },
+  {
+   "i": 36,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 458,
+   "err_px": 0.6027678791611288,
+   "ok": true
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 285,
+   "err_px": 0.4562503162894543,
+   "ok": true
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 482.8391793358602,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 667.5267818632323,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 11,
+   "err_px": 295.55842057299463,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 438,
+   "err_px": 0.2993989702176299,
+   "ok": true
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 11,
+   "err_px": 1.4061538908272295,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 876.8488192858104,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 90.46544872706731,
+   "ok": false
+  },
+  {
+   "i": 37,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 261,
+   "err_px": 0.42043433782756306,
+   "ok": true
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 357,
+   "err_px": 0.3672007556407132,
+   "ok": true
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 745.6993256746495,
+   "ok": false
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 108.14396627705418,
+   "ok": false
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 644.8485955925496,
+   "ok": false
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 424,
+   "err_px": 0.655870855068923,
+   "ok": true
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 30,
+   "err_px": 0.868066502794541,
+   "ok": true
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 348.0368597949651,
+   "ok": false
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 21,
+   "err_px": 0.23983916465998154,
+   "ok": true
+  },
+  {
+   "i": 38,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 539,
+   "err_px": 0.6540507410938102,
+   "ok": true
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 504,
+   "err_px": 0.4887405920041097,
+   "ok": true
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 180.24568670490527,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 579.5625545457812,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 463.6613899513123,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 775,
+   "err_px": 0.6472374568313858,
+   "ok": true
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 355.89733303971826,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 237.47216290510107,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 7149.534999878377,
+   "ok": false
+  },
+  {
+   "i": 39,
+   "stratum": "damaged",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 432,
+   "err_px": 0.61242240089905,
+   "ok": true
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 368,
+   "err_px": 0.10850290377323589,
+   "ok": true
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 245.76956829125513,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 517.2534804560858,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 347.4277304486498,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 688,
+   "err_px": 0.1453965131460378,
+   "ok": true
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 138.61489645304655,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 192.77500584592468,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 85.52540971959542,
+   "ok": false
+  },
+  {
+   "i": 40,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 313,
+   "err_px": 0.30548763215418906,
+   "ok": true
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 110,
+   "err_px": 0.6285312267395404,
+   "ok": true
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 668.6325011306825,
+   "ok": false
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 11.168055361811652,
+   "ok": false
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 494.4052391090056,
+   "ok": false
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 388,
+   "err_px": 0.35138532328328664,
+   "ok": true
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 371.1373277770004,
+   "ok": false
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 649.8996749367867,
+   "ok": false
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 16,
+   "err_px": 1.3261961523858699,
+   "ok": true
+  },
+  {
+   "i": 41,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 599,
+   "err_px": 0.7147419114356575,
+   "ok": true
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 1,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 1,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 405.0707814973283,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 49,
+   "err_px": 0.18845197787430654,
+   "ok": true
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 536.5723301919086,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 756.8023014805252,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 2051.1794699265147,
+   "ok": false
+  },
+  {
+   "i": 42,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 47,
+   "err_px": 0.7555106370579047,
+   "ok": true
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 39,
+   "err_px": 0.8079325177777597,
+   "ok": true
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 1.8852327478784892,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 140.30138427570424,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 409.0219896711342,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 191,
+   "err_px": 0.7226941171214852,
+   "ok": true
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 639.8933738238496,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 622.9184326123965,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 3897.3366893110338,
+   "ok": false
+  },
+  {
+   "i": 43,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 186,
+   "err_px": 0.4181174377133875,
+   "ok": true
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 769,
+   "err_px": 0.2911360229006713,
+   "ok": true
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 428.9582096209461,
+   "ok": false
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 351.83823135415525,
+   "ok": false
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 55.2048941024999,
+   "ok": false
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 270,
+   "err_px": 0.3341801768121145,
+   "ok": true
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 13,
+   "err_px": 1.3695399974294666,
+   "ok": true
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 8,
+   "err_px": 133.43391033196949,
+   "ok": false
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 11,
+   "err_px": 0.3108777947876819,
+   "ok": false
+  },
+  {
+   "i": 44,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 397,
+   "err_px": 0.5105278796495097,
+   "ok": true
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 132,
+   "err_px": 0.2211789503629673,
+   "ok": true
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 158.6195168200994,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 774.3037000709345,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 596.5139701486657,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 137,
+   "err_px": 0.5496499292668025,
+   "ok": true
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 586.3813074717202,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 217.32908350527458,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 706.480534774292,
+   "ok": false
+  },
+  {
+   "i": 45,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 219,
+   "err_px": 0.655790096896258,
+   "ok": true
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 289,
+   "err_px": 0.6533701764852032,
+   "ok": true
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 1137.2951798741467,
+   "ok": false
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 1121.133463008998,
+   "ok": false
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 356.8716685305635,
+   "ok": false
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 735,
+   "err_px": 0.4267521567421258,
+   "ok": true
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 16,
+   "err_px": 1.6086942906558073,
+   "ok": true
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 2300.8953092648944,
+   "ok": false
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 23,
+   "err_px": 0.7058544158478903,
+   "ok": true
+  },
+  {
+   "i": 46,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 557,
+   "err_px": 0.07157409892983468,
+   "ok": true
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 215,
+   "err_px": 0.3935646434199489,
+   "ok": true
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 59.97823997583793,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 546.9230959441408,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 628.3795039159005,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 186,
+   "err_px": 0.18174354033014553,
+   "ok": true
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 618.7813605374585,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 313.77333445718784,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 119.43648517974081,
+   "ok": false
+  },
+  {
+   "i": 47,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 319,
+   "err_px": 0.6449033971637704,
+   "ok": true
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 358,
+   "err_px": 0.5352746532569612,
+   "ok": true
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 8.176181722094409,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 755.2589843753789,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 8,
+   "err_px": 11.538799164500178,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 388,
+   "err_px": 0.5487345937802925,
+   "ok": true
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 392.0564247033467,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 248.75477790850138,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 950.3385384569751,
+   "ok": false
+  },
+  {
+   "i": 48,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 524,
+   "err_px": 0.053891526508695595,
+   "ok": true
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 263,
+   "err_px": 0.36013991876643586,
+   "ok": true
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 3268.5114554085358,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 264.89332725170857,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 764.0299128130117,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 149,
+   "err_px": 0.6632709042522303,
+   "ok": true
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 938.3642549705253,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 411.5854313471235,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 876.681753590411,
+   "ok": false
+  },
+  {
+   "i": 49,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 277,
+   "err_px": 0.6468133648491268,
+   "ok": true
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 287,
+   "err_px": 0.6436079374380455,
+   "ok": true
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 340.4290943741835,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 648.7223920058973,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 242.09910634303301,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 194,
+   "err_px": 0.7222937695137541,
+   "ok": true
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 760.8625192565921,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 10.308592280078846,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 278.6523826780906,
+   "ok": false
+  },
+  {
+   "i": 50,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 254,
+   "err_px": 0.0770228133822919,
+   "ok": true
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 495,
+   "err_px": 0.24512556731600785,
+   "ok": true
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 360.04484787360263,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 311.45134819761165,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 798.2048336361086,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 406,
+   "err_px": 0.7602888249017045,
+   "ok": true
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 245.57674669020489,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 846.6522933330376,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 368.1520221751544,
+   "ok": false
+  },
+  {
+   "i": 51,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 213,
+   "err_px": 0.19379396473151186,
+   "ok": true
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 251,
+   "err_px": 0.4427312383815097,
+   "ok": true
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 14,
+   "err_px": 10.855121292041977,
+   "ok": true
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 8,
+   "err_px": 190.58748175328336,
+   "ok": false
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 18.88345154017134,
+   "ok": false
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 243,
+   "err_px": 0.10984527370911142,
+   "ok": true
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 541.4912131642835,
+   "ok": false
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 249.13860202635198,
+   "ok": false
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 421.7865688949329,
+   "ok": false
+  },
+  {
+   "i": 52,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 205,
+   "err_px": 0.6254732635144747,
+   "ok": true
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 588,
+   "err_px": 0.3615205087627703,
+   "ok": true
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 427.8132622572463,
+   "ok": false
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 1544.354479966639,
+   "ok": false
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 254.81478353712353,
+   "ok": false
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 350,
+   "err_px": 0.6399741798081935,
+   "ok": true
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 29,
+   "err_px": 0.8171435525513657,
+   "ok": true
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 309.711141170287,
+   "ok": false
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 47,
+   "err_px": 0.18917278657323378,
+   "ok": true
+  },
+  {
+   "i": 53,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 897,
+   "err_px": 0.39003366559824565,
+   "ok": true
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 163,
+   "err_px": 0.4159903149126584,
+   "ok": true
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 26,
+   "err_px": 0.8884768788532267,
+   "ok": true
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 8,
+   "err_px": 1.8465143961412873,
+   "ok": false
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 648.56123541396,
+   "ok": false
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 237,
+   "err_px": 0.20027863280757155,
+   "ok": true
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 9,
+   "err_px": 74.7835573353701,
+   "ok": false
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 259.86699523769084,
+   "ok": false
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 36,
+   "err_px": 0.39957577771732533,
+   "ok": true
+  },
+  {
+   "i": 54,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 182,
+   "err_px": 0.20942283622270386,
+   "ok": true
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 153,
+   "err_px": 0.7365549634013491,
+   "ok": true
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 619.0187854673306,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 8,
+   "err_px": 1184.9809378143261,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 42,
+   "err_px": 429.97315955003177,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 143,
+   "err_px": 0.5576186108075,
+   "ok": true
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 8,
+   "err_px": 1063.2251363779542,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 225.84815792196534,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 21,
+   "err_px": 622.3555353179102,
+   "ok": false
+  },
+  {
+   "i": 55,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 69,
+   "err_px": 0.2891186291075069,
+   "ok": true
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 666,
+   "err_px": 0.5089205504659314,
+   "ok": true
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 527.6864242219192,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 2240.5049943888357,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 93.40172860456711,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 575,
+   "err_px": 0.61580299376613,
+   "ok": true
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 11,
+   "err_px": 23.475860536781486,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 292.1349118824689,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 522.1447451309143,
+   "ok": false
+  },
+  {
+   "i": 56,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 298,
+   "err_px": 0.6053644286510056,
+   "ok": true
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 154,
+   "err_px": 0.40613819033694726,
+   "ok": true
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 146.35111031930194,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 145.60826965560054,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 9,
+   "err_px": 0.8928902854179026,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 204,
+   "err_px": 0.4842414358894863,
+   "ok": true
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 452.35845221358085,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 630.2341991105325,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 203.215138267392,
+   "ok": false
+  },
+  {
+   "i": 57,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 398,
+   "err_px": 0.6109925277314789,
+   "ok": true
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 353,
+   "err_px": 0.719659484118596,
+   "ok": true
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 11,
+   "err_px": 1.0637828493883186,
+   "ok": false
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 200.53939509139698,
+   "ok": false
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 645.3195472551309,
+   "ok": false
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 229,
+   "err_px": 0.3604635469947968,
+   "ok": true
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 19,
+   "err_px": 0.8576270849821062,
+   "ok": true
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 644.9959187108605,
+   "ok": false
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 21,
+   "err_px": 0.951079625038226,
+   "ok": true
+  },
+  {
+   "i": 58,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 372,
+   "err_px": 0.33657564243127763,
+   "ok": true
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 189,
+   "err_px": 0.03223390606935215,
+   "ok": true
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 12,
+   "err_px": 3.681498916274204,
+   "ok": true
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 1202.7431172328627,
+   "ok": false
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 676.5429177422546,
+   "ok": false
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 313,
+   "err_px": 0.6297563366373308,
+   "ok": true
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 10,
+   "err_px": 2.1369516697279227,
+   "ok": false
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 174.309896395707,
+   "ok": false
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 48,
+   "err_px": 0.9114623742445113,
+   "ok": true
+  },
+  {
+   "i": 59,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 111,
+   "err_px": 0.0785580125839084,
+   "ok": true
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 689,
+   "err_px": 0.8111312526723276,
+   "ok": true
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 366.7125054153701,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 349.93296872955034,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 10,
+   "err_px": 10.14737946075111,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 434,
+   "err_px": 0.7618562244456332,
+   "ok": true
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 522.0677405868887,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 17.42310498118726,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 564.4623727959861,
+   "ok": false
+  },
+  {
+   "i": 60,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 411,
+   "err_px": 0.49585211036841137,
+   "ok": true
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 27,
+   "err_px": 0.557929564242133,
+   "ok": true
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 0,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 0,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 3.4446185834017267,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 681.5954378367704,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 232.19648065437974,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 774.994596846693,
+   "ok": false
+  },
+  {
+   "i": 61,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 114,
+   "err_px": 0.38067241292766946,
+   "ok": true
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 1745.844684893115,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 737.9771064114794,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 748.9329819535169,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 633.3836902736251,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 144,
+   "err_px": 0.7033112010714828,
+   "ok": true
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 55.44767872297606,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 813.1009691985408,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 749.4681818228077,
+   "ok": false
+  },
+  {
+   "i": 62,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 227,
+   "err_px": 0.5638089570723441,
+   "ok": true
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 521,
+   "err_px": 0.6659056833803698,
+   "ok": true
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 623.4479880011951,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 412.1771907484191,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 774.2296168228792,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 531,
+   "err_px": 0.68369833974804,
+   "ok": true
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 126.80271740020753,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 236.7121204734978,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 9,
+   "err_px": 5.255051054912891,
+   "ok": false
+  },
+  {
+   "i": 63,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 585,
+   "err_px": 0.4580445769949623,
+   "ok": true
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 147,
+   "err_px": 0.5910498500317376,
+   "ok": true
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 715.4522394819053,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 506.0339520303839,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 357.0698878016967,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 177,
+   "err_px": 0.4044125040489732,
+   "ok": true
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 559.3253210230271,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 626.7698479967746,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 143.12578256863537,
+   "ok": false
+  },
+  {
+   "i": 64,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 135,
+   "err_px": 0.5017022247861328,
+   "ok": true
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 171,
+   "err_px": 0.6111229313438621,
+   "ok": true
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 494.6565302813457,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 2788.2709810436027,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 596.7528750308758,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 483,
+   "err_px": 0.299180545031871,
+   "ok": true
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 213.25294587847796,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 874.8190177114313,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 15160.75476905045,
+   "ok": false
+  },
+  {
+   "i": 65,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 413,
+   "err_px": 0.5295257733706772,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 443,
+   "err_px": 0.5477859026895939,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 22,
+   "err_px": 0.7709190656972946,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 62.41653542689422,
+   "ok": false
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 21,
+   "err_px": 2.4542573080466408,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 451,
+   "err_px": 0.47599920489251035,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 14,
+   "err_px": 2.606834534037064,
+   "ok": true
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 34.319830568016364,
+   "ok": false
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 11,
+   "err_px": 1.5591675640568006,
+   "ok": false
+  },
+  {
+   "i": 66,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 250,
+   "err_px": 0.6269541080357607,
+   "ok": true
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 363,
+   "err_px": 0.5028859774455113,
+   "ok": true
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 156.1016405472501,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 171.14970619270187,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 631.0342659448523,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 570,
+   "err_px": 0.6194141589379373,
+   "ok": true
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 1536.5200043106051,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 188.97653015661328,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 383.2827888192313,
+   "ok": false
+  },
+  {
+   "i": 67,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 425,
+   "err_px": 0.37467162248231944,
+   "ok": true
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 200,
+   "err_px": 0.7094671761201653,
+   "ok": true
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 850.6593950485004,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 1486.0343048984746,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 911.8438794737716,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 121,
+   "err_px": 0.6036764850764289,
+   "ok": true
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 771.3256304643542,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 450.0335721574451,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 9090.580939023357,
+   "ok": false
+  },
+  {
+   "i": 68,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 244,
+   "err_px": 0.7666412019212541,
+   "ok": true
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 305,
+   "err_px": 0.5559405180836977,
+   "ok": true
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 8,
+   "err_px": 4.770652220170044,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 386.08362865292935,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 1856.6352590657536,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 385,
+   "err_px": 0.43896354997940645,
+   "ok": true
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 771.824072310383,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 572.2816604782698,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 2622.510108486051,
+   "ok": false
+  },
+  {
+   "i": 69,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 392,
+   "err_px": 0.5596745495342021,
+   "ok": true
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 168,
+   "err_px": 0.8197198371488219,
+   "ok": true
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 10,
+   "err_px": 17.47791700450058,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 836.9579395812489,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 256.11710365662947,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 154,
+   "err_px": 0.3921722219065274,
+   "ok": true
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 173.62194758654144,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 552.4879171155159,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 182.4963098125501,
+   "ok": false
+  },
+  {
+   "i": 70,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 125,
+   "err_px": 0.03541748763369837,
+   "ok": true
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 229,
+   "err_px": 0.3428540513134448,
+   "ok": true
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 13,
+   "err_px": 831.2381064880574,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 374.56809357006586,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 206.82830805188246,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 97,
+   "err_px": 0.7418218813637193,
+   "ok": true
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 13,
+   "err_px": 828.6039229923163,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 554.0959856341253,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 813.3879763066099,
+   "ok": false
+  },
+  {
+   "i": 71,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 100,
+   "err_px": 0.25660274404834044,
+   "ok": true
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 52,
+   "err_px": 0.6347533857429224,
+   "ok": true
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 3,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 3,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 181.9159018458732,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 120,
+   "err_px": 0.37921114607497747,
+   "ok": true
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 10,
+   "err_px": 3.192222751624311,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 509.95342025803285,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 7,
+   "err_px": 153.54317391011378,
+   "ok": false
+  },
+  {
+   "i": 72,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 123,
+   "err_px": 0.38876753101913464,
+   "ok": true
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 404,
+   "err_px": 0.3928222040315165,
+   "ok": true
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 209.2295086009324,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 361.5060575609158,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 93.10050875223124,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 604,
+   "err_px": 0.6633102750684485,
+   "ok": true
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 525.4810867439631,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 136.11208226823996,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 63.425205469701616,
+   "ok": false
+  },
+  {
+   "i": 73,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 539,
+   "err_px": 0.36407612624684593,
+   "ok": true
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 241,
+   "err_px": 0.2407952411932258,
+   "ok": true
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 480.3862397343274,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 673.8751428264395,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 37,
+   "err_px": 0.40617929499934907,
+   "ok": true
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 3,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 1617.0701390046124,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 340.5873409285492,
+   "ok": false
+  },
+  {
+   "i": 74,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 361,
+   "err_px": 0.5855147481024201,
+   "ok": true
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 120,
+   "err_px": 0.6442079702645851,
+   "ok": true
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 981.6394394438867,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 552.5457099361547,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 5,
+   "err_px": 354.2741468030896,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 204,
+   "err_px": 0.614233677943935,
+   "ok": true
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 6,
+   "err_px": 389.23371112352976,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 380.09192743262173,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 768.3941704297152,
+   "ok": false
+  },
+  {
+   "i": 75,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 296,
+   "err_px": 0.3689183167908652,
+   "ok": true
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 233,
+   "err_px": 0.5473858488172334,
+   "ok": true
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 662.3868868809675,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 280.77631411074617,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 378.11678039538936,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 499,
+   "err_px": 0.4907971330030359,
+   "ok": true
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 300.83427656410333,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 712.7798837332067,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 750.8981582886552,
+   "ok": false
+  },
+  {
+   "i": 76,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 439,
+   "err_px": 0.3862380141475368,
+   "ok": true
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 281,
+   "err_px": 0.7700529008146666,
+   "ok": true
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 1174.8789002809222,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 7,
+   "err_px": 703.8444948446004,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 557.6599675439586,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 150,
+   "err_px": 0.11724715157956132,
+   "ok": true
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 160.9343029563419,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 6,
+   "err_px": 505.02315492828143,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 6,
+   "err_px": 205.722975352375,
+   "ok": false
+  },
+  {
+   "i": 77,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 93,
+   "err_px": 0.5919803122479619,
+   "ok": true
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 408,
+   "err_px": 0.28610702397846083,
+   "ok": true
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 687.3475650187945,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 5,
+   "err_px": 194.74256748465902,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 824.0629985871225,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 299,
+   "err_px": 0.575577876509662,
+   "ok": true
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 485.431932326043,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 4,
+   "err_px": 306.8757776661242,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 4,
+   "err_px": 244.7066465034067,
+   "ok": false
+  },
+  {
+   "i": 78,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 174,
+   "err_px": 0.5375428780051674,
+   "ok": true
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2020",
+   "inliers": 223,
+   "err_px": 0.42925129033140763,
+   "ok": true
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2022",
+   "inliers": 11,
+   "err_px": 5.628981289318066,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2020",
+   "map": "2025",
+   "inliers": 12,
+   "err_px": 143.99509556548648,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2020",
+   "inliers": 11,
+   "err_px": 3.063357604752094,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2022",
+   "inliers": 325,
+   "err_px": 0.18729685891820416,
+   "ok": true
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2022",
+   "map": "2025",
+   "inliers": 4,
+   "err_px": 515.3362981843429,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2020",
+   "inliers": 7,
+   "err_px": 49.404750480498464,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2022",
+   "inliers": 5,
+   "err_px": 351.4280559158338,
+   "ok": false
+  },
+  {
+   "i": 79,
+   "stratum": "random",
+   "flight": "2025",
+   "map": "2025",
+   "inliers": 140,
+   "err_px": 0.12571768029364108,
+   "ok": true
+  }
+ ]
+}

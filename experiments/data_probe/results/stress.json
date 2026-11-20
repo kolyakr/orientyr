@@ -1,0 +1,107 @@
+{
+ "tilt[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.07
+ },
+ "tilt[1]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.29
+ },
+ "tilt[2]": {
+  "success": 0.0,
+  "wrong_fix": 0.0,
+  "median_err_px": null
+ },
+ "blur[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.07
+ },
+ "blur[1]": {
+  "success": 0.82,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.14
+ },
+ "blur[2]": {
+  "success": 0.0,
+  "wrong_fix": 0.0,
+  "median_err_px": null
+ },
+ "motion[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.23
+ },
+ "motion[1]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.2
+ },
+ "motion[2]": {
+  "success": 0.0,
+  "wrong_fix": 0.0,
+  "median_err_px": null
+ },
+ "noise_jpeg[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.07
+ },
+ "noise_jpeg[1]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.09
+ },
+ "noise_jpeg[2]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.06
+ },
+ "moire[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.08
+ },
+ "moire[1]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.09
+ },
+ "moire[2]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.15
+ },
+ "photo_glare[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.05
+ },
+ "photo_glare[1]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.1
+ },
+ "photo_glare[2]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.09
+ },
+ "phone_combo[0]": {
+  "success": 1.0,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.1
+ },
+ "phone_combo[1]": {
+  "success": 0.18,
+  "wrong_fix": 0.0,
+  "median_err_px": 0.19
+ },
+ "phone_combo[2]": {
+  "success": 0.0,
+  "wrong_fix": 0.0,
+  "median_err_px": null
+ }
+}

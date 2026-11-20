@@ -1,0 +1,326 @@
+[
+ {
+  "name": "SIFT detect+describe 640x480 (2048)",
+  "dev": "cpu",
+  "median_ms": 22.7,
+  "p90_ms": 25.4
+ },
+ {
+  "name": "SIFT FLANN+ratio match",
+  "dev": "cpu",
+  "median_ms": 27.8,
+  "p90_ms": 29.3,
+  "matches": 747
+ },
+ {
+  "name": "MAGSAC++ homography (741 matches)",
+  "dev": "cpu",
+  "median_ms": 0.3,
+  "p90_ms": 0.3,
+  "inliers": 720
+ },
+ {
+  "name": "ORB detect+describe 640x480 (2000)",
+  "dev": "cpu",
+  "median_ms": 9.3,
+  "p90_ms": 13.2
+ },
+ {
+  "name": "KLT optical flow 400 pts (VO)",
+  "dev": "cpu",
+  "median_ms": 1.8,
+  "p90_ms": 2.0
+ },
+ {
+  "name": "XFeat detect 640x480 top1024",
+  "dev": "mps",
+  "median_ms": 8.7,
+  "p90_ms": 9.3,
+  "kpts": 1024
+ },
+ {
+  "name": "XFeat detect+MNN match pair top1024 (frame+window)",
+  "dev": "mps",
+  "median_ms": 19.3,
+  "p90_ms": 19.8,
+  "matches": 309
+ },
+ {
+  "name": "XFeat detect 640x480 top2048",
+  "dev": "mps",
+  "median_ms": 8.5,
+  "p90_ms": 9.3,
+  "kpts": 2048
+ },
+ {
+  "name": "XFeat detect+MNN match pair top2048 (frame+window)",
+  "dev": "mps",
+  "median_ms": 22.4,
+  "p90_ms": 25.3,
+  "matches": 641
+ },
+ {
+  "name": "XFeat detect 640x480 top4096",
+  "dev": "mps",
+  "median_ms": 8.5,
+  "p90_ms": 8.8,
+  "kpts": 4096
+ },
+ {
+  "name": "XFeat detect+MNN match pair top4096 (frame+window)",
+  "dev": "mps",
+  "median_ms": 23.0,
+  "p90_ms": 25.8,
+  "matches": 1285
+ },
+ {
+  "name": "LighterGlue match only top1024",
+  "dev": "mps",
+  "median_ms": 25.9,
+  "p90_ms": 29.6,
+  "matches": 200
+ },
+ {
+  "name": "LighterGlue match only top2048",
+  "dev": "mps",
+  "median_ms": 46.3,
+  "p90_ms": 46.9,
+  "matches": 582
+ },
+ {
+  "name": "superpoint extract 640x480 max1024",
+  "dev": "mps",
+  "median_ms": 26.6,
+  "p90_ms": 32.4,
+  "kpts": 1024
+ },
+ {
+  "name": "superpoint+LightGlue match only max1024",
+  "dev": "mps",
+  "median_ms": 41.8,
+  "p90_ms": 47.8,
+  "matches": 491,
+  "stop_layer": 4
+ },
+ {
+  "name": "superpoint extract 640x480 max2048",
+  "dev": "mps",
+  "median_ms": 26.7,
+  "p90_ms": 29.3,
+  "kpts": 2048
+ },
+ {
+  "name": "superpoint+LightGlue match only max2048",
+  "dev": "mps",
+  "median_ms": 91.4,
+  "p90_ms": 99.0,
+  "matches": 980,
+  "stop_layer": 4
+ },
+ {
+  "name": "aliked extract 640x480 max1024",
+  "dev": "mps",
+  "median_ms": 28.4,
+  "p90_ms": 31.6,
+  "kpts": 1024
+ },
+ {
+  "name": "aliked+LightGlue match only max1024",
+  "dev": "mps",
+  "median_ms": 93.5,
+  "p90_ms": 108.3,
+  "matches": 372,
+  "stop_layer": 6
+ },
+ {
+  "name": "aliked extract 640x480 max2048",
+  "dev": "mps",
+  "median_ms": 28.3,
+  "p90_ms": 30.0,
+  "kpts": 2006
+ },
+ {
+  "name": "aliked+LightGlue match only max2048",
+  "dev": "mps",
+  "median_ms": 154.5,
+  "p90_ms": 167.3,
+  "matches": 761,
+  "stop_layer": 6
+ },
+ {
+  "name": "disk extract 640x480 max1024",
+  "dev": "mps",
+  "median_ms": 120.5,
+  "p90_ms": 123.1,
+  "kpts": 1024
+ },
+ {
+  "name": "disk+LightGlue match only max1024",
+  "dev": "mps",
+  "median_ms": 55.3,
+  "p90_ms": 58.8,
+  "matches": 485,
+  "stop_layer": 5
+ },
+ {
+  "name": "disk extract 640x480 max2048",
+  "dev": "mps",
+  "median_ms": 120.6,
+  "p90_ms": 121.1,
+  "kpts": 2048
+ },
+ {
+  "name": "disk+LightGlue match only max2048",
+  "dev": "mps",
+  "median_ms": 120.3,
+  "p90_ms": 125.8,
+  "matches": 1106,
+  "stop_layer": 5
+ },
+ {
+  "name": "XFeat detect 640x480 top1024",
+  "dev": "cpu",
+  "median_ms": 40.3,
+  "p90_ms": 46.5,
+  "kpts": 1024
+ },
+ {
+  "name": "XFeat detect+MNN match pair top1024 (frame+window)",
+  "dev": "cpu",
+  "median_ms": 96.9,
+  "p90_ms": 114.1,
+  "matches": 309
+ },
+ {
+  "name": "XFeat detect 640x480 top2048",
+  "dev": "cpu",
+  "median_ms": 41.3,
+  "p90_ms": 59.9,
+  "kpts": 2048
+ },
+ {
+  "name": "XFeat detect+MNN match pair top2048 (frame+window)",
+  "dev": "cpu",
+  "median_ms": 101.4,
+  "p90_ms": 132.7,
+  "matches": 641
+ },
+ {
+  "name": "XFeat detect 640x480 top4096",
+  "dev": "cpu",
+  "median_ms": 44.0,
+  "p90_ms": 48.5,
+  "kpts": 4096
+ },
+ {
+  "name": "XFeat detect+MNN match pair top4096 (frame+window)",
+  "dev": "cpu",
+  "median_ms": 109.9,
+  "p90_ms": 132.6,
+  "matches": 1285
+ },
+ {
+  "name": "LighterGlue match only top1024",
+  "dev": "cpu",
+  "median_ms": 39.0,
+  "p90_ms": 45.5,
+  "matches": 200
+ },
+ {
+  "name": "LighterGlue match only top2048",
+  "dev": "cpu",
+  "median_ms": 78.4,
+  "p90_ms": 119.1,
+  "matches": 582
+ },
+ {
+  "name": "superpoint extract 640x480 max1024",
+  "dev": "cpu",
+  "median_ms": 667.6,
+  "p90_ms": 734.8,
+  "kpts": 1024
+ },
+ {
+  "name": "superpoint+LightGlue match only max1024",
+  "dev": "cpu",
+  "median_ms": 84.2,
+  "p90_ms": 115.8,
+  "matches": 491,
+  "stop_layer": 4
+ },
+ {
+  "name": "superpoint extract 640x480 max2048",
+  "dev": "cpu",
+  "median_ms": 675.0,
+  "p90_ms": 734.9,
+  "kpts": 2048
+ },
+ {
+  "name": "superpoint+LightGlue match only max2048",
+  "dev": "cpu",
+  "median_ms": 232.5,
+  "p90_ms": 268.5,
+  "matches": 980,
+  "stop_layer": 4
+ },
+ {
+  "name": "aliked extract 640x480 max1024",
+  "dev": "cpu",
+  "median_ms": 410.5,
+  "p90_ms": 452.9,
+  "kpts": 1024
+ },
+ {
+  "name": "aliked+LightGlue match only max1024",
+  "dev": "cpu",
+  "median_ms": 134.7,
+  "p90_ms": 272.7,
+  "matches": 372,
+  "stop_layer": 6
+ },
+ {
+  "name": "aliked extract 640x480 max2048",
+  "dev": "cpu",
+  "median_ms": 432.3,
+  "p90_ms": 466.7,
+  "kpts": 2006
+ },
+ {
+  "name": "aliked+LightGlue match only max2048",
+  "dev": "cpu",
+  "median_ms": 236.1,
+  "p90_ms": 290.3,
+  "matches": 761,
+  "stop_layer": 6
+ },
+ {
+  "name": "disk extract 640x480 max1024",
+  "dev": "cpu",
+  "median_ms": 607.1,
+  "p90_ms": 971.6,
+  "kpts": 1024
+ },
+ {
+  "name": "disk+LightGlue match only max1024",
+  "dev": "cpu",
+  "median_ms": 99.0,
+  "p90_ms": 108.4,
+  "matches": 485,
+  "stop_layer": 5
+ },
+ {
+  "name": "disk extract 640x480 max2048",
+  "dev": "cpu",
+  "median_ms": 464.0,
+  "p90_ms": 547.5,
+  "kpts": 2048
+ },
+ {
+  "name": "disk+LightGlue match only max2048",
+  "dev": "cpu",
+  "median_ms": 243.3,
+  "p90_ms": 273.8,
+  "matches": 1106,
+  "stop_layer": 5
+ }
+]

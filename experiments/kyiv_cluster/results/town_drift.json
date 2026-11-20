@@ -1,0 +1,5856 @@
+{
+ "summary": {
+  "prewar->prewar": {
+   "success": 0.975,
+   "median_inliers": 200.0,
+   "per_town": {
+    "Irpin": 0.9,
+    "Hostomel": 1.0,
+    "Moschun": 1.0,
+    "Bucha": 1.0
+   }
+  },
+  "prewar->war": {
+   "success": 0.05,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.1,
+    "Hostomel": 0.0,
+    "Moschun": 0.0,
+    "Bucha": 0.1
+   }
+  },
+  "prewar->rebuilt": {
+   "success": 0.0,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.0,
+    "Hostomel": 0.0,
+    "Moschun": 0.0,
+    "Bucha": 0.0
+   }
+  },
+  "war->prewar": {
+   "success": 0.05,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.1,
+    "Hostomel": 0.0,
+    "Moschun": 0.0,
+    "Bucha": 0.1
+   }
+  },
+  "war->war": {
+   "success": 1.0,
+   "median_inliers": 286.5,
+   "per_town": {
+    "Irpin": 1.0,
+    "Hostomel": 1.0,
+    "Moschun": 1.0,
+    "Bucha": 1.0
+   }
+  },
+  "war->rebuilt": {
+   "success": 0.025,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.05,
+    "Hostomel": 0.0,
+    "Moschun": 0.0,
+    "Bucha": 0.05
+   }
+  },
+  "rebuilt->prewar": {
+   "success": 0.0,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.0,
+    "Hostomel": 0.0,
+    "Moschun": 0.0,
+    "Bucha": 0.0
+   }
+  },
+  "rebuilt->war": {
+   "success": 0.05,
+   "median_inliers": 5.0,
+   "per_town": {
+    "Irpin": 0.15,
+    "Hostomel": 0.05,
+    "Moschun": 0.0,
+    "Bucha": 0.0
+   }
+  },
+  "rebuilt->rebuilt": {
+   "success": 1.0,
+   "median_inliers": 245.5,
+   "per_town": {
+    "Irpin": 1.0,
+    "Hostomel": 1.0,
+    "Moschun": 1.0,
+    "Bucha": 1.0
+   }
+  }
+ },
+ "rows": [
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 289,
+   "err_px": 0.6855228647187114,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 10,
+   "err_px": 1.6749528311110993,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 570.3788020884766,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 650.6447903352761,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 228,
+   "err_px": 0.621758479193219,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 1375.8444463830913,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 539.9541448760247,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1192.7816107476503,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 188,
+   "err_px": 0.5373874678939218,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 461.65086411093023,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 449.2470511862313,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 343.6057122667926,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 315.94275014255555,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 21,
+   "err_px": 0.19304461234642395,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 835.8997053997228,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 363.5069224574475,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 472.143627714741,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 39,
+   "err_px": 0.3476882645488652,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 270,
+   "err_px": 0.6066280607771636,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 721.6441715194491,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 947.8115461411152,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 12,
+   "err_px": 1.9358318231286769,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 224,
+   "err_px": 0.06022546810237451,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 11,
+   "err_px": 1.496051064474264,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 364.1165376045939,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 6.182462636617921,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 186,
+   "err_px": 0.6308338975042012,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 198,
+   "err_px": 0.6041082638793516,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 479.5853927120416,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 643.1749881918175,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 164.25877353958865,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 293,
+   "err_px": 0.7062017145768177,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 0.9862827178653744,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 445.8795347311186,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 607.9115098842276,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 153,
+   "err_px": 0.4100824028483056,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 60,
+   "err_px": 0.44269689127008416,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 744.8963905758646,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": null,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 539.8203016875425,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 218,
+   "err_px": 0.584684165382336,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 564.8758179232456,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 1118.7312509624805,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1014.8213407642453,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 206,
+   "err_px": 0.4961351362476691,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 179,
+   "err_px": 0.6340260649992652,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 846.9303161744601,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1418.1022330282503,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1077.4102621131262,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 281,
+   "err_px": 0.021630138457637588,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 85.88288774364939,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 802.5130298180968,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 113.12597841650089,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 242,
+   "err_px": 0.32751159331864227,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 138,
+   "err_px": 0.5215188667047308,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 2.232786224862075,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 900.3369089631813,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 195.21377965918288,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 280,
+   "err_px": 0.4297577368247245,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 11,
+   "err_px": 0.873229055555815,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 602.0072897633036,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 1.8062288624640215,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 145,
+   "err_px": 0.4742291973175738,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 120,
+   "err_px": 0.5929128497669026,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 1.6557848782830213,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1815.1805537008233,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 764.4952074593435,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 174,
+   "err_px": 0.18761647422077254,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 2084.2780447690925,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 885.4801525809901,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 603.8304240108783,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 290,
+   "err_px": 0.29156061658078364,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 221,
+   "err_px": 0.7391726450987962,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 5.719473170586844,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1006.1076400138799,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 593.0763233325096,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 337,
+   "err_px": 0.188787414844163,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 89.42922824380024,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 474.93108242789873,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 20,
+   "err_px": 1.3293414302850894,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 287,
+   "err_px": 0.009795295658729629,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 89,
+   "err_px": 0.05336928353369018,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 1.1764657375434673,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 449.93993601558316,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 883.3398269520115,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 139,
+   "err_px": 0.4634543766876493,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1694.2124105077385,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 867.2809550245395,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 874.5250645769181,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 111,
+   "err_px": 0.3894521890379111,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 538.2070308502136,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 1043.5743953423828,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 808.4560086536279,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 915.5794631484795,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 64,
+   "err_px": 0.7521677114051937,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 324.62142321109616,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 352.3585582534839,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 538.0270854543168,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 48,
+   "err_px": 0.6736230631187407,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 106,
+   "err_px": 0.4636732890502872,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 353.3499078171034,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1595.3445065802048,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 465.1245371424086,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 239,
+   "err_px": 0.268933566198664,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 372.79129451775566,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1363.9661229785897,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 495.51009189378135,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 212,
+   "err_px": 0.7735567437482672,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 133,
+   "err_px": 0.8177202346100787,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 498.0405677553659,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 811.9015751587935,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 313.16021183539027,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 371,
+   "err_px": 0.7112246319996229,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 668.4952410983791,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 937.8865868625458,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 2.4821905557462025,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 275,
+   "err_px": 0.11253068822113807,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 149,
+   "err_px": 0.17889904588833516,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 12,
+   "err_px": 0.77645403849423,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1536.8157002798507,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 13,
+   "err_px": 0.09656874054835016,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 337,
+   "err_px": 0.05562586387433263,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 24,
+   "err_px": 1.521818545445287,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 1396.2554185288775,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 40,
+   "err_px": 1.617799083341092,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 287,
+   "err_px": 0.6662290122282727,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 158,
+   "err_px": 0.5796847264092249,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 680.7048374627635,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 778.6187588993772,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 9,
+   "err_px": 1.7123972281793012,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 353,
+   "err_px": 0.5239591928047813,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 243.0215829779253,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 864.4169674920888,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 680.2895503018682,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 204,
+   "err_px": 0.7041575235694943,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 172,
+   "err_px": 0.19437690928432977,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 13,
+   "err_px": 1.6957806268422524,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 599.1672253765124,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 345.19474773780973,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 210,
+   "err_px": 0.2960909836633024,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 179.47615195892237,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1725.2469349445714,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1.3638453907804402,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 163,
+   "err_px": 0.5968262337633169,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 126,
+   "err_px": 0.5723573573703018,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 603.5822802235733,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 215.48116033418592,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1570.8985746366625,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 78,
+   "err_px": 0.39620303291177184,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 794.6016485118236,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1337.6566075248825,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 342.80655284157683,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 177,
+   "err_px": 0.1377098379281938,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 142,
+   "err_px": 0.20676778166099016,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 274.60454178093266,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 638.4305134566878,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 579.1851233620841,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 206,
+   "err_px": 0.6669769741499032,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 632.6530973150461,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 679.1578461232915,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 849.5346923691736,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 316,
+   "err_px": 0.667429785509856,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 125,
+   "err_px": 0.7076404845101659,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 375.48209809636046,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1191.2864445805983,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 865.0961822237681,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 278,
+   "err_px": 0.6973514785174548,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 786.0525829902075,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 971.1669511640632,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 860.4536807396358,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 247,
+   "err_px": 0.11949471912108782,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 154,
+   "err_px": 0.45222593137843187,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 164.9321300399503,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 246.46172130683604,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 265.3408672557368,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "war",
+   "inliers": 181,
+   "err_px": 0.51153113507189,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 22.513977176119344,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 3559.280112949958,
+   "ok": false
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 25,
+   "err_px": 1.2555272637408719,
+   "ok": true
+  },
+  {
+   "town": "Irpin",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 311,
+   "err_px": 0.7275259541158433,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 544,
+   "err_px": 0.6647566536295176,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 560.9212814663474,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 223.3657015665497,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 169.6340670705402,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 387,
+   "err_px": 0.6557557643869439,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 724.3847301419554,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 414.13322025558875,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 626.3629679982846,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 300,
+   "err_px": 0.5148764747448993,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 443,
+   "err_px": 0.3242248080125314,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 2062.124119991393,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1572.8115991922425,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 232.99673102190448,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 241,
+   "err_px": 0.1849286303075698,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 812.8859473511212,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 1028.0661911251411,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 1.0532215699659377,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 243,
+   "err_px": 0.3797683152249406,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 65,
+   "err_px": 0.6026557767597732,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 869.2425091624272,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 540.4472400900848,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 457.90599321330956,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 82,
+   "err_px": 0.026467739174268874,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 295.7652650252264,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 354.14194682174076,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 646.2360319624036,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 157,
+   "err_px": 0.6924232677742032,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 201,
+   "err_px": 0.5511617710336909,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 346.8400256874853,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1307.8442047557355,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 508.52958271113226,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 353,
+   "err_px": 0.7037850438090726,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 207.2167137586457,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 692.3393883146375,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 907.2853851259526,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 138,
+   "err_px": 0.4255063721856064,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 199,
+   "err_px": 0.42693232401531306,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 974.5630337995154,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 784.5339589281087,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 916.2750601236115,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 399,
+   "err_px": 0.5895478711309498,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 671.8186610755258,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 342.3255170906439,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 692.7334104140899,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 291,
+   "err_px": 0.5114581280604239,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 460,
+   "err_px": 0.6237728371177766,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 85.82374983889534,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 508.7116711127539,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 565.3160581370266,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 643,
+   "err_px": 0.0264231050134211,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 11,
+   "err_px": 1.0764043859068249,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 569.7350912827044,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 10,
+   "err_px": 0.6145719507190595,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 445,
+   "err_px": 0.2940014724777091,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 406,
+   "err_px": 0.43869897297018234,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1245.5338796817323,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 717.621586637886,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 658.1268392856241,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 625,
+   "err_px": 0.41822867561253113,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 422.67936602475646,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 325.26220439205997,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 12,
+   "err_px": 0.8359048925608101,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 432,
+   "err_px": 0.4566391638460723,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 286,
+   "err_px": 0.4746016918339033,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1336.5325870344495,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 177.6584290729952,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 423.0365370294702,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 437,
+   "err_px": 0.18430753301321728,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 356.0720701538674,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 266.71399696456524,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 1.1412089084690824,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 536,
+   "err_px": 0.3058372692981248,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 416,
+   "err_px": 0.6789645250038031,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 303.05300016284724,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1035.204558161013,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 187.83003450143096,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 316,
+   "err_px": 0.19808740842844808,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 972.2262792541725,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 773.1941852475171,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 682.3759556323569,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 484,
+   "err_px": 0.017484617239447234,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 377,
+   "err_px": 0.11733927920750716,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 238.13276054497868,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 825.4073432994594,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 160.36330580258542,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 397,
+   "err_px": 0.5188842929887976,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 281.619369593182,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 630.9451805940992,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 4911.9833685212525,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 231,
+   "err_px": 0.3959936541391186,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 389,
+   "err_px": 0.6613131021661057,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 651.3559175810926,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 760.1789148374794,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 389.1535271762542,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 543,
+   "err_px": 0.7455265224607092,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 1.6998201063851466,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 28.28542845776267,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 862.4134015574832,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 244,
+   "err_px": 0.7089893460555899,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 208,
+   "err_px": 0.4314897104895319,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 507.6742574034939,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 484.9808611573049,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 689.4792011576726,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 276,
+   "err_px": 0.23660753097790604,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 407.79306047606786,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 221.55141679616932,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 420.9164751378662,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 197,
+   "err_px": 0.7891820969359887,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 387,
+   "err_px": 0.6854859033548193,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 254.24502561970263,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 742.5132473392363,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 614.7053234328808,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 618,
+   "err_px": 0.7217560616054056,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 510.86665876106645,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 341.3333964905472,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 1.8095184759956917,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 579,
+   "err_px": 0.12463095737696213,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 74,
+   "err_px": 0.11828547687522413,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 684.0665956847499,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 215.4096059669621,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 448.20080885830276,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 31,
+   "err_px": 0.12241836758448653,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 784.1743221139933,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 669.5797650238208,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1470.0762335101413,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 200,
+   "err_px": 0.6907555988327433,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 74,
+   "err_px": 0.5979618772903823,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 3380.0959674933065,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 661.493242144881,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 725.7087140518291,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 270,
+   "err_px": 0.5076922200993096,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 633.341424764367,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 824.3583986063342,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 405.9541265896786,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 217,
+   "err_px": 0.7057574378165858,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 541,
+   "err_px": 0.20055147540176496,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 130.81482356967805,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 56.114056483480354,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 90.12056513274484,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 253,
+   "err_px": 0.286896597244872,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 234.29097204957952,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 740.090336422133,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 306.3259888659353,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 255,
+   "err_px": 0.5466581283398262,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 386,
+   "err_px": 0.5711532874740739,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1329.5845049380177,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 758.5894114380601,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 87.37343308439753,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 365,
+   "err_px": 0.4267064274946211,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1174.1180218682794,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 508.78386647341875,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 313.542403456739,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 165,
+   "err_px": 0.062100132559054166,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 313,
+   "err_px": 0.1424253203378168,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 598.494770186704,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 635.2708015844627,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 631.1496277460733,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 464,
+   "err_px": 0.6764883284350218,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 179.66789961981704,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 667.8233577752976,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 596.5770154867782,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 523,
+   "err_px": 0.6548594141536936,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 327,
+   "err_px": 0.7021411555363701,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 646.7258516072437,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 755.1328726285204,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 531.5424803922899,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 447,
+   "err_px": 0.6970981974604821,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 930.3210503554551,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 1978.246547128816,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 754.2634301447102,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 254,
+   "err_px": 0.12559709424899174,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 390,
+   "err_px": 0.4074282193774508,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 590.5362671669445,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 521.4836057569853,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 487.92586660942226,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "war",
+   "inliers": 380,
+   "err_px": 0.5059827706888609,
+   "ok": true
+  },
+  {
+   "town": "Hostomel",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1271.8509486453563,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 262.9396687502872,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 11,
+   "err_px": 1.145482633799045,
+   "ok": false
+  },
+  {
+   "town": "Hostomel",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 776,
+   "err_px": 0.7203430200313565,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 1020,
+   "err_px": 0.6517835342184636,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 32.71079525235151,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 389.69051174896316,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 175.14373126561998,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 688,
+   "err_px": 0.6367870797581255,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 636.5044245254257,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 448.48125580385266,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 350.9830276623974,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 443,
+   "err_px": 0.5611229133083986,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 665,
+   "err_px": 0.32150502327749014,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 78.64356749807914,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 863.4436077455379,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 177.5875508709641,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 429,
+   "err_px": 0.09294599950899164,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 460.0430762667605,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 1844.9720398286875,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 676.1959978932489,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 361,
+   "err_px": 0.33625843435977204,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 451,
+   "err_px": 0.6027890969479504,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 309.6182677353539,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 278.92359980198984,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 20.096286984059134,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 394,
+   "err_px": 0.006905447293270164,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 429.4858301489932,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 197.09847196389663,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 483.55169488086204,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 386,
+   "err_px": 0.6445319284689277,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 427,
+   "err_px": 0.5911995769826003,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 75.03535497273013,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 279.4896642172044,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 9,
+   "err_px": 12.345219114463482,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 715,
+   "err_px": 0.7168738686697049,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 1089.8487776044858,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 248.12309647004633,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 366.9105378203448,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 219,
+   "err_px": 0.43932675309340186,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 191,
+   "err_px": 0.41025428617576293,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 451.2735618468797,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 712.4751506690894,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 301.0517359908258,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 560,
+   "err_px": 0.5733606844702948,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 518.0259442837961,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 373.8936431944045,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 386.83309379698863,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 432,
+   "err_px": 0.49500872636793986,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 761,
+   "err_px": 0.620015379192685,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 286.9769811791322,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1254.6960863323957,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 374.12574502424775,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 1115,
+   "err_px": 0.02007869471425487,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 262.99853753632726,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 267.7507490516263,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 430.58994264968044,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 594,
+   "err_px": 0.3128763200377502,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 650,
+   "err_px": 0.4781420567957522,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 132.19296680915502,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 253.6264714416621,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 839.2223830052757,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 825,
+   "err_px": 0.41500558990287545,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 541.4015240262194,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 531.3174283159918,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 228.19664389005268,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 467,
+   "err_px": 0.49771078482462117,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 543,
+   "err_px": 0.530459485877241,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 216.580383757271,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 484.04070399671764,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 133.33497920658078,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 571,
+   "err_px": 0.1737543936559646,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1303.2648829134966,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 50.354831784215236,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 457.19254769105925,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 747,
+   "err_px": 0.2821422273091847,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 887,
+   "err_px": 0.6889198772472568,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 162.61961567326856,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 168.43020250418252,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 8,
+   "err_px": 9.683992946361032,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 892,
+   "err_px": 0.19059802238332854,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 96.85111364092269,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 996.5547723148618,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 221.93152665658403,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 925,
+   "err_px": 0.011512926908038462,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 311,
+   "err_px": 0.041305728220528574,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 16.573424000821536,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 84.97661059593577,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 10.839251810859428,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 414,
+   "err_px": 0.49299310107607575,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 460.09716660647354,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 452.74814616221045,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 443.238470574433,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 257,
+   "err_px": 0.409708721165256,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 545,
+   "err_px": 0.6573173053066239,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 9.40244034500232,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 520.5339638452982,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 384.2432443018307,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 837,
+   "err_px": 0.7300932276618787,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 409.9841120368175,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 79.46323889924224,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 500.2048566361892,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 371,
+   "err_px": 0.6997925983444819,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 430,
+   "err_px": 0.4551099223218111,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 184.39437707059017,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 326.52089986561236,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 9,
+   "err_px": 10.674474024097153,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 413,
+   "err_px": 0.2064731384902871,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 157.5688855837961,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 351.4901796738087,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 320.97494504675734,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 392,
+   "err_px": 0.7829136344066581,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 630,
+   "err_px": 0.7732051596840084,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 132.6145964048437,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 150.78173608174478,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 71.3228292228563,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 1033,
+   "err_px": 0.7380503517886527,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 374.30036791220545,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 566.0933806745111,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 231.5963022160383,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 959,
+   "err_px": 0.10765158546170146,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 316,
+   "err_px": 0.21064761426815545,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 320.60882424510316,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 142.6574924581122,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 283.86328435208844,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 300,
+   "err_px": 0.09350002187528769,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 183.92388128231363,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 475.8531034493714,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 574.5385032337564,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 701,
+   "err_px": 0.6939700653665793,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 362,
+   "err_px": 0.5762478405370015,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 176.89341697635837,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 393.839285255998,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 9,
+   "err_px": 11.316848870493049,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 754,
+   "err_px": 0.4998523641331894,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 518.6983927047542,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 691.4330220520751,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 232.8206602043218,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 386,
+   "err_px": 0.7269147375167675,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 894,
+   "err_px": 0.17385177274074323,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 167.10135071386512,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 358.5006530404813,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 134.66397634260787,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 517,
+   "err_px": 0.30846107462312977,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 153.84298645321277,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 461.9108283642488,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 408.6940189274707,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 363,
+   "err_px": 0.640707804024494,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 381,
+   "err_px": 0.5463966104321872,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 187.59514259958254,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 721.2494013284727,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 160.33889850347356,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 308,
+   "err_px": 0.46049919969351916,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 696.2161501192115,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 745.6347657223008,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 551.1506060259774,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 262,
+   "err_px": 0.06147554040635889,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 515,
+   "err_px": 0.20961630937788256,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 108.65238502775249,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 544.7427861047632,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1484.6798586040968,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 665,
+   "err_px": 0.67877969731239,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 254.5373698480882,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 281.0276382503841,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 603.8594160210492,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 931,
+   "err_px": 0.683743197875329,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 345,
+   "err_px": 0.712454042701361,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 296.5884207346929,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 385.177343110077,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 10,
+   "err_px": 12.214772236401835,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 586,
+   "err_px": 0.6976294420402948,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 438.854612396975,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 519.4026223862791,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 516.886384543203,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 429,
+   "err_px": 0.12606020782587582,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 592,
+   "err_px": 0.42017722921486184,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 373.38253654378553,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 696.9102260086484,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 355.64453276827413,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "war",
+   "inliers": 477,
+   "err_px": 0.49753213793504236,
+   "ok": true
+  },
+  {
+   "town": "Moschun",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 179.41758976081422,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 334.01840454321655,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 79.50411112313144,
+   "ok": false
+  },
+  {
+   "town": "Moschun",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 1006,
+   "err_px": 0.7413766053869895,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 149,
+   "err_px": 0.6693508507564284,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 181.53029269598085,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 10,
+   "err_px": 1081.7265282746666,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 278.30079388389794,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 44,
+   "err_px": 0.655365758516298,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 283.1126110687207,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 552.2480088563517,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 83.04779669406287,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 89,
+   "err_px": 0.5803985908097952,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 34,
+   "err_px": 0.9861300932139542,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 522.6215124482969,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 1306.4110387468459,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 582.7450967992846,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 49,
+   "err_px": 0.12285967525508922,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 787.9098625576071,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 567.4134926488135,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 14.31552834829618,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 62,
+   "err_px": 0.36910697080602156,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 260,
+   "err_px": 0.6039770267411928,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 11,
+   "err_px": 1.7612699792483801,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 2384.755707309558,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 402.3961383589673,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 257,
+   "err_px": 0.012942059860996075,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 208.12325708804428,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 883.5172006866006,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 340.96347913858204,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 202,
+   "err_px": 0.5871654361807717,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 76,
+   "err_px": 0.6029646286507289,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 1509.0392476200982,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 741.550892836664,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 947.7317879466476,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 181,
+   "err_px": 0.7153096181118032,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 488.02665942719017,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 255.58516397093666,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 295.619690945794,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 74,
+   "err_px": 0.375382798981457,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 94,
+   "err_px": 0.5076093374368078,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 452.24129666018285,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1365.1885722494847,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 641.2983338701705,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 266,
+   "err_px": 0.568049142798292,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 994.9151238739419,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1107.4963779586394,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 402.64373877249295,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 216,
+   "err_px": 0.467920201592265,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 190,
+   "err_px": 0.6387101981240437,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 31.255290017868493,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 1003.4253107172909,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 11,
+   "err_px": 1.2570097759088354,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 244,
+   "err_px": 0.011749700623096583,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 3.5148646284382314,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 608.547049242458,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 1.0012912895001975,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 176,
+   "err_px": 0.34565725017679455,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 224,
+   "err_px": 0.47619730072896077,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 16,
+   "err_px": 0.9114561495386351,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 9.413601698031378,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 15,
+   "err_px": 1.5493522560651563,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 257,
+   "err_px": 0.44534966491590683,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 17,
+   "err_px": 0.9618022044831044,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 113.86191188471362,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 232.8923554817377,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 135,
+   "err_px": 0.5318657230458854,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 99,
+   "err_px": 0.6332240969144131,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 86.9285078192324,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 8,
+   "err_px": 898.3619822894068,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 374.66447459721786,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 61,
+   "err_px": 0.18904224924759416,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1747.6802930947808,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 226.63661456157368,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 282.86626178243176,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 164,
+   "err_px": 0.3376673662041095,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 187,
+   "err_px": 0.6974719306747806,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 534.305121211431,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 258.2621170784671,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 791.5014427960608,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 268,
+   "err_px": 0.19569314165938018,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 836.7083780516942,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 7683.905942592774,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 1067.9135564257028,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 266,
+   "err_px": 0.02059998959389229,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 93,
+   "err_px": 0.1878570007046099,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 10,
+   "err_px": 10.437679371922139,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 421.6886010381629,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 10,
+   "err_px": 0.5018075422051164,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 126,
+   "err_px": 0.4934331737449395,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 157.5032821164774,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 332.6015226805078,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 8.970312140971053,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 90,
+   "err_px": 0.494957923075333,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 90,
+   "err_px": 0.8682283793099245,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 237.00518591638962,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1029.1613803869316,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 13,
+   "err_px": 1.873466312609848,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 187,
+   "err_px": 0.7716072836452826,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 10,
+   "err_px": 0.1425893986701041,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1337.695827963663,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 2548.9419823367075,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 72,
+   "err_px": 0.6541200900127925,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 48,
+   "err_px": 0.30501343634885947,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 201.32752810041103,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 366.21763339338133,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 583.8493916934012,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 91,
+   "err_px": 0.24240546266763727,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 795.6630719084587,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 579.9189912187323,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 718.4434119010273,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 134,
+   "err_px": 0.7442271824111738,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 63,
+   "err_px": 0.8133750247060241,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 8.377019453940461,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 1118.4881219462902,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 638.4382610824471,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 87,
+   "err_px": 0.7340841239758213,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 532.6661682914415,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 9,
+   "err_px": 272.29751827899923,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 715.0771474673655,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 112,
+   "err_px": 0.18302263705180302,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 138,
+   "err_px": 0.24722086934373855,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 12,
+   "err_px": 0.726481504565404,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 312.4357847936911,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 6,
+   "err_px": 688.9842314068326,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 292,
+   "err_px": 0.07593948441738754,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 3146.505093961596,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1514.421857595336,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 1117.3379535709746,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 292,
+   "err_px": 0.6306280936745032,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 40,
+   "err_px": 0.549788330236884,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 6,
+   "err_px": 724.1142137563472,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 569.3031230407108,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 878.7795371014323,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 166,
+   "err_px": 0.5323370117565968,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 6,
+   "err_px": 639.2967292007617,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 1018.7343373072104,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 1412.0788621020874,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 114,
+   "err_px": 0.6794326913920077,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 86,
+   "err_px": 0.16266871061469304,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 311.92374822543184,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 8,
+   "err_px": 1049.562307271415,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 4,
+   "err_px": 176.14668817293932,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 20,
+   "err_px": 0.2830318948139396,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 7,
+   "err_px": 251.1076585116187,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 280.13406284471,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 294.2481557731238,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 56,
+   "err_px": 0.653372199704514,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 70,
+   "err_px": 0.46200630404735127,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 4,
+   "err_px": 858.2289135131425,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 4,
+   "err_px": 816.9769391379951,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 53.95088873856824,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 88,
+   "err_px": 0.46831231955807767,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 656.7183182950207,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 7,
+   "err_px": 774.507346881812,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 858.60108415743,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 83,
+   "err_px": 0.08733657099096176,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 105,
+   "err_px": 0.1955642934991098,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 9,
+   "err_px": 6.426930188424389,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 13,
+   "err_px": 958.4038853100393,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 11,
+   "err_px": 1.4918327941655947,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 79,
+   "err_px": 0.7130140413397927,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 255.53438228003847,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 473.1116045574168,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 481.30323699396706,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 183,
+   "err_px": 0.6396385644496382,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 146,
+   "err_px": 0.7370850122420847,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 8,
+   "err_px": 539.5358350111178,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 860.7073884343623,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 269.4890558296668,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 263,
+   "err_px": 0.6822107019066885,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 949.2595629122723,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 92.7056029611845,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 7,
+   "err_px": 528.1988860284579,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 191,
+   "err_px": 0.151210582571393,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "prewar",
+   "inliers": 92,
+   "err_px": 0.4309023291614192,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 424.8438759230713,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "prewar",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 1125.7682124005319,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "prewar",
+   "inliers": 10,
+   "err_px": 3.2692756123495266,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "war",
+   "inliers": 88,
+   "err_px": 0.6256566899851628,
+   "ok": true
+  },
+  {
+   "town": "Bucha",
+   "flight": "war",
+   "map": "rebuilt",
+   "inliers": 5,
+   "err_px": 459.393659711038,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "prewar",
+   "inliers": 5,
+   "err_px": 679.6045680425078,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "war",
+   "inliers": 5,
+   "err_px": 302.88478739388097,
+   "ok": false
+  },
+  {
+   "town": "Bucha",
+   "flight": "rebuilt",
+   "map": "rebuilt",
+   "inliers": 254,
+   "err_px": 0.7249187219625286,
+   "ok": true
+  }
+ ]
+}

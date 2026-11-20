@@ -1,0 +1,562 @@
+{
+ "rows": [
+  {
+   "i": 0,
+   "truth": [
+    450.0,
+    1500.0
+   ],
+   "state_in": "LOST",
+   "trouble": "",
+   "sharpness": 249.6,
+   "search": "global",
+   "map_keypoints_searched": 40000,
+   "matches": 994,
+   "inliers": 987,
+   "rejected_by": "",
+   "fix": [
+    450.0,
+    1500.0
+   ],
+   "heading": 73.9,
+   "heading_true": 73.9,
+   "altitude_scale": 0.962,
+   "fix_err_m": 0.0,
+   "kalman_gain": 1.0,
+   "state_out": "RELOCALIZING",
+   "sigma_m": 6.1,
+   "err_m": 0.0
+  },
+  {
+   "i": 1,
+   "truth": [
+    521.9,
+    1479.3
+   ],
+   "state_in": "RELOCALIZING",
+   "trouble": "",
+   "sharpness": 228.7,
+   "search": "window 1240px",
+   "map_keypoints_searched": 11679,
+   "matches": 1237,
+   "inliers": 1229,
+   "rejected_by": "",
+   "fix": [
+    521.9000244140625,
+    1479.300048828125
+   ],
+   "heading": 71.2,
+   "heading_true": 71.2,
+   "altitude_scale": 1.005,
+   "fix_err_m": 0.1,
+   "kalman_gain": 1.0,
+   "state_out": "TRACKING",
+   "sigma_m": 6.1,
+   "err_m": 0.3
+  },
+  {
+   "i": 2,
+   "truth": [
+    591.5,
+    1451.7
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 715.7,
+   "search": "window 822px",
+   "map_keypoints_searched": 7434,
+   "matches": 1548,
+   "inliers": 1543,
+   "rejected_by": "",
+   "fix": [
+    591.5,
+    1451.699951171875
+   ],
+   "heading": 64.1,
+   "heading_true": 64.1,
+   "altitude_scale": 1.032,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.87,
+   "state_out": "TRACKING",
+   "sigma_m": 5.7,
+   "err_m": 1.3
+  },
+  {
+   "i": 3,
+   "truth": [
+    656.1,
+    1414.1
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 238.8,
+   "search": "window 818px",
+   "map_keypoints_searched": 7557,
+   "matches": 1076,
+   "inliers": 1068,
+   "rejected_by": "",
+   "fix": [
+    656.0999755859375,
+    1414.0
+   ],
+   "heading": 55.6,
+   "heading_true": 55.5,
+   "altitude_scale": 1.032,
+   "fix_err_m": 0.1,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 3.0
+  },
+  {
+   "i": 4,
+   "truth": [
+    714.5,
+    1367.3
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 177.8,
+   "search": "window 818px",
+   "map_keypoints_searched": 7594,
+   "matches": 1145,
+   "inliers": 1137,
+   "rejected_by": "",
+   "fix": [
+    714.5,
+    1367.300048828125
+   ],
+   "heading": 47.9,
+   "heading_true": 47.9,
+   "altitude_scale": 1.01,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 3.4
+  },
+  {
+   "i": 5,
+   "truth": [
+    767.0,
+    1313.9
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 294.4,
+   "search": "window 818px",
+   "map_keypoints_searched": 7718,
+   "matches": 1402,
+   "inliers": 1398,
+   "rejected_by": "",
+   "fix": [
+    767.0,
+    1313.9000244140625
+   ],
+   "heading": 42.1,
+   "heading_true": 42.1,
+   "altitude_scale": 1.032,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 2.8
+  },
+  {
+   "i": 6,
+   "truth": [
+    814.8,
+    1256.3
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 412.0,
+   "search": "window 818px",
+   "map_keypoints_searched": 7694,
+   "matches": 1540,
+   "inliers": 1534,
+   "rejected_by": "",
+   "fix": [
+    814.9000244140625,
+    1256.300048828125
+   ],
+   "heading": 38.0,
+   "heading_true": 38.0,
+   "altitude_scale": 0.957,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 2.0
+  },
+  {
+   "i": 7,
+   "truth": [
+    859.1,
+    1195.9
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 657.3,
+   "search": "window 818px",
+   "map_keypoints_searched": 7502,
+   "matches": 1680,
+   "inliers": 1675,
+   "rejected_by": "",
+   "fix": [
+    859.0999755859375,
+    1195.9000244140625
+   ],
+   "heading": 35.1,
+   "heading_true": 35.1,
+   "altitude_scale": 0.994,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 1.4
+  },
+  {
+   "i": 8,
+   "truth": [
+    901.0,
+    1133.8
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 386.8,
+   "search": "window 818px",
+   "map_keypoints_searched": 7387,
+   "matches": 1512,
+   "inliers": 1507,
+   "rejected_by": "",
+   "fix": [
+    900.9000244140625,
+    1133.800048828125
+   ],
+   "heading": 33.2,
+   "heading_true": 33.2,
+   "altitude_scale": 1.05,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 0.9
+  },
+  {
+   "i": 9,
+   "truth": [
+    941.2,
+    1070.7
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 311.5,
+   "search": "window 818px",
+   "map_keypoints_searched": 7272,
+   "matches": 1380,
+   "inliers": 1373,
+   "rejected_by": "",
+   "fix": [
+    941.2000122070312,
+    1070.699951171875
+   ],
+   "heading": 32.1,
+   "heading_true": 32.1,
+   "altitude_scale": 0.959,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 0.6
+  },
+  {
+   "i": 10,
+   "truth": [
+    980.5,
+    1007.0
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 419.6,
+   "search": "window 818px",
+   "map_keypoints_searched": 7321,
+   "matches": 1530,
+   "inliers": 1525,
+   "rejected_by": "",
+   "fix": [
+    980.5,
+    1007.0
+   ],
+   "heading": 31.5,
+   "heading_true": 31.5,
+   "altitude_scale": 0.954,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 0.4
+  },
+  {
+   "i": 11,
+   "truth": [
+    1019.5,
+    943.0
+   ],
+   "state_in": "TRACKING",
+   "trouble": "jammed",
+   "sharpness": 83.6,
+   "search": "window 818px",
+   "rejected_by": "blur check",
+   "state_out": "TRACKING",
+   "sigma_m": 14.7,
+   "err_m": 0.9
+  },
+  {
+   "i": 12,
+   "truth": [
+    1058.8,
+    879.3
+   ],
+   "state_in": "TRACKING",
+   "trouble": "jammed",
+   "sharpness": 83.9,
+   "search": "window 876px",
+   "rejected_by": "blur check",
+   "state_out": "TRACKING",
+   "sigma_m": 29.6,
+   "err_m": 0.8
+  },
+  {
+   "i": 13,
+   "truth": [
+    1099.0,
+    816.2
+   ],
+   "state_in": "TRACKING",
+   "trouble": "jammed",
+   "sharpness": 83.8,
+   "search": "window 950px",
+   "rejected_by": "blur check",
+   "state_out": "LOST",
+   "sigma_m": 48.1,
+   "err_m": 0.8
+  },
+  {
+   "i": 14,
+   "truth": [
+    1140.9,
+    754.1
+   ],
+   "state_in": "LOST",
+   "trouble": "",
+   "sharpness": 177.6,
+   "search": "global",
+   "map_keypoints_searched": 40000,
+   "matches": 1050,
+   "inliers": 1042,
+   "rejected_by": "",
+   "fix": [
+    1140.9000244140625,
+    754.0999755859375
+   ],
+   "heading": 35.1,
+   "heading_true": 35.1,
+   "altitude_scale": 0.968,
+   "fix_err_m": 0.1,
+   "kalman_gain": 1.0,
+   "state_out": "RELOCALIZING",
+   "sigma_m": 6.1,
+   "err_m": 0.1
+  },
+  {
+   "i": 15,
+   "truth": [
+    1185.2,
+    693.7
+   ],
+   "state_in": "RELOCALIZING",
+   "trouble": "",
+   "sharpness": 466.9,
+   "search": "window 1240px",
+   "map_keypoints_searched": 16228,
+   "matches": 1422,
+   "inliers": 1418,
+   "rejected_by": "",
+   "fix": [
+    1185.199951171875,
+    693.7000122070312
+   ],
+   "heading": 38.0,
+   "heading_true": 38.0,
+   "altitude_scale": 1.039,
+   "fix_err_m": 0.1,
+   "kalman_gain": 1.0,
+   "state_out": "TRACKING",
+   "sigma_m": 6.1,
+   "err_m": 0.2
+  },
+  {
+   "i": 16,
+   "truth": [
+    1233.0,
+    636.1
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 559.5,
+   "search": "window 822px",
+   "map_keypoints_searched": 7997,
+   "matches": 1686,
+   "inliers": 1678,
+   "rejected_by": "",
+   "fix": [
+    1233.0,
+    636.0999755859375
+   ],
+   "heading": 42.1,
+   "heading_true": 42.1,
+   "altitude_scale": 1.007,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.87,
+   "state_out": "TRACKING",
+   "sigma_m": 5.7,
+   "err_m": 0.9
+  },
+  {
+   "i": 17,
+   "truth": [
+    1285.5,
+    582.7
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 385.4,
+   "search": "window 818px",
+   "map_keypoints_searched": 7963,
+   "matches": 1466,
+   "inliers": 1460,
+   "rejected_by": "",
+   "fix": [
+    1285.5,
+    582.7000122070312
+   ],
+   "heading": 47.9,
+   "heading_true": 47.9,
+   "altitude_scale": 1.013,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 1.8
+  },
+  {
+   "i": 18,
+   "truth": [
+    1343.9,
+    535.9
+   ],
+   "state_in": "TRACKING",
+   "trouble": "2022 ground",
+   "sharpness": 280.6,
+   "search": "window 818px",
+   "map_keypoints_searched": 8037,
+   "matches": 59,
+   "inliers": 38,
+   "rejected_by": "",
+   "fix": [
+    1343.199951171875,
+    537.0
+   ],
+   "heading": 55.7,
+   "heading_true": 55.5,
+   "altitude_scale": 1.016,
+   "fix_err_m": 1.9,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 2.6
+  },
+  {
+   "i": 19,
+   "truth": [
+    1408.5,
+    498.3
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 239.2,
+   "search": "window 818px",
+   "map_keypoints_searched": 8016,
+   "matches": 1353,
+   "inliers": 1343,
+   "rejected_by": "",
+   "fix": [
+    1408.5,
+    498.29998779296875
+   ],
+   "heading": 64.1,
+   "heading_true": 64.1,
+   "altitude_scale": 0.983,
+   "fix_err_m": 0.1,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 3.0
+  },
+  {
+   "i": 20,
+   "truth": [
+    1478.1,
+    470.7
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 265.9,
+   "search": "window 818px",
+   "map_keypoints_searched": 7993,
+   "matches": 1231,
+   "inliers": 1212,
+   "rejected_by": "",
+   "fix": [
+    1478.0999755859375,
+    470.70001220703125
+   ],
+   "heading": 71.2,
+   "heading_true": 71.2,
+   "altitude_scale": 0.963,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 3.4
+  },
+  {
+   "i": 21,
+   "truth": [
+    1550.0,
+    450.0
+   ],
+   "state_in": "TRACKING",
+   "trouble": "",
+   "sharpness": 271.9,
+   "search": "window 818px",
+   "map_keypoints_searched": 7901,
+   "matches": 1358,
+   "inliers": 1350,
+   "rejected_by": "",
+   "fix": [
+    1550.0,
+    450.0
+   ],
+   "heading": 73.9,
+   "heading_true": 73.9,
+   "altitude_scale": 1.01,
+   "fix_err_m": 0.0,
+   "kalman_gain": 0.85,
+   "state_out": "TRACKING",
+   "sigma_m": 5.6,
+   "err_m": 2.5
+  }
+ ]
+}

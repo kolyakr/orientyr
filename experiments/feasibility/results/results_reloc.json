@@ -1,0 +1,124 @@
+[
+ {
+  "name": "[MapPack] XFeat whole map L(s=0.5) 1822x922 top16384",
+  "dev": "mps",
+  "median_ms": 21.6,
+  "p90_ms": 24.1
+ },
+ {
+  "name": "RELOC XFeat MNN frame top2048 vs whole map L(s=0.5) top16384 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 18.3,
+  "p90_ms": 18.6,
+  "tentative": 1144,
+  "inliers": 6,
+  "center_err_px_fullres": 2077.3
+ },
+ {
+  "name": "RELOC XFeat MNN frame top4096 vs whole map L(s=0.5) top16384 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 26.7,
+  "p90_ms": 26.9,
+  "tentative": 1741,
+  "inliers": 5,
+  "center_err_px_fullres": 1576.0
+ },
+ {
+  "name": "[MapPack] XFeat whole map L(s=0.5) 1822x922 top8192",
+  "dev": "mps",
+  "median_ms": 21.3,
+  "p90_ms": 21.4
+ },
+ {
+  "name": "RELOC XFeat MNN frame top2048 vs whole map L(s=0.5) top8192 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 15.2,
+  "p90_ms": 15.3,
+  "tentative": 988,
+  "inliers": 5,
+  "center_err_px_fullres": 515.4
+ },
+ {
+  "name": "RELOC XFeat MNN frame top4096 vs whole map L(s=0.5) top8192 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 18.8,
+  "p90_ms": 18.9,
+  "tentative": 1362,
+  "inliers": 5,
+  "center_err_px_fullres": 302.7
+ },
+ {
+  "name": "RELOC XFeat+LighterGlue frame top2048 vs whole map L(s=0.5) top8192",
+  "dev": "mps",
+  "median_ms": 227.3,
+  "p90_ms": 227.5,
+  "tentative": 0,
+  "inliers": 0,
+  "center_err_px_fullres": null
+ },
+ {
+  "name": "[MapPack] XFeat whole map L(s=0.35) 1276x646 top8192",
+  "dev": "mps",
+  "median_ms": 15.1,
+  "p90_ms": 16.6
+ },
+ {
+  "name": "RELOC XFeat MNN frame top2048 vs whole map L(s=0.35) top8192 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 15.7,
+  "p90_ms": 15.8,
+  "tentative": 968,
+  "inliers": 5,
+  "center_err_px_fullres": 1632.0
+ },
+ {
+  "name": "RELOC XFeat MNN frame top4096 vs whole map L(s=0.35) top8192 (+MAGSAC)",
+  "dev": "mps",
+  "median_ms": 19.1,
+  "p90_ms": 19.2,
+  "tentative": 1344,
+  "inliers": 6,
+  "center_err_px_fullres": 786.0
+ },
+ {
+  "name": "RELOC XFeat+LighterGlue frame top2048 vs whole map L(s=0.35) top8192",
+  "dev": "mps",
+  "median_ms": 225.5,
+  "p90_ms": 226.8,
+  "tentative": 17,
+  "inliers": 6,
+  "center_err_px_fullres": 1300.2
+ },
+ {
+  "name": "EfficientLoFTR pair 640x480 (HF, fp32)",
+  "dev": "mps",
+  "median_ms": 299.5,
+  "p90_ms": 299.7,
+  "matches_conf>0.2": 253
+ },
+ {
+  "name": "EfficientLoFTR pair 640x480 (HF, fp32)",
+  "dev": "cpu",
+  "median_ms": 977.6,
+  "p90_ms": 1051.4,
+  "matches_conf>0.2": 253
+ },
+ {
+  "name": "DINOv2-S/14 forward 224px batch1",
+  "dev": "mps",
+  "median_ms": 14.5,
+  "p90_ms": 14.6
+ },
+ {
+  "name": "DINOv2-S/14 forward 448px batch1",
+  "dev": "mps",
+  "median_ms": 49.9,
+  "p90_ms": 50.0
+ },
+ {
+  "name": "DINOv2-S/14 forward 224px batch32",
+  "dev": "mps",
+  "median_ms": 287.8,
+  "p90_ms": 288.0
+ }
+]

@@ -1,0 +1,91 @@
+{
+  "lat": 49.2087,
+  "lon": 37.2565,
+  "zoom": 17,
+  "tile": [
+    79100,
+    44896
+  ],
+  "releases": [
+    {
+      "release": 10,
+      "title": "World Imagery (Wayback 2014-02-20)",
+      "SRC_DATE2": 1243296000000,
+      "SRC_DESC": "WV01",
+      "SRC_RES": 0.5,
+      "NICE_DESC": "DigitalGlobe"
+    },
+    {
+      "release": 9486,
+      "title": "World Imagery (Wayback 2017-01-25)",
+      "SRC_DATE2": 1372636800000,
+      "SRC_DESC": "WV02",
+      "SRC_RES": 0.5,
+      "NICE_DESC": "DigitalGlobe"
+    },
+    {
+      "release": 2168,
+      "title": "World Imagery (Wayback 2018-09-06)",
+      "SRC_DATE2": 1517875200000,
+      "SRC_DESC": "WV02",
+      "SRC_RES": 0.5,
+      "NICE_DESC": "DigitalGlobe"
+    },
+    {
+      "release": 11351,
+      "title": "World Imagery (Wayback 2019-10-09)",
+      "SRC_DATE2": 1526515200000,
+      "SRC_DESC": "WV03",
+      "SRC_RES": 0.31,
+      "NICE_DESC": "DigitalGlobe"
+    },
+    {
+      "release": 15423,
+      "title": "World Imagery (Wayback 2021-05-19)",
+      "SRC_DATE2": 1553904000000,
+      "SRC_DESC": "WV02",
+      "SRC_RES": 0.5,
+      "NICE_DESC": "Maxar"
+    },
+    {
+      "release": 48232,
+      "title": "World Imagery (Wayback 2022-04-06)",
+      "SRC_DATE2": 1586736000000,
+      "SRC_DESC": "GE01",
+      "SRC_RES": 0.46,
+      "NICE_DESC": "Maxar"
+    },
+    {
+      "release": 45134,
+      "title": "World Imagery (Wayback 2022-12-14)",
+      "SRC_DATE2": 1661731200000,
+      "SRC_DESC": "GE01",
+      "SRC_RES": 0.46,
+      "NICE_DESC": "Maxar"
+    },
+    {
+      "release": 60013,
+      "title": "World Imagery (Wayback 2024-03-07)",
+      "SRC_DATE2": 1661731200000,
+      "SRC_DESC": "GE01",
+      "SRC_RES": 0.46,
+      "NICE_DESC": "Maxar"
+    },
+    {
+      "release": 27982,
+      "title": "World Imagery (Wayback 2025-04-24)",
+      "SRC_DATE2": 1661731200000,
+      "SRC_DESC": "GE01",
+      "SRC_RES": 0.46,
+      "NICE_DESC": "Maxar"
+    },
+    {
+      "release": 22869,
+      "title": "World Imagery (Wayback 2026-03-26)",
+      "SRC_DATE2": 1661731200000,
+      "SRC_DESC": "GE01",
+      "SRC_RES": 0.46,
+      "NICE_DESC": "Vantor"
+    }
+  ]
+}
