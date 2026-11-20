@@ -22,12 +22,17 @@ A line is the ``TrackState`` flattened, plus the frame's identity and a few opti
 - Records are in frame order: ``idx`` strictly increasing (gaps are fine, e.g. every N-th video frame) and ``t``
   never decreasing. Both the writer and the reader check it.
 
+A run folder holds ``run.jsonl``, the frames each record's ``source`` names (relative to the folder), and
+``run.json``: the run-level facts (:class:`RunInfo`), above all which map the run was flown over, so a renderer
+needs only ``--run <dir>``. The map path is stored relative to the run folder.
+
 Every problem raises :class:`TelemetryError` with the field (and, when reading a file, the line) it is about.
 """
 from __future__ import annotations
 
 import json
 import math
+import os
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,8 +42,10 @@ import numpy as np
 
 from dronenav.types import Fix, TrackMode, TrackState
 
-__all__ = ["Record", "RunWriter", "TelemetryError", "iter_run", "read_run", "record_from_dict",
-           "record_to_dict", "write_run"]
+__all__ = ["RUN_INFO", "Record", "RunInfo", "RunWriter", "TelemetryError", "iter_run", "read_run",
+           "read_run_info", "record_from_dict", "record_to_dict", "write_run", "write_run_info"]
+
+RUN_INFO = "run.json"  # the run-level facts, next to run.jsonl
 
 # Top-level keys of a line, in the order they are written. The first group is required when reading.
 _REQUIRED = ("idx", "t", "source", "state", "x", "y", "vx", "vy", "cov", "fix")
@@ -252,6 +259,87 @@ def read_run(path: str | Path) -> list[Record]:
     return list(iter_run(path))
 
 
+# --- run.json: run-level facts --------------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class RunInfo:
+    """What a whole run shares, stored as ``<run dir>/run.json``.
+
+    map: the map the run was flown over. Given to :func:`write_run_info` as the caller knows it (absolute, or
+    relative to the working directory); stored relative to the run folder; returned by :func:`read_run_info`
+    as an absolute path. map_size: (w, h) in px. generator: what made the run ("fake_run", "run.py").
+    frame_size: (w, h) of the frames, if fixed. fps: frame rate, if fixed. seed: the random seed, if any.
+    """
+
+    map: str
+    map_size: tuple[int, int]
+    generator: str
+    frame_size: tuple[int, int] | None = None
+    fps: float | None = None
+    seed: int | None = None
+
+    def __post_init__(self):
+        if not isinstance(self.map, (str, os.PathLike)) or not str(self.map):
+            raise TelemetryError(f"map must be a path, got {self.map!r}")
+        object.__setattr__(self, "map", os.fspath(self.map))
+        object.__setattr__(self, "map_size", _size("map_size", self.map_size))
+        if not isinstance(self.generator, str):
+            raise TelemetryError(f"generator must be a str, got {type(self.generator).__name__}")
+        if self.frame_size is not None:
+            object.__setattr__(self, "frame_size", _size("frame_size", self.frame_size))
+        if self.fps is not None:
+            fps = _number("fps", self.fps)
+            if fps <= 0:
+                raise TelemetryError(f"fps must be > 0, got {fps:g}")
+            object.__setattr__(self, "fps", fps)
+        if self.seed is not None:
+            object.__setattr__(self, "seed", _int("seed", self.seed))
+
+    @property
+    def map_path(self) -> Path:
+        return Path(self.map)
+
+
+_INFO_REQUIRED = ("map", "map_size", "generator")
+_INFO_OPTIONAL = ("frame_size", "fps", "seed")
+
+
+def write_run_info(run_dir: str | Path, info: RunInfo) -> Path:
+    """Write ``run.json`` into ``run_dir`` (created if needed); returns its path."""
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    # relative to the run folder, so the folder can be read from any working directory (or moved with its map)
+    rel = Path(os.path.relpath(os.path.abspath(info.map), os.path.abspath(run_dir))).as_posix()
+    d = {"map": rel, "map_size": list(info.map_size), "generator": info.generator,
+         "frame_size": None if info.frame_size is None else list(info.frame_size), "fps": info.fps, "seed": info.seed}
+    path = run_dir / RUN_INFO
+    path.write_text(json.dumps(d, indent=1, allow_nan=False) + "\n", encoding="utf-8")
+    return path
+
+
+def read_run_info(run_dir: str | Path) -> RunInfo:
+    """Read ``<run_dir>/run.json``; the returned ``map`` is absolute. Raises TelemetryError naming the field."""
+    run_dir = Path(run_dir)
+    path = run_dir / RUN_INFO
+    text = path.read_text(encoding="utf-8")   # FileNotFoundError names the path
+    try:
+        d = json.loads(text, parse_constant=_reject_constant)
+        if not isinstance(d, dict):
+            raise TelemetryError(f"must be a JSON object, got {type(d).__name__}")
+        _check_keys(d, _INFO_REQUIRED, _INFO_OPTIONAL, prefix="")
+        if not isinstance(d["map"], str):
+            raise TelemetryError(f"map must be a str, got {type(d['map']).__name__}")
+        return RunInfo(map=os.path.normpath(os.path.join(os.path.abspath(run_dir), d["map"])),
+                       map_size=d["map_size"], generator=d["generator"], frame_size=d.get("frame_size"),
+                       fps=d.get("fps"), seed=d.get("seed"))
+    except _NonFinite as e:
+        raise TelemetryError(f"{RUN_INFO}: {e} is not a finite number") from None
+    except json.JSONDecodeError as e:
+        raise TelemetryError(f"{RUN_INFO}: invalid JSON: {e.msg} at line {e.lineno}") from None
+    except TelemetryError as e:
+        raise TelemetryError(f"{RUN_INFO}: {e}") from None
+
+
 # --- validation helpers ----------------------------------------------------------------------------------------
 
 def _check_order(prev: Record | None, rec: Record) -> None:
@@ -308,6 +396,16 @@ def _int(name: str, v) -> int:
     if v < 0:
         raise TelemetryError(f"{name} must be >= 0, got {v}")
     return int(v)
+
+
+def _size(name: str, v) -> tuple[int, int]:
+    """(w, h): two positive ints, from a tuple or a JSON list."""
+    if not isinstance(v, (list, tuple)) or len(v) != 2:
+        raise TelemetryError(f"{name} must be [w, h], got {v!r}")
+    w, h = (_int(name, x) for x in v)
+    if w == 0 or h == 0:
+        raise TelemetryError(f"{name} must be positive, got {list(v)}")
+    return w, h
 
 
 def _array_in(name: str, v, shape: tuple) -> np.ndarray:
