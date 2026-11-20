@@ -255,6 +255,7 @@ ruff check .                                             # lint, as CI does (exp
 python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
+python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
 python scripts/scale_table.py --task data/hackatons-data --probe experiments/data_probe/results/probe.json \
     --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png   # M1-03 scale table (README notes)
