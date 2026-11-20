@@ -2,47 +2,57 @@
 
 /**
  * Mission control, as a mock-up: a recorded run (run.json + run.jsonl + frames/) replayed on the map.
+ * Left: the map card and, under it, the flight's timeline. Right: what the tracker knows at this frame.
  * Playback works; the mission controls are drawn but inactive until the live engine exists (M7).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Run, RunRecord } from "@/lib/run";
-import { STATE_LABEL, clock, confidence, confidenceColor, events, headingOf, sigmaPx, stateRuns } from "@/lib/view";
+import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, sigmaPx } from "@/lib/view";
 import { MapView } from "./MapView";
 
-const SPEEDS = [1, 2, 4];
+const SPEEDS = [1, 2, 4, 8];
+const MAX_DOTS = 40;
 const frameUrl = (rec: RunRecord) => `/api/frame?src=${encodeURIComponent(rec.source)}`;
-const num = (v: number | null | undefined, digits = 1) => (v == null ? "—" : v.toFixed(digits));
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** Distance to the simulator's true position, when the run has one (fake and synthetic runs do). */
-function errorPx(rec: RunRecord): number | null {
-  const t = rec.extra.truth as { x?: number; y?: number } | undefined;
-  return typeof t?.x === "number" && typeof t?.y === "number" ? Math.hypot(rec.x - t.x, rec.y - t.y) : null;
-}
-
-function Readout({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone?: string }) {
-  return (
-    <div className="readout" data-tone={tone}>
-      <dt>{label}</dt>
-      <dd>{value}{unit && <span className="unit">{unit}</span>}</dd>
-    </div>
-  );
+/**
+ * Where to draw the matched points on the camera frame, as fractions of its size.
+ * PLACEHOLDER: the telemetry does not carry the matches yet, so the points are scattered by a generator
+ * seeded with the frame index (stable per frame, more points for more inliers). When the engine writes the
+ * real inlier coordinates into `extra`, this function reads them instead.
+ */
+function matchedPoints(rec: RunRecord): [number, number][] {
+  if (!rec.fix?.accepted) return [];
+  let seed = (rec.idx + 1) * 2654435761;
+  const rnd = () => {   // mulberry32: small, fast, good enough to scatter dots
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const n = Math.min(MAX_DOTS, Math.round(rec.fix.inliers / 8));
+  return Array.from({ length: n }, () => [0.06 + 0.88 * rnd(), 0.06 + 0.88 * rnd()]);
 }
 
 export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: number }) {
-  const last = run.records.length - 1;
+  const n = run.records.length;
+  const last = n - 1;
   const [frame, setFrame] = useState(Math.min(Math.max(initialFrame, 0), last));
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(2);
   const [follow, setFollow] = useState(false);
-  const [showTruth, setShowTruth] = useState(true);
 
   const rec = run.records[frame];
   const fix = rec.fix;
   const stepMs = 1000 / ((run.info.fps ?? 1) * speed);
-  const bands = useMemo(() => stateRuns(run.records), [run]);
   const log = useMemo(() => events(run.records), [run]);
-  const maxInliers = useMemo(() => Math.max(1, ...run.records.map((r) => r.fix?.inliers ?? 0)), [run]);
+  const maxPairs = useMemo(() => Math.max(1, ...run.records.map((r) => r.fix?.inliers ?? 0)), [run]);
+  const lastEvent = log.findLast((e) => e.frame <= frame);
 
+  const jump = useCallback((f: number) => {
+    setPlaying(false);
+    setFrame(Math.min(Math.max(f, 0), last));
+  }, [last]);
   const step = useCallback((d: number) => {
     setPlaying(false);
     setFrame((f) => Math.min(Math.max(f + d, 0), last));
@@ -54,8 +64,10 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
   useEffect(() => {
     if (!playing) return;
-    if (frame === last) return setPlaying(false);
-    const id = setTimeout(() => setFrame((f) => Math.min(f + 1, last)), stepMs);
+    const id = setTimeout(() => {
+      if (frame >= last) setPlaying(false);
+      else setFrame(frame + 1);
+    }, frame >= last ? 0 : stepMs);
     return () => clearTimeout(id);
   }, [playing, frame, last, stepMs]);
 
@@ -66,7 +78,6 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
       if (e.code === "Space") { e.preventDefault(); toggle(); }
       else if (e.code === "ArrowRight") step(1);
       else if (e.code === "ArrowLeft") step(-1);
@@ -76,135 +87,151 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
     return () => window.removeEventListener("keydown", onKey);
   }, [toggle, step]);
 
-  const conf = confidence(rec);
   const heading = headingOf(rec);
-  const err = errorPx(rec);
-  const [mapW, mapH] = run.info.map_size;
+  const trust = Math.round(confidence(rec) * 100);
+  const [mw, mh] = run.info.map_size;
+  const tick = niceStep(n, 6);
+  const [fw, fh] = run.info.frame_size ?? [1, 1];
+  const tiles: { label: string; value: string; sub: string; turn?: number }[] = [
+    { label: "Position", value: `${Math.round(rec.x)}, ${Math.round(rec.y)}`, sub: "map px, x and y" },
+    heading == null
+      ? { label: "Heading", value: "–", sub: "not known yet" }
+      : { label: "Heading", value: `${Math.round(heading)}°`, sub: `${compass(heading)}${fix?.accepted ? "" : ", from motion"}`, turn: heading },
+    { label: "Matched pairs", value: fix ? String(fix.inliers) : "0",
+      sub: !fix ? "no picture to match" : fix.accepted ? `${Math.round(fix.inlier_ratio * 100)} % of all matches` : "fix rejected" },
+    { label: "Uncertainty", value: `± ${Math.round(sigmaPx(rec.cov))} px`, sub: `search: ${String(rec.extra.search ?? "none")}` },
+  ];
 
   return (
     <main className="console" data-state={rec.state}>
-      <header className="topbar">
-        <div className="brand">
-          <svg viewBox="0 0 24 24" className="brand-mark" aria-hidden="true">
-            <circle cx="12" cy="12" r="9.5" /><circle cx="12" cy="12" r="4.5" />
-            <path d="M12 0v6M12 18v6M0 12h6M18 12h6" /><circle cx="12" cy="12" r="1.4" className="dot" />
-          </svg>
-          <span className="brand-name">ORIENTYR</span>
-          <span className="brand-sub">Mission control</span>
+      <header className="bar">
+        <div>
+          <p>Orientyr / replay</p>
+          <h1>Live tracking</h1>
         </div>
-        <div className="chips">
-          <span className="chip chip-accent">GNSS denied</span>
-          <span className="chip">Replay · {run.info.generator}{run.info.seed != null && ` · seed ${run.info.seed}`}</span>
-          <span className="chip">Map {mapW} × {mapH} px</span>
-          <span className="chip">Matcher · {rec.backend ?? "—"}</span>
-        </div>
-        <div data-part="state-badge" data-state={rec.state} className="state-badge" role="status">
-          <span className="state-led" />{STATE_LABEL[rec.state]}
-        </div>
+        <p>{run.info.generator ?? "run"} · {n} frames · map {mw} × {mh} px</p>
       </header>
 
-      <section className="stage">
-        <MapView run={run} frame={frame} follow={follow} showTruth={showTruth} stepMs={playing ? stepMs : 250} />
-        <div className="stage-tools">
-          <button type="button" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>Follow drone</button>
-          <button type="button" aria-pressed={showTruth} onClick={() => setShowTruth((v) => !v)}>Ground truth</button>
-        </div>
-        <ul className="legend">
-          <li><i style={{ background: confidenceColor(1) }} />high confidence</li>
-          <li><i style={{ background: confidenceColor(0.45) }} />low</li>
-          <li><i className="dashed" />dead reckoning</li>
-          <li><i className="truth-key" />ground truth</li>
-        </ul>
-        {typeof rec.extra.event === "string" && <div className="toast" key={frame}>{rec.extra.event}</div>}
-      </section>
+      <div className="layout">
+        <div className="main">
+          {/* the map card fills the column; the whole map is fitted inside it, so nothing is cut */}
+          <div className="stage">
+            {/* a blurred copy of the map behind it: a square map in a wide card gets soft edges, not black bars */}
+            <div className="backdrop" aria-hidden="true" />
+            <MapView run={run} frame={frame} follow={follow} stepMs={playing ? stepMs : 250} />
 
-      <aside className="side">
-        <section data-part="camera" className="panel camera">
-          <h2>Camera <span>{rec.source.split("/").at(-1)}</span></h2>
-          <div className="camera-view">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a local run file, not a site asset */}
-            <img src={frameUrl(rec)} alt={`Drone camera, frame ${rec.idx}`} />
-            <div className="reticle" aria-hidden="true" />
-            {!fix && <div className="camera-flag">No fix · dead reckoning</div>}
-            {fix && !fix.accepted && <div className="camera-flag">Fix rejected · {fix.reject_reason}</div>}
-          </div>
-          <div className="confidence">
-            <span>Confidence</span>
-            <div className="bar"><div style={{ width: `${conf * 100}%`, background: confidenceColor(conf) }} /></div>
-            <b>{Math.round(conf * 100)}%</b>
-          </div>
-        </section>
-
-        <section data-part="hud" className="panel hud">
-          <h2>Telemetry <span>frame {rec.idx} / {run.records[last].idx}</span></h2>
-          <dl>
-            <Readout label="Flight time" value={clock(rec.t)} />
-            <Readout label="Heading" value={heading == null ? "—" : heading.toFixed(1)} unit="°" />
-            <Readout label="X" value={num(rec.x)} unit="px" />
-            <Readout label="Y" value={num(rec.y)} unit="px" />
-            <Readout label="Speed" value={num(Math.hypot(rec.vx, rec.vy))} unit="px/s" />
-            <Readout label="Scale" value={num(fix?.scale, 3)} unit="×" />
-            <Readout label="Inliers" value={fix ? String(fix.inliers) : "—"} tone={fix && !fix.accepted ? "bad" : undefined} />
-            <Readout label="Reproj. error" value={num(fix?.reproj_px, 2)} unit="px" />
-            <Readout label="Uncertainty σ" value={num(sigmaPx(rec.cov))} unit="px" tone={rec.state === "TRACKING" ? undefined : "warn"} />
-            <Readout label="Error vs truth" value={num(err)} unit="px" tone={err != null && err > 15 ? "warn" : undefined} />
-            <Readout label="Search" value={String(rec.extra.search ?? "—")} />
-            <Readout label="Compute" value={num(rec.ms, 0)} unit="ms" />
-          </dl>
-        </section>
-
-        <section data-part="events" className="panel events">
-          <h2>Mission log</h2>
-          <ol>
-            <li data-past="true"><time>{clock(run.records[0].t)}</time>mission start: tracking</li>
-            {log.map((e) => (
-              <li key={e.frame} data-state={e.state} data-past={e.frame <= frame}>
-                <button type="button" onClick={() => { setPlaying(false); setFrame(e.frame); }}>
-                  <time>{clock(e.t)}</time>{e.text}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </aside>
-
-      <footer className="dock">
-        <section data-part="timeline" className="timeline">
-          <div className="transport">
-            <button type="button" onClick={() => step(-1)} aria-label="Previous frame">‹</button>
-            <button type="button" className="play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
-              {playing ? "❚❚" : "▶"}
+            <ul className="legend" aria-label="Map legend">
+              <li><i style={{ background: confidenceColor(1) }} />sure</li>
+              <li><i style={{ background: confidenceColor(0.3) }} />less sure</li>
+              <li><i style={{ background: confidenceColor(0) }} />guessing</li>
+              <li><i className="box" />camera view</li>
+              <li><i className="ring" />where it can be</li>
+            </ul>
+            <button type="button" className="follow" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
+              {follow ? "Show whole map" : "Follow drone"}
             </button>
-            <button type="button" onClick={() => step(1)} aria-label="Next frame">›</button>
-            <button type="button" className="speed" aria-label="Playback speed"
-                    onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s) + 1) % SPEEDS.length])}>{speed}×</button>
-          </div>
-          <div className="scrubber">
-            {/* one bar per frame: height = inliers, colour = confidence; the band below is the tracker state */}
-            <div className="bars" aria-hidden="true">
-              {run.records.map((r, i) => (
-                <i key={r.idx} data-now={i === frame} data-past={i <= frame}
-                   style={{ height: `${8 + 92 * ((r.fix?.accepted ? r.fix.inliers : 0) / maxInliers)}%`,
-                            background: confidenceColor(confidence(r)) }} />
-              ))}
-            </div>
-            <div className="bands" aria-hidden="true">
-              {bands.map((b) => <i key={b.from} data-state={b.state} style={{ flexGrow: b.to - b.from + 1 }} />)}
-            </div>
-            <input type="range" min={0} max={last} value={frame} aria-label="Frame"
-                   onChange={(e) => { setPlaying(false); setFrame(Number(e.target.value)); }} />
-          </div>
-          <div className="timecode">{clock(rec.t)}<span> / {clock(run.records[last].t)}</span></div>
-        </section>
 
-        <section data-part="controls" className="controls" title="Inactive in the mock-up: they arrive with the live engine">
-          <span className="controls-note">Live controls · soon</span>
-          <button type="button" disabled>Start mission</button>
-          <button type="button" disabled>Simulate jamming</button>
-          <button type="button" disabled>Switch matcher</button>
-          <button type="button" disabled>Export report</button>
-        </section>
-      </footer>
+            <section data-part="camera" className="camera">
+              <div className="camera-view" style={{ aspectRatio: `${fw} / ${fh}` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a local run file, not a site asset */}
+                <img src={frameUrl(rec)} alt={`Drone camera, frame ${rec.idx}`} />
+                {matchedPoints(rec).map(([x, y], i) => <i key={i} style={{ left: `${x * 100}%`, top: `${y * 100}%` }} />)}
+              </div>
+              <h2>Camera</h2>
+              <p>{!fix ? "No picture" : fix.accepted ? `${fix.inliers} points matched` : "Match rejected"}</p>
+            </section>
+          </div>
+
+          <section data-part="timeline" className="card timeline">
+            <div className="transport">
+              <button type="button" className="icon" onClick={() => step(-1)} aria-label="Previous frame">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" /></svg>
+              </button>
+              <button type="button" className="play" onClick={toggle}>{playing ? "Pause" : frame === last ? "Replay" : "Play"}</button>
+              <button type="button" className="icon" onClick={() => step(1)} aria-label="Next frame">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg>
+              </button>
+              <p className="time"><b>{clock(rec.t)}</b> / {clock(run.records[last].t)}</p>
+              <p className="keys">Space to play, arrows to step, F to follow</p>
+              <div className="speeds" role="group" aria-label="Playback speed">
+                {SPEEDS.map((s) => (
+                  <button key={s} type="button" aria-pressed={s === speed} onClick={() => setSpeed(s)}>{s}×</button>
+                ))}
+              </div>
+            </div>
+
+            {/* one bar per frame: its height is how many point pairs matched, its colour is the trail's */}
+            <div className="chart">
+              <div className="bars" data-dense={n > 120 || undefined} aria-hidden="true">
+                {run.records.map((r, i) => (
+                  <i key={r.idx} data-ahead={i > frame || undefined}
+                     style={{ height: `${r.fix ? Math.max(10, (r.fix.inliers / maxPairs) * 100) : 6}%`, background: confidenceColor(confidence(r)) }} />
+                ))}
+              </div>
+              <span className="now" style={{ left: `${((frame + 0.5) / n) * 100}%` }} aria-hidden="true" />
+              <input type="range" min={0} max={last} value={frame} aria-label="Frame"
+                     onChange={(e) => jump(Number(e.target.value))} />
+            </div>
+            <div className="axis" aria-hidden="true">
+              <span>Matched pairs per frame</span>
+              {run.records.map((r, i) => i % tick === 0 && (i + 0.5) / n < 0.8 && <b key={r.idx} style={{ left: `${((i + 0.5) / n) * 100}%` }}>{r.idx}</b>)}
+            </div>
+          </section>
+        </div>
+
+        <aside className="side">
+          <section data-part="hud" className="card hud">
+            <div className="status">
+              <span data-part="state-badge" data-state={rec.state} className="badge" role="status">{STATE_LABEL[rec.state]}</span>
+              <span className="frame">Frame {rec.idx} of {run.records[last].idx}</span>
+            </div>
+            <p className="headline">{sentence(lastEvent ? lastEvent.text : "mission start: tracking")}</p>
+            <div className="trust">
+              <span>Confidence</span>
+              <div><i style={{ width: `${trust}%` }} /></div>
+              <b>{trust} %</b>
+            </div>
+            <dl className="tiles">
+              {tiles.map((t) => (
+                <div key={t.label}>
+                  <dt>{t.label}</dt>
+                  <dd>
+                    {t.value}
+                    {t.turn != null && (
+                      <svg viewBox="0 0 16 16" style={{ transform: `rotate(${drawAngle(t.turn)}deg)` }} aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
+                    )}
+                  </dd>
+                  <dd className="sub">{t.sub}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section data-part="events" className="card log">
+            <h2>Mission log</h2>
+            <ol>
+              {log.map((e) => (
+                <li key={e.frame} data-state={e.state} data-ahead={e.frame > frame || undefined}
+                    aria-current={e === lastEvent || undefined}>
+                  <button type="button" onClick={() => jump(e.frame)}>
+                    <time>{clock(e.t)}</time>
+                    <span>{sentence(e.text)}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section data-part="controls" className="card controls">
+            <h2>Mission controls <span>come with the live engine</span></h2>
+            <div>
+              <button type="button" disabled>Start mission</button>
+              <button type="button" disabled>Jam camera</button>
+              <button type="button" disabled>Change matcher</button>
+            </div>
+          </section>
+        </aside>
+      </div>
     </main>
   );
 }

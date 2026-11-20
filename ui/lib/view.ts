@@ -76,9 +76,25 @@ export function events(records: RunRecord[]): RunEvent[] {
   );
 }
 
-/** green (trusted) → amber → red (no fix), as an HSL colour. */
+/** The trail's three colours, as the legend says: green = sure, yellow = less sure, red = guessing (no fix). */
 export function confidenceColor(c: number): string {
-  return `hsl(${Math.round(4 + 148 * Math.min(1, Math.max(0, c)))} 82% 58%)`;
+  if (c <= 0) return "#e3261c";
+  return c < 0.6 ? "#f5d21f" : "#3ec43e";
+}
+
+/**
+ * The 3σ ellipse of a 2x2 covariance: radii along its axes (map px) and the long axis's angle in degrees.
+ * The drone is inside it with ~99 % probability.
+ */
+export function sigmaEllipse(cov: number[][]): { rx: number; ry: number; angle: number } {
+  const [[a, b], [, d]] = cov;
+  const mean = (a + d) / 2;
+  const half = Math.hypot((a - d) / 2, b);
+  return {
+    rx: 3 * Math.sqrt(mean + half),
+    ry: 3 * Math.sqrt(Math.max(mean - half, 0)),
+    angle: (0.5 * Math.atan2(2 * b, a - d) * 180) / Math.PI,
+  };
 }
 
 export const STATE_LABEL: Record<TrackMode, string> = {
@@ -87,8 +103,30 @@ export const STATE_LABEL: Record<TrackMode, string> = {
   RELOCALIZING: "Relocalizing",
 };
 
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+/** The compass point nearest to a heading in degrees (0 = map up = N). */
+export function compass(deg: number): string {
+  return COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
 /** mm:ss.s of flight time. */
 export function clock(t: number): string {
   const m = Math.floor(t / 60);
   return `${String(m).padStart(2, "0")}:${(t - m * 60).toFixed(1).padStart(4, "0")}`;
+}
+
+/** A round step (1, 2, 5, 10, 20, 50, …) that puts about `target` marks on `n` frames: point numbers, axis ticks. */
+export function niceStep(n: number, target: number): number {
+  const raw = Math.max(1, n / target);
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  return pow * ([1, 2, 5, 10].find((m) => m * pow >= raw) ?? 10);
+}
+
+/**
+ * An angle for an SVG or CSS transform, rounded to 0.1°. `Math.atan2` may differ in the last digit between Node and
+ * the browser: unrounded, the server's HTML and the client's first render disagree (a React hydration warning).
+ */
+export function drawAngle(deg: number): number {
+  return Math.round(deg * 10) / 10;
 }
