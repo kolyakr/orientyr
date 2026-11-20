@@ -12,8 +12,9 @@ What is drawn, bottom to top:
 - **points**, filled in the fixed or the missed colour: a full marker for numbered points, a small dot for the
   others, at most one per DOT_SPACING (on a dense run more would bury the route); START and FINISH on top;
 - **labels**: points numbered by their frame index (the task's ``crop_N`` is point N), placed where they cover no
-  route, no marker and no other label. A point is numbered when it is at least MIN_LABEL_SPACING from every
-  numbered point, so hovers, loops and zigzags stay readable. Points off the map are not numbered; the legend
+  route, no marker and no other label. A point is numbered when it is at least a label's width (the run's widest
+  number, MIN_LABEL_SPACING at least) from every numbered point, so hovers, loops, zigzags and long runs stay
+  readable. Points off the map are not numbered; the legend
   counts them. START and FINISH always show, at the map's edge if the route leaves the map;
 - **a legend** in the corner the route uses least, left out when the map is too small for it.
 
@@ -52,7 +53,7 @@ DOT_SPACING = 8.0            # preview px between drawn points: denser dots woul
 END_R = 7.5
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.42            # ≈ 10 px digits in the preview
-MIN_LABEL_SPACING = 18.0     # preview px from the last numbered point (a 2-digit label is ≈ 18 px wide)
+MIN_LABEL_SPACING = 18.0     # preview px between numbered points, at least (a 2-digit label is ≈ 18 px wide)
 MARGIN = 12.0                # legend distance from the image edge
 FOOTPRINT_ALPHA = 0.55
 LEGEND_ALPHA = 0.78
@@ -114,7 +115,9 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     pts = np.array([[r.track.x, r.track.y] for r in records])
     missed = [_is_missed(r) for r in records]
     on_map = (pts[:, 0] >= 0) & (pts[:, 0] <= w) & (pts[:, 1] >= 0) & (pts[:, 1] <= h)
-    numbered = _numbered(pts, on_map, label_every, unit)
+    # numbered points at least one label apart: the widest number of the run sets the spacing (5 digits ≈ 45 px)
+    widest = _text_size(str(max(r.idx for r in records)), unit)[0]
+    numbered = _numbered(pts, on_map, label_every, max(MIN_LABEL_SPACING * unit, widest))
     ends = [_clamp_end(*pts[0], w, h, unit), _clamp_end(*pts[-1], w, h, unit)]
 
     footprints = _draw_footprints(img, records, set(numbered), label_every is None and len(numbered) < len(pts), unit)
@@ -255,11 +258,11 @@ def _clamp_end(x: float, y: float, w: int, h: int, unit: float) -> tuple[float, 
     return min(max(x, r), w - r), min(max(y, r), h - r)
 
 
-def _numbered(pts: np.ndarray, on_map: np.ndarray, every: int | None, unit: float) -> list[int]:
+def _numbered(pts: np.ndarray, on_map: np.ndarray, every: int | None, gap: float) -> list[int]:
     """Which points get their frame number (only points on the map can be numbered).
 
     With ``every``: every k-th point, plus the last. Otherwise by spacing: a point is numbered when it is at least
-    MIN_LABEL_SPACING preview px from every numbered point, so hovers, loops and zigzags do not pile up numbers.
+    ``gap`` full-size px from every numbered point, so hovers, loops and zigzags do not pile up numbers.
     The first and last points on the map are tried first.
     """
     n = len(pts)
@@ -269,7 +272,6 @@ def _numbered(pts: np.ndarray, on_map: np.ndarray, every: int | None, unit: floa
     if len(idx) == 0:
         return []
     order = [idx[0], idx[-1]] + list(idx[1:-1]) if len(idx) > 1 else [idx[0]]
-    gap = MIN_LABEL_SPACING * unit
     chosen: list[int] = []
     for i in order:
         if not chosen or np.hypot(*(pts[chosen] - pts[i]).T).min() >= gap:
