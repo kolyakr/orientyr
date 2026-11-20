@@ -7,6 +7,7 @@ torch>=2.2          # uses MPS on Apple Silicon, falls back to CPU
 kornia>=0.7
 lightglue @ git+https://github.com/cvg/LightGlue.git   # not on PyPI
 imageio-ffmpeg>=0.5  # ffmpeg with x264 for the trajectory video (M1-08), on every OS
+matplotlib>=3.8     # reliability plot of the per-fix confidence (scripts/confidence_check.py, M4-08)
 # dev
 pytest>=8
 ruff>=0.17,<0.18    # pinned: ruff's default rule set changes between minor versions, CI and laptops must agree

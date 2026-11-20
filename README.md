@@ -79,3 +79,26 @@ frame as a forced miss:
 
 Every frame after frame 0 is found in its window, except the forced miss. The miss falls back to the whole
 map, finds nothing (correctly), and the next frame is found again by the global search.
+
+### Per-fix confidence (M4-08)
+
+[src/dronenav/confidence.py](src/dronenav/confidence.py) gives every accepted fix two numbers:
+- **confidence** in [0, 1], for the trail colour, the HUD and plots. It is the product of three terms that
+  saturate at 1: inliers `n/(n+100)`, inlier ratio `1.5r/(r+0.5)`, reprojection RMSE `9/(9+e²)`. No fix or a
+  rejected one has confidence 0.
+- **position σ**, the Kalman filter's measurement noise: `σ² = 0.2² + 3² e²/n + 0.75² ((1−r)/r)²` map px².
+  The constants are a maximum-likelihood fit to the errors below, rounded.
+
+Measured with `python scripts/confidence_check.py`: the four Irpin flights (first 80 keyframes each) against the
+2025 map (320 of 320 accepted) and the cross-season 2022 map (110 of 320; the 2017 map gives none), with exact
+truth:
+
+| confidence fifth | 1 (lowest) | 2 | 3 | 4 | 5 (highest) |
+|---|---|---|---|---|---|
+| median error, px | 1.49 | 0.68 | 0.52 | 0.23 | 0.29 |
+| p90 error, px | 4.44 | 1.13 | 0.88 | 0.52 | 0.53 |
+
+The σ is honest: the truth is within 2 σ for 87.4% of the fixes (86.5% for a 2D Gaussian) and within 2.45 σ
+for 95.1% (95%).
+
+![Reliability plot: error against confidence, and covariance coverage](results/m4-08/reliability.png)
