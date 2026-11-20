@@ -107,9 +107,12 @@ def test_without_undistortion_the_match_is_clearly_worse(fixture_flight):
 
 def test_times_come_from_meta_and_equal_the_truth(fixture_flight):
     d, _ = fixture_flight
+    stored = {r["i"]: r["t"] for r in map(json.loads, (d / "truth.jsonl").read_text().splitlines())}
     src = FlightSource(d, keyframes=True)
     for f in src:
-        assert f.t == pytest.approx(f.idx / 30) and f.t == pytest.approx(src.truth(f.idx).t)
+        # against the record as stored: a truth that recomputed t from i would agree with anything
+        assert f.t == pytest.approx(f.idx / 30) and f.t == pytest.approx(stored[f.idx])
+        assert src.truth(f.idx).t == pytest.approx(stored[f.idx])
 
 
 def test_the_truth_feeds_the_telemetry(fixture_flight):
@@ -304,12 +307,14 @@ def _centroids(img):
     return out
 
 
-@pytest.mark.parametrize("tilt", [0.0, 6.0, 12.0])
-def test_the_truth_maps_frame_pixels_back_onto_the_map_within_half_a_pixel(tilt):
+@pytest.mark.parametrize("tilt, heading, scale", [(0.0, 37.0, 0.9), (6.0, 37.0, 0.9), (12.0, 37.0, 0.9),
+                                                  (0.0, 180.0, 1.6), (8.0, 180.0, 1.6)])
+def test_the_truth_maps_frame_pixels_back_onto_the_map_within_half_a_pixel(tilt, heading, scale):
+    # heading 180° and scale 1.6: where dropping the half-pixel conventions would move every point by ~1 px
     # dots on a grid 24 px apart (sub-pixel offsets): random dots merged into one blob and moved its centroid
     dots = [(380.3 + 24 * i, 380.7 + 24 * j) for i in range(11) for j in range(11)]
     world = _dots(1000, 1000, dots)
-    pose = CutoutPose(x=500.3, y=499.7, heading_deg=37.0, scale=0.9, tilt_deg=tilt, tilt_dir_deg=60.0)
+    pose = CutoutPose(x=500.3, y=499.7, heading_deg=heading, scale=scale, tilt_deg=tilt, tilt_dir_deg=60.0)
     H = cutout_homography(pose, (320, 240))
     frame = render_cutout(world, H, (320, 240))
     found = _centroids(frame)
@@ -374,10 +379,13 @@ def test_the_cutout_source_carries_each_frames_truth():
     assert isinstance(src, FrameSource)
     assert [f.idx for f in frames] == list(range(5)) and [f.t for f in frames] == [0, 0.5, 1.0, 1.5, 2.0]
     for f in frames:
-        assert np.allclose(src.truth(f.idx), cutout_homography(poses[f.idx], (160, 120)))
+        tr = src.truth(f.idx)
+        assert np.allclose(tr.H, cutout_homography(poses[f.idx], (160, 120)))
+        assert tr.center == pytest.approx((poses[f.idx].x, poses[f.idx].y)) and tr.footprint.shape == (4, 2)
+        assert tr.extra()["x"] == pytest.approx(poses[f.idx].x)
         # a sanity check that the frame shows the right place (a misplaced one scores near 0): at scale s > 1 the
         # frame holds s² fewer pixels than its footprint, so warped back it is softer than the map: 0.97–1.0 here
-        assert registration_ncc(f.image, src.truth(f.idx), world) >= 0.95
+        assert registration_ncc(f.image, tr.H, world) >= 0.95
 
 
 
@@ -388,3 +396,171 @@ def test_shrinking_the_map_does_not_alias():
     for heading in (0.0, 17.0, 45.0):
         frame = render_cutout(world, cutout_homography(CutoutPose(200, 200, heading, 2.0), (64, 48)), (64, 48))
         assert frame.std() < 12 and abs(frame.mean() - 127.5) < 10, (heading, frame.std())
+
+
+# --- review ----------------------------------------------------------------------------------------------------
+
+def test_a_window_of_one_instant_is_allowed(synthetic_flight):
+    # the window is inclusive (start_s <= t <= end_s): start_s == end_s asks for one frame, not an error
+    assert [f.idx for f in FlightSource(synthetic_flight[0], fps=10, start_s=0, end_s=0)] == [0]
+    assert [f.idx for f in FlightSource(synthetic_flight[0], fps=10, start_s=0.7, end_s=0.7)] == [7]
+
+
+
+def test_a_tilted_pose_keeps_its_centre_and_scale():
+    # with tilt the homography is recentred so the frame centre still lands on (x, y), and rescaled so the scale
+    # at the centre is still pose.scale (the types.py convention: map px per frame px at the frame centre)
+    for tilt, d in ((8.0, 0.0), (12.0, 75.0)):
+        pose = CutoutPose(x=812.0, y=455.0, heading_deg=30.0, scale=1.3, tilt_deg=tilt, tilt_dir_deg=d)
+        H = cutout_homography(pose, (320, 240))
+        c = cv2.perspectiveTransform(np.float32([[[160, 120]]]), H)[0, 0]
+        assert c == pytest.approx([812.0, 455.0], abs=1e-3)
+        e = cv2.perspectiveTransform(np.float32([[[161, 120]], [[160, 121]]]), H)[:, 0] - c   # 1 px steps
+        assert math.sqrt(abs(np.cross(e[0], e[1]))) == pytest.approx(1.3, rel=1e-3)
+
+
+@pytest.mark.parametrize("where", [(400.0, 400.0), (2000.0, 1500.0), (6000.0, 5000.0)])
+def test_shrinking_a_tilted_view_does_not_alias_anywhere_on_the_map(where):
+    # the anti-aliasing scale came from H's top-left block, which with tilt depends on the map position
+    board = (np.indices((200, 200)).sum(axis=0) % 2 * 255).astype(np.uint8)
+    x0, y0 = int(where[0]) - 100, int(where[1]) - 100
+    world = np.zeros((int(where[1]) + 200, int(where[0]) + 200, 3), np.uint8)
+    world[y0:y0 + 200, x0:x0 + 200] = cv2.cvtColor(board, cv2.COLOR_GRAY2BGR)
+    pose = CutoutPose(where[0], where[1], 17.0, 2.0, tilt_deg=8.0, tilt_dir_deg=40.0)
+    frame = render_cutout(world, cutout_homography(pose, (48, 36)), (48, 36))
+    assert frame.std() < 12, frame.std()
+
+
+# (1200 x 900 with 320 px frames leaves a 350 px box: too tight to turn around in, refused, see the test below)
+@pytest.mark.parametrize("size, frame", [((2000, 1500), (320, 240)), ((1200, 900), (160, 120))])
+def test_routes_turn_before_the_edge_and_never_slide_along_it(size, frame):
+    # every step full length and along the heading: a clipped step slid along the wall, sideways to the camera
+    for seed in range(15):
+        poses = cutout_route(size, 120, seed=seed, frame_size=frame)
+        steps = [math.hypot(b.x - a.x, b.y - a.y) for a, b in itertools.pairwise(poses)]
+        assert max(steps) - min(steps) < 1e-6, (seed, min(steps), max(steps))
+        for a, b in itertools.pairwise(poses):
+            moved = math.degrees(math.atan2(b.x - a.x, -(b.y - a.y))) % 360
+            assert abs((moved - b.heading_deg + 180) % 360 - 180) < 1e-6, seed
+
+
+def test_a_map_too_tight_to_turn_in_is_refused():
+    # just wider than a footprint, but too narrow to turn around at 25° a frame
+    with pytest.raises(ValueError, match="turn"):
+        cutout_route((800, 700), 20, seed=0, frame_size=(320, 240))
+
+
+@pytest.mark.parametrize("kw, word", [({"scale": (1.25, 0.8)}, "scale"), ({"scale": (0, 1)}, "scale"),
+                                      ({"overlap": 1.0}, "overlap"), ({"overlap": -0.1}, "overlap"),
+                                      ({"tilt_max_deg": -1}, "tilt"), ({"seed": None}, "seed"), ({"n": 0}, "n")])
+def test_route_settings_that_cannot_work_are_refused(kw, word):
+    args = {"map_size": (2000, 1500), "n": 10, "seed": 1, **kw}
+    with pytest.raises(ValueError, match=word):
+        cutout_route(args.pop("map_size"), args.pop("n"), **args)
+
+
+def test_footprints_stay_inside_with_strong_tilt_on_a_small_map():
+    # the margin must account for tilt: a margin from untilted frames let tilted corners leave the map
+    for seed in range(20):
+        for p in cutout_route((1500, 1150), 60, seed=seed, frame_size=(320, 240), tilt_max_deg=15.0):
+            fp = cv2.perspectiveTransform(np.float32([[[0, 0], [320, 0], [320, 240], [0, 240]]]),
+                                          cutout_homography(p, (320, 240)))[0]
+            assert (fp >= 0).all() and (fp[:, 0] <= 1500).all() and (fp[:, 1] <= 1150).all(), seed
+
+
+def test_a_cutout_source_needs_a_real_frame_rate():
+    with pytest.raises(ValueError, match="fps"):
+        CutoutSource(_texture(400, 300), [CutoutPose(200, 150, 0, 1)], (64, 48), fps=0)
+
+
+@pytest.mark.parametrize("fps, idx", [(6, list(range(0, 20, 2))), (4, list(range(0, 20, 3)))])
+def test_rates_between_steps_round_half_up_and_report_the_effective_rate(synthetic_flight, fps, idx):
+    # 10 fps video: fps 6 -> every 2nd frame (5 fps), fps 4 -> 2.5 rounds up to every 3rd (3.33 fps)
+    src = FlightSource(synthetic_flight[0], fps=fps)
+    assert [f.idx for f in src] == idx and src.rate == pytest.approx(10 / (idx[1] - idx[0]))
+
+
+@pytest.mark.parametrize("kw", [{"start_s": -1}, {"start_s": True}, {"end_s": True}, {"end_s": "5"},
+                                {"end_s": float("nan")}, {"fps": float("inf")}])
+def test_window_and_rate_values_that_are_not_times_are_refused(synthetic_flight, kw):
+    with pytest.raises(ValueError):
+        FlightSource(synthetic_flight[0], **kw)
+
+
+def test_a_truncated_video_is_an_error_not_a_short_flight(synthetic_flight, tmp_path):
+    imageio_ffmpeg = pytest.importorskip("imageio_ffmpeg")
+    d = tmp_path / "short"
+    shutil.copytree(synthetic_flight[0], d)
+    w = imageio_ffmpeg.write_frames(str(d / "flight.mp4"), (320, 240), fps=10, macro_block_size=1)
+    w.send(None)
+    for _ in range(5):
+        w.send(np.zeros((240, 320, 3), np.uint8))
+    w.close()                                                     # 5 frames, while meta and truth say 20
+    with pytest.raises(ValueError, match=r"flight\.mp4.*5.*20"):
+        list(FlightSource(d, fps=10))
+    assert [f.idx for f in FlightSource(d, fps=10, end_s=0.3)] == [0, 1, 2, 3]   # a window inside the video is fine
+
+
+def _edit_flight(src_dir, tmp_path, meta=None, truth=None):
+    d = tmp_path / "edited"
+    shutil.copytree(src_dir, d)
+    if meta:
+        m = json.loads((d / "meta.json").read_text())
+        meta(m)
+        (d / "meta.json").write_text(json.dumps(m))
+    if truth:
+        recs = [json.loads(ln) for ln in (d / "truth.jsonl").read_text().splitlines()]
+        recs = truth(recs)
+        (d / "truth.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
+    return d
+
+
+@pytest.mark.parametrize("what, edit, word", [
+    ("meta without fps", {"meta": lambda m: m.pop("fps")}, "fps"),
+    ("meta without camera", {"meta": lambda m: m.pop("camera")}, "camera"),
+    ("truth without H", {"truth": lambda rs: [{k: v for k, v in r.items() if k != "H_frame_to_map"} for r in rs]},
+     "H_frame_to_map"),
+    ("truth without altitude", {"truth": lambda rs: [{k: v for k, v in r.items() if k != "altitude_m"} for r in rs]},
+     "altitude_m"),
+    ("duplicate record", {"truth": lambda rs: rs + [rs[3]]}, "twice"),
+    ("NaN in the truth", {"truth": lambda rs: [dict(r, heading_deg=float("nan")) if r["i"] == 2 else r for r in rs]},
+     "heading_deg"),
+])
+def test_malformed_flight_files_are_named(synthetic_flight, tmp_path, what, edit, word):
+    d = _edit_flight(synthetic_flight[0], tmp_path, **edit)
+    with pytest.raises(ValueError, match=word):
+        src = FlightSource(d, fps=10)
+        [src.truth(f.idx) for f in src]
+
+
+def test_a_video_of_another_size_than_the_camera_is_an_error(synthetic_flight, tmp_path):
+    d = _edit_flight(synthetic_flight[0], tmp_path, meta=lambda m: m["camera"].update(size=[640, 480]))
+    with pytest.raises(ValueError, match="320 x 240.*640 x 480"):
+        list(FlightSource(d, fps=10))
+
+
+def test_keyframes_outside_the_window_are_not_read(fixture_flight, monkeypatch):
+    reads = []
+    real = cv2.imread
+    monkeypatch.setattr(cv2, "imread", lambda p, *a: reads.append(p) or real(p, *a))
+    frames = list(FlightSource(fixture_flight[0], keyframes=True, end_s=205))   # 6150 / 30 = 205 s
+    assert [f.idx for f in frames] == [6150] and len(reads) == 1
+
+
+def test_both_sources_have_a_length(synthetic_flight):
+    assert len(FlightSource(synthetic_flight[0], fps=5)) == 10
+    assert len(FlightSource(synthetic_flight[0], fps=10, start_s=0.5, end_s=1.2)) == 8
+    assert len(CutoutSource(_texture(400, 300), [CutoutPose(200, 150, 0, 1)] * 3, (64, 48))) == 3
+
+
+def test_priors_are_opt_in_and_come_from_the_truth(synthetic_flight):
+    # M6-02 degrades a compass and an altimeter: the clean values come from the truth
+    plain = next(iter(FlightSource(synthetic_flight[0], fps=10)))
+    assert plain.heading_prior_deg is None and plain.scale_prior is None
+    src = FlightSource(synthetic_flight[0], fps=10, priors=True)
+    for f in list(src)[:3]:
+        assert f.heading_prior_deg == pytest.approx(src.truth(f.idx).heading_deg)
+        assert f.scale_prior == pytest.approx(1.2, rel=1e-3)        # the synthetic flight's scale
+    poses = [CutoutPose(200, 150, 33.0, 1.1)]
+    f = next(iter(CutoutSource(_texture(400, 300), poses, (64, 48), priors=True)))
+    assert f.heading_prior_deg == pytest.approx(33.0) and f.scale_prior == pytest.approx(1.1)
