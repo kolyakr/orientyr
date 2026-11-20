@@ -210,7 +210,8 @@ What makes a test reliable here:
 ## Commands (fill in as they become real)
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt && pip install -e .   # stack, then the dronenav package (src/ layout)
+tools/task.sh test                                       # the test suite (pytest over tests/)
 python scripts/run.py --map data/map.png --frames data/frames --out outputs/run1
 python scripts/run.py --map data/map.png --video data/phone.mp4 --out outputs/phone
 python scripts/benchmark.py --map data/map.png
