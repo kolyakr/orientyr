@@ -15,6 +15,7 @@ A synthetic textured map keeps the tests fast and independent of data/.
 import hashlib
 import itertools
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -22,8 +23,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
-from dronenav.fake_run import FakeRunConfig, make_fake_run
 
+from dronenav.fake_run import FakeRunConfig, make_fake_run
 from dronenav.telemetry import read_run, read_run_info
 from dronenav.types import TrackMode
 
@@ -56,6 +57,22 @@ def run(tmp_path_factory):
     res = _cli("--map", map_path, "--out", out)
     assert res.returncode == 0, res.stderr
     return {"dir": out, "map": map_path, "records": read_run(out / "run.jsonl"), "info": read_run_info(out)}
+
+
+def _route_shape(run_dir: Path):
+    """(largest / smallest step, largest turn per frame in degrees) of the true route."""
+    recs = read_run(run_dir / "run.jsonl")
+    pts = np.array([[r.extra["truth"]["x"], r.extra["truth"]["y"]] for r in recs])
+    heads = np.array([r.extra["truth"]["heading_deg"] for r in recs])
+    steps = np.hypot(*np.diff(pts, axis=0).T)
+    return steps.max() / steps.min(), np.abs((np.diff(heads) + 180) % 360 - 180).max()
+
+
+def _lost_drift(run_dir: Path) -> float:
+    """How much further from the truth the dead-reckoned position is at the end of the jam than at its start."""
+    lost = [r for r in read_run(run_dir / "run.jsonl") if r.track.state is TrackMode.LOST]
+    err = [math.hypot(r.track.x - r.extra["truth"]["x"], r.track.y - r.extra["truth"]["y"]) for r in lost]
+    return err[-1] - err[0]
 
 
 def _states(records):
@@ -280,9 +297,43 @@ def test_sigma_grows_while_lost_and_drops_after_relocalizing(run):
 
 
 def test_dead_reckoning_drifts_from_the_truth_while_lost(run):
-    lost = [r for r in run["records"] if r.track.state is TrackMode.LOST]
-    err = [math.hypot(r.track.x - r.extra["truth"]["x"], r.track.y - r.extra["truth"]["y"]) for r in lost]
-    assert err[-1] > err[0] + 5        # a straight-line guess leaves a curving route
+    assert _lost_drift(run["dir"]) > 5     # coasting on a stale velocity leaves the route
+
+
+def test_the_drift_shows_for_every_seed(tmp_path):
+    # the jam can fall on a nearly straight stretch, where coasting straight would not drift at all; the UI
+    # and the HUD video need to show the drift whatever the seed (seed 11 drifted only 4 px before the fix)
+    m = _texture_map(tmp_path / "map.png")
+    for seed in range(12):
+        make_fake_run(m, tmp_path / f"s{seed}", FakeRunConfig(seed=seed, frame_size=(96, 96), scale=1.7))
+        assert _lost_drift(tmp_path / f"s{seed}") > 5, seed
+
+
+def test_a_portrait_map_gets_a_smooth_route_too(tmp_path):
+    # the route runs along the map's long side; across a tall map it zig-zagged (step ratio 6, 37° per frame)
+    m = tmp_path / "tall.png"
+    cv2.imwrite(str(m), cv2.rotate(cv2.imread(str(_texture_map(tmp_path / "wide.png"))), cv2.ROTATE_90_CLOCKWISE))
+    make_fake_run(m, tmp_path / "run")
+    ratio, turn = _route_shape(tmp_path / "run")
+    assert ratio < 3 and turn < 30
+    fs = read_run_info(tmp_path / "run").frame_size
+    for r in read_run(tmp_path / "run" / "run.jsonl"):
+        b = _apply(_true_H(r.extra["truth"], fs), np.array([[0, 0], [fs[0], 0], [fs[0], fs[1]], [0, fs[1]]]))
+        assert (b >= 0).all() and (b[:, 0] <= MAP_H).all() and (b[:, 1] <= MAP_W).all(), r.idx
+
+
+@pytest.mark.skipif(os.name != "posix" or os.geteuid() == 0, reason="needs POSIX permissions, not root")
+def test_a_frame_that_cannot_be_written_is_an_error(tmp_path):
+    # cv2.imwrite only logs a warning and returns False: the run looked complete with no frames on disk
+    m = _texture_map(tmp_path / "map.png")
+    frames = tmp_path / "run" / "frames"
+    frames.mkdir(parents=True)
+    frames.chmod(0o500)
+    try:
+        with pytest.raises(OSError, match="frame_00000.png"):
+            make_fake_run(m, tmp_path / "run", FakeRunConfig(frames=12, jam_start=3, jam_len=2))
+    finally:
+        frames.chmod(0o700)
 
 
 # --- 6. determinism --------------------------------------------------------------------------------------------

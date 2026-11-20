@@ -52,6 +52,7 @@ def test_optional_fields_default_to_null(tmp_path):
 
 BAD = {
     "missing map": (lambda d: d.pop("map"), "'map'"),
+    "empty map": (lambda d: d.update(map=""), "map"),
     "map_size not two ints": (lambda d: d.update(map_size=[10]), "map_size"),
     "map_size negative": (lambda d: d.update(map_size=[10, -1]), "map_size"),
     "fps zero": (lambda d: d.update(fps=0), "fps"),
