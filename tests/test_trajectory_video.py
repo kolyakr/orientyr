@@ -355,3 +355,24 @@ def test_the_file_is_small_enough_to_share(tmp_path):
     path = tv.write_video(tmp_path / "run", speed=5)             # 49 s of run at 5x: ≈ 11 s of video
     seconds = _mp4(path)["frames"] / 30
     assert path.stat().st_size * 8 / seconds < 4e6, f"{path.stat().st_size * 8 / seconds / 1e6:.1f} Mbit/s"
+
+
+def test_without_imageio_ffmpeg_opencv_still_writes_a_playable_file(tmp_path, monkeypatch):
+    # the fallback: OpenCV's H.264 (big, but playable) with the index moved to the front by dronenav.viz.mp4
+    monkeypatch.setitem(sys.modules, "imageio_ffmpeg", None)       # makes "import imageio_ffmpeg" fail
+    d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000), n=4))
+    try:
+        path = tv.write_video(d, size=(320, 180))
+    except RuntimeError as e:                                        # an OpenCV build without H.264
+        pytest.skip(str(e))
+    info = _mp4(path)
+    assert info["avc1"] and info["moov_first"] and info["size"] == (320, 180)
+    assert abs(info["frames"] - (3 + 1) * 30) <= 1
+
+
+def test_an_encoder_failure_says_what_ffmpeg_said(tmp_path, monkeypatch):
+    pytest.importorskip("imageio_ffmpeg")
+    monkeypatch.setattr(tv, "CRF", "not-a-number")                   # ffmpeg refuses the option and exits
+    d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000), n=4))
+    with pytest.raises(RuntimeError, match="ffmpeg"):
+        tv.write_video(d, size=(320, 180))
