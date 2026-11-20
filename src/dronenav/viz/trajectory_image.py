@@ -89,7 +89,12 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
         map_img = cv2.imread(str(info.map_path), cv2.IMREAD_COLOR)
         if map_img is None:
             raise FileNotFoundError(f"cannot read the map {info.map_path}")
+    map_img = _bgr(map_img)
     h, w = map_img.shape[:2]
+    if (w, h) != info.map_size:
+        # positions are map px of the map the run was flown over: on another size they land in the wrong place
+        raise ValueError(f"the map is {w} x {h} px but run.json says the run was flown over "
+                         f"{info.map_size[0]} x {info.map_size[1]} px ({info.map_path})")
     unit = max(1.0, max(w, h) / preview_px)
     img = map_img.copy()
 
@@ -123,6 +128,17 @@ def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, 
         if not cv2.imwrite(str(path), image, params):   # OpenCV only logs a warning on failure
             raise OSError(f"cannot write {path}")
     return full, preview
+
+
+def _bgr(img: np.ndarray) -> np.ndarray:
+    """The map as 3-channel BGR uint8: a grey or BGRA map would lose the colours of everything drawn on it."""
+    if img.ndim == 3 and img.shape[2] == 1:
+        img = img[..., 0]
+    if img.ndim == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    if img.shape[2] == 4:
+        return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+    return img
 
 
 # --- drawing ---------------------------------------------------------------------------------------------------
