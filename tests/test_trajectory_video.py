@@ -466,7 +466,8 @@ def test_the_trail_keeps_its_width_and_dashes_at_any_zoom(tmp_path, scale, zoom)
     assert sum(1 for p, q in itertools.pairwise(row) if p and not q) >= len(row) / 20   # gaps between dashes
     xm = round((_to_video(plan, 270, *pts[1])[0] + _to_video(plan, 270, *pts[2])[0]) / 2)
     width = sum(_close(img[yy, xm], draw.FIXED) for yy in range(y - 12, y + 13))
-    assert 2 <= width <= 5, width                                                   # 3 px, as drawn live
+    # a 3 px anti-aliased line covers 5 rows within the tolerance, 6 at a fractional position (measured)
+    assert 4 <= width <= 6, width
 
 
 def test_a_failed_render_keeps_the_previous_video(tmp_path, monkeypatch):
@@ -518,3 +519,26 @@ def test_faststart_keeps_every_frame_decodable(tmp_path):
         assert abs(int(img.mean()) - 10 * n) <= 3, n
         n += 1
     assert n == 20
+
+
+def test_constant_speed_stays_constant_between_records(tmp_path):
+    # tangents in map px per second: wrongly scaled ones still pass through every record, but ease in and out
+    pts = [(300 + 60 * i, 500) for i in range(12)]
+    records, info = _load(_make_run(tmp_path, (1600, 1000), pts, fps=5.0))
+    plan = tv.plan_video(records, info, fps=30, speed=0.2)
+    inner = [f for f in plan.frames if records[1].t <= f.t <= records[-2].t]      # away from the one-sided ends
+    steps = np.diff([f.x for f in inner])
+    assert steps.max() / steps.min() < 1.05
+
+
+@pytest.mark.parametrize("scale, zoom", [(3.0, "out"), (0.05, "in")])
+def test_the_live_piece_is_dashed_inside_a_jam(tmp_path, scale, zoom):
+    pts = [(200 + 40 * scale * i, 500) for i in range(12)]
+    d = _make_run(tmp_path, (1600, 1000), pts, missed={3, 4, 5, 6, 7}, scale=scale, frame=(96, 64), name=zoom)
+    records, info = _load(d)
+    plan = tv.plan_video(records, info, size=(1280, 720))
+    k = 30 * 5 + 27                                                                 # near the end of segment 5-6
+    img, fi = tv.FrameRenderer(d, records, info, plan).draw(k)
+    a = _to_video(plan, k, *pts[5])[0]
+    row = [_close(img[round(fi.drone_px[1]), x], draw.MISSED) for x in range(round(a) + 2, round(fi.drone_px[0]) - 10)]
+    assert sum(1 for p, q in itertools.pairwise(row) if p and not q) >= 1, row    # at least one gap
