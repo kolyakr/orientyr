@@ -96,6 +96,7 @@ def test_pyyaml_is_a_dev_requirement():
                                   "tests/fixtures/irpin_mild_2025/frame_006300.jpg",
                                   "tests/fixtures/irpin_mild_2025/truth.jsonl"])
 def test_gitignore_keeps_the_fixtures(path):
-    # exit code 0 = ignored, 1 = not ignored (so check=False: 1 is the answer we want, not an error)
-    ignored = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], check=False, cwd=ROOT).returncode == 0
-    assert not ignored
+    # exit code 0 = ignored, 1 = not ignored (so check=False: 1 is the answer we want, not an error);
+    # anything else (128: not a git repo) means git never answered, which must not pass as "kept"
+    code = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], check=False, cwd=ROOT).returncode
+    assert code == 1, f"git check-ignore exit {code}"
