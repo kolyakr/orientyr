@@ -11,6 +11,7 @@ form from the issue's spec update:
 
 Hand-made runs on a plain grey map make every drawn pixel and position known.
 """
+import itertools
 import math
 import struct
 import subprocess
@@ -129,8 +130,11 @@ def _mp4(path: Path) -> dict:
         j += 2 + struct.unpack(">H", box[j:j + 2])[0]
     high = prof in (100, 110, 122, 244) and j < len(box)
     cap = cv2.VideoCapture(str(path))
+    decoded = 0
+    while cap.read()[0]:            # the header's frame count survives broken chunk offsets: decode them all
+        decoded += 1
     return {"avc1": b"avc1" in b, "chroma": (box[j] & 3) if high else 1, "depth": 8 + (box[j + 1] & 7) if high else 8,
-            "moov_first": b.find(b"moov") < b.find(b"mdat"), "frames": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+            "moov_first": b.find(b"moov") < b.find(b"mdat"), "frames": decoded,
             "size": (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
             "fps": cap.get(cv2.CAP_PROP_FPS)}
 
@@ -376,3 +380,141 @@ def test_an_encoder_failure_says_what_ffmpeg_said(tmp_path, monkeypatch):
     d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000), n=4))
     with pytest.raises(RuntimeError, match="ffmpeg"):
         tv.write_video(d, size=(320, 180))
+
+
+
+# --- review of M1-08: zoom, heading, failures, sizes, geometry under the overlay, decodable files ----------------
+
+def _circle(map_size, n=40, r=300):
+    """A full circle: the heading crosses north (0/360)."""
+    w, h = map_size
+    return [(w / 2 + r * math.sin(2 * math.pi * i / n), h / 2 - r * math.cos(2 * math.pi * i / n)) for i in range(n)]
+
+
+def test_the_heading_turns_gradually_across_north(tmp_path):
+    records, info = _load(_make_run(tmp_path, (1600, 1000), _circle((1600, 1000))))
+    heads = np.array([f.heading_deg for f in tv.plan_video(records, info).frames])
+    assert np.abs((np.diff(heads) + 180) % 360 - 180).max() < 5
+
+
+def test_the_heading_does_not_jump_when_a_fix_comes_back(tmp_path):
+    # without a fix the heading comes from the motion; when the fix comes back the position is corrected (the
+    # dead-reckoned points drifted off the route) and the heading must blend into the fix heading, not snap to it
+    pts = _sine((1600, 1000), n=20)
+    pts = [(x, y + (25 * (i - 5) if 6 <= i <= 10 else 0)) for i, (x, y) in enumerate(pts)]   # drift, then snap back
+    records, info = _load(_make_run(tmp_path, (1600, 1000), pts, missed=set(range(6, 11))))
+    heads = np.array([f.heading_deg for f in tv.plan_video(records, info, speed=3).frames])
+    assert np.abs((np.diff(heads) + 180) % 360 - 180).max() < 8
+
+
+def test_a_run_at_5_fps_passes_through_its_records_without_jumps(tmp_path):
+    pts = _sine((1600, 1000), n=15)
+    records, info = _load(_make_run(tmp_path, (1600, 1000), pts, fps=5.0))       # records 0.2 s apart
+    plan = tv.plan_video(records, info, fps=30, speed=0.2)                         # 1 s of video per record
+    for i, (x, y) in enumerate(pts):
+        f = plan.frames[30 * i]
+        assert (f.x, f.y) == (pytest.approx(x, abs=1e-6), pytest.approx(y, abs=1e-6)), i
+    xy = np.array([(f.x, f.y) for f in plan.frames if f.t < records[-1].t])
+    steps = np.hypot(*np.diff(xy, axis=0).T)
+    assert steps.max() < 2.5 * np.median(steps)
+
+
+def _marker_run(tmp_path, scale, name):
+    """A run with a red square painted on the map, away from the route, inset and HUD."""
+    d = _make_run(tmp_path, (3200, 2000), _line((3200, 2000), n=6), scale=scale, name=name)
+    records, info = _load(d)
+    plan = tv.plan_video(records, info, size=(1280, 720))
+    f = plan.frames[60]
+    view_h = plan.view_w * 720 / 1280
+    mx, my = f.cx - 0.25 * plan.view_w, f.cy + 0.25 * view_h                       # lower left of the view
+    m = cv2.imread(str(d / "map.png"))
+    half = max(2, round(plan.view_w / 1280 * 6))
+    m[round(my) - half:round(my) + half, round(mx) - half:round(mx) + half] = (0, 0, 255)
+    cv2.imwrite(str(d / "map.png"), m)
+    renderer = tv.FrameRenderer(d, records, info, plan)
+    for k in range(61):
+        img, _ = renderer.draw(k)
+    red = (img[..., 2] > 200) & (img[..., 1] < 60) & (img[..., 0] < 60)
+    ys, xs = np.nonzero(red)
+    cx_m, cy_m = round(mx) - half + half, round(my) - half + half                 # square's centre, map px
+    return plan, (xs.mean() + 0.5, ys.mean() + 0.5), _to_video(plan, 60, cx_m, cy_m)
+
+
+@pytest.mark.parametrize("scale, zoom", [(3.0, "out"), (0.08, "in")])
+def test_the_map_sits_exactly_under_the_overlay(tmp_path, scale, zoom):
+    plan, got, expected = _marker_run(tmp_path, scale, zoom)
+    assert (plan.size[0] / plan.view_w > 1) == (zoom == "in")
+    assert got == (pytest.approx(expected[0], abs=0.6), pytest.approx(expected[1], abs=0.6))
+
+
+@pytest.mark.parametrize("scale, zoom", [(3.0, "out"), (0.05, "in")])
+def test_the_trail_keeps_its_width_and_dashes_at_any_zoom(tmp_path, scale, zoom):
+    # zoomed in, the trail was drawn on the map-scale layer and enlarged: thick, blurry, dashes gone
+    pts = [(200 + 40 * scale * i, 500) for i in range(12)]                          # on the map at any scale
+    d = _make_run(tmp_path, (1600, 1000), pts, missed={3, 4, 5, 6, 7}, scale=scale, frame=(96, 64), name=zoom)
+    records, info = _load(d)
+    plan = tv.plan_video(records, info, size=(1280, 720))
+    renderer = tv.FrameRenderer(d, records, info, plan)
+    for k in range(30 * 9 + 1):
+        img, fi = renderer.draw(k)
+    assert (plan.size[0] / plan.view_w > 1) == (zoom == "in")
+    y = round(fi.drone_px[1])
+    a = _to_video(plan, 270, *pts[3])[0]
+    b = _to_video(plan, 270, *pts[7])[0]
+    xs = range(round(min(a, b)) + 12, round(max(a, b)) - 12)                        # the dashed stretch
+    row = [_close(img[y, x], draw.MISSED) for x in xs]
+    assert sum(1 for p, q in itertools.pairwise(row) if p and not q) >= len(row) / 20   # gaps between dashes
+    xm = round((_to_video(plan, 270, *pts[1])[0] + _to_video(plan, 270, *pts[2])[0]) / 2)
+    width = sum(_close(img[yy, xm], draw.FIXED) for yy in range(y - 12, y + 13))
+    assert 2 <= width <= 5, width                                                   # 3 px, as drawn live
+
+
+def test_a_failed_render_keeps_the_previous_video(tmp_path, monkeypatch):
+    d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000), n=4))
+    good = tv.write_video(d, size=(320, 180))
+    before = good.read_bytes()
+
+    real_draw = tv.FrameRenderer.draw
+
+    def interrupted(self, k):                    # some frames reach the encoder, then the user hits Ctrl-C
+        if k == 20:
+            raise KeyboardInterrupt
+        return real_draw(self, k)
+
+    monkeypatch.setattr(tv.FrameRenderer, "draw", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        tv.write_video(d, size=(320, 180))
+    assert good.read_bytes() == before
+    assert sorted(p.name for p in d.iterdir() if "trajectory" in p.name) == ["trajectory.mp4"]
+
+
+@pytest.mark.parametrize("size", [(16, 16), (32, 32), (64, 48)])
+def test_sizes_too_small_for_the_inset_and_hud_are_refused(tmp_path, size):
+    d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000), n=4))
+    res = _cli("--run", d, "--out", tmp_path / "out", "--size", f"{size[0]}x{size[1]}")
+    assert res.returncode != 0 and "at least" in res.stderr and "Traceback" not in res.stderr
+    assert not (tmp_path / "out").exists()
+
+
+def test_faststart_keeps_every_frame_decodable(tmp_path):
+    # moving the index shifts the media; the chunk offsets must move with it, or nothing decodes
+    from dronenav.viz.mp4 import faststart
+    p = tmp_path / "v.mp4"
+    w = cv2.VideoWriter(str(p), cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*"avc1"), 10, (64, 48))
+    if not w.isOpened():
+        pytest.skip("this OpenCV build cannot write H.264")
+    frames = [np.full((48, 64, 3), 10 * i, np.uint8) for i in range(20)]
+    for f in frames:
+        w.write(f)
+    w.release()
+    if p.read_bytes().find(b"moov") < p.read_bytes().find(b"mdat"):
+        pytest.skip("this OpenCV build already writes the index first")
+    assert faststart(p) and not faststart(p)                       # moved once, then nothing to do
+    cap, n = cv2.VideoCapture(str(p)), 0
+    while True:
+        ok, img = cap.read()
+        if not ok:
+            break
+        assert abs(int(img.mean()) - 10 * n) <= 3, n
+        n += 1
+    assert n == 20
