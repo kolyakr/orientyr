@@ -1,0 +1,14 @@
+{
+ "map": "../map.png",
+ "map_size": [
+  600,
+  400
+ ],
+ "generator": "fake_run",
+ "frame_size": [
+  96,
+  96
+ ],
+ "fps": 1.0,
+ "seed": 0
+}
