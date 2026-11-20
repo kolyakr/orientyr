@@ -140,12 +140,12 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
                     style={intro && i < introFrames ? { animationDelay: `${Math.round(500 + (i / introFrames) * INTRO_MS)}ms`, animationDuration: "160ms" } : undefined} />
             );
           })}
-          {/* numbered points: small dark chips. The start and the finish have their own markers, and a chip never
+          {/* numbered points: white chips with dark numbers, readable on any terrain. The start and the finish have their own markers, and a chip never
               lies under the drone. */}
           {flown.map((r, i) => i % labelEvery === 0 && i > 0 && !(atEnd && i === frame) && Math.hypot(r.x - rec.x, r.y - rec.y) > 26 * u && (
             <g key={r.idx} transform={`translate(${r.x} ${r.y})`} className="waypoint">
-              <circle r={6.4 * u} className="point" strokeWidth={0.9 * u} />
-              <text fontSize={6.6 * u} className="point-num" textAnchor="middle" dominantBaseline="central">{r.idx}</text>
+              <circle r={9.5 * u} className="point" strokeWidth={1.6 * u} />
+              <text fontSize={8.6 * u} className="point-num" textAnchor="middle" dominantBaseline="central">{r.idx}</text>
             </g>
           ))}
           {/* the start: a ring. Near the right edge its label goes to the left, so the screen never clips it. */}
