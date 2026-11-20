@@ -19,6 +19,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.sim import (
     DEGRADATIONS,
     ChaosSource,
@@ -184,7 +185,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=0, help="seed of every degradation and of the cut-out route")
     ap.add_argument("--strengths", default="0,0.25,0.5,0.75,1", help="strengths to show, comma-separated")
     ap.add_argument("--out", default="outputs/chaos_sheets", help="folder for the sheets")
+    add_shared_args(ap, device=False)   # only draws check sheets: logging yes, no device to pick
     a = ap.parse_args(argv)
+    init_cli(a)
     try:
         strengths = [float(s) for s in a.strengths.split(",")]
     except ValueError:

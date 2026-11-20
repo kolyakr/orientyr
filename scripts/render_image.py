@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.viz.trajectory_image import write_trajectory
 
 
@@ -20,7 +21,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--preview", type=int, default=1600, help="longest side of the preview, px (default 1600)")
     ap.add_argument("--label-every", type=int, default=None,
                     help="number frames divisible by k (default: as dense as stays readable)")
+    add_shared_args(ap, device=False)   # only draws and writes files: logging yes, no device to pick
     a = ap.parse_args(argv)
+    init_cli(a)
     if a.preview < 1 or (a.label_every is not None and a.label_every < 1):
         ap.error("--preview and --label-every must be positive")
     try:

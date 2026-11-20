@@ -14,6 +14,7 @@ import time
 
 import cv2
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.viz.trajectory_video import write_video
 
 
@@ -32,7 +33,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--speed", type=float, default=1.0, help="run seconds per video second (default 1: real time)")
     ap.add_argument("--fps", type=float, default=30.0, help="video frames per second (default 30)")
     ap.add_argument("--size", type=_size, default=(1280, 720), help="video size WxH, even (default 1280x720)")
+    add_shared_args(ap, device=False)   # only draws and writes files: logging yes, no device to pick
     a = ap.parse_args(argv)
+    init_cli(a)
     t0 = time.perf_counter()
     try:
         path = write_video(a.run, a.out, fps=a.fps, speed=a.speed, size=a.size)

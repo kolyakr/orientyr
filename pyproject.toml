@@ -29,3 +29,9 @@ src = ["src", "tests", "scripts"]
 # experiments/ holds one-off research scripts kept for the record (see their READMEs), not maintained code: CI
 # lints the package, tests, scripts and tools only.
 extend-exclude = ["experiments"]
+
+[tool.ruff.lint.flake8-bugbear]
+# dronenav.config.arg() is a dataclass field specifier (it returns dataclasses.field(...)), so calling it as a
+# default is the config pattern itself (M0-07), not a shared mutable default. Without this, RUF009 flags every
+# option whose annotation ruff does not know to be immutable (Path, list, ...), in any script that declares one.
+extend-immutable-calls = ["dronenav.config.arg"]

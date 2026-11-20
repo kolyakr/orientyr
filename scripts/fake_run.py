@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.fake_run import FakeRunConfig, make_fake_run
 
 
@@ -39,7 +40,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scale", type=float, default=d.scale, help=f"map px per frame px (default {d.scale:g})")
     ap.add_argument("--jam-start", type=int, default=None, help="first jammed frame (default: 40%% into the run)")
     ap.add_argument("--jam-len", type=int, default=d.jam_len, help=f"jammed frames (default {d.jam_len})")
+    add_shared_args(ap, device=False)   # only draws and writes files: logging yes, no device to pick
     a = ap.parse_args(argv)
+    init_cli(a)
     cfg = FakeRunConfig(frames=a.frames, fps=a.fps, seed=a.seed, frame_size=a.frame_size, scale=a.scale,
                         jam_start=a.jam_start, jam_len=a.jam_len)
     try:
