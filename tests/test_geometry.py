@@ -60,7 +60,7 @@ def angdiff(a, b):
     return abs((a - b + 180.0) % 360.0 - 180.0)
 
 
-GOOD = dict(inliers=200, reproj_rmse=0.2)   # check_homography inputs that pass, to isolate the geometric checks
+GOOD = {"inliers": 200, "reproj_rmse": 0.2}   # check_homography inputs that pass, to isolate the geometric checks
 
 
 # --- pose from an exact homography --------------------------------------------------------------------------
@@ -126,8 +126,9 @@ def test_localize_recovers_known_pose_with_outliers(heading, scale):
 def test_localize_fix_has_the_fitted_h():
     H = make_h(30.0, 0.5)
     fix = localize(0, synth_matches(H, outlier_frac=0.0, noise_px=0.0), FRAME)
-    Hn = fix.H / fix.H[2, 2]
-    np.testing.assert_allclose(Hn, H / H[2, 2], rtol=1e-6, atol=1e-6)
+    # compare what H does, not its raw entries: OpenCV's solver is good to ~1e-6 relative, which is ~0.002 px
+    # over a 4000 px map; 0.01 px is far below any error that matters and far above that round-off
+    np.testing.assert_allclose(apply(fix.H, CORNERS), apply(H, CORNERS), atol=0.01)
 
 
 @pytest.mark.parametrize("n", [0, 1, 3])
@@ -202,9 +203,10 @@ def test_check_not_convex_when_the_horizon_crosses_the_frame():
 
 
 def test_check_not_convex_for_a_twisted_footprint():
-    # corners sent to a bow-tie (TR and BR swapped): no camera can see a plane like that
+    # corners sent to a bow-tie (TR and BR roughly swapped): no camera can see a plane like that. Asymmetric on
+    # purpose: the symmetric bow-tie sends the frame centre itself to infinity, which is "degenerate" instead.
     import cv2
-    dst = np.float32([[0, 0], [W, H_], [W, 0], [0, H_]]) + 500
+    dst = np.float32([[0, 0], [700, 500], [650, -20], [-30, 460]]) + 500
     H = cv2.getPerspectiveTransform(CORNERS.astype(np.float32), dst).astype(float)
     assert check_homography(H, FRAME, **GOOD) == "not_convex"
 
