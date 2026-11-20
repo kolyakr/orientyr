@@ -36,7 +36,7 @@ T = TypeVar("T")
 _SIMPLE = (int, float, str, Path)        # annotations argparse can read with the type itself as the converter
 
 
-def arg(default: Any = dataclasses.MISSING, *, help: str, **extras: Any) -> Any:  # noqa: A002 (argparse's own word)
+def arg(default: Any = dataclasses.MISSING, *, help: str, **extras: Any) -> Any:
     """A dataclass field that is also a command-line option.
 
     No ``default`` makes the option required. ``extras`` go to ``parser.add_argument`` as they are
