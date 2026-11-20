@@ -1,4 +1,6 @@
-data/
+# only the project's own data/ at the repo root (see data/README.md), not any nested "data" dir elsewhere
+/data/*
+!/data/README.md
 outputs/
 *.mp4
 *.mov

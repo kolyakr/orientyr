@@ -249,6 +249,7 @@ browser and unzip it into `data/` so the layout above matches (`scripts/check_da
 ```bash
 pip install -r requirements.txt && pip install -e .   # stack, then the dronenav package (src/ layout)
 tools/data.sh setup && tools/data.sh pull               # get the data from the team Drive into data/
+python scripts/check_data.py                             # verify data/ layout; names any missing/truncated file
 tools/task.sh test                                       # the test suite (pytest over tests/)
 ruff check .                                             # lint, as CI does (experiments/ excluded)
 python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
