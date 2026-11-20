@@ -343,3 +343,15 @@ def test_the_video_renders_the_fake_run(tmp_path):
     make_fake_run(m, tmp_path / "run", )
     path = tv.write_video(tmp_path / "run", speed=10, size=(640, 360))
     assert _mp4(path)["size"] == (640, 360)
+
+
+def test_the_file_is_small_enough_to_share(tmp_path):
+    # OpenCV's encoder ignores quality settings and wrote 14 Mbit/s (87 MB for the 50 s fake run): too big for a
+    # PR attachment or a README; a textured map is the hard case for the encoder
+    rng = np.random.default_rng(0)
+    m = tmp_path / "map.png"
+    cv2.imwrite(str(m), cv2.GaussianBlur(rng.uniform(0, 255, (900, 1400, 3)).astype(np.uint8), (0, 0), 2))
+    make_fake_run(m, tmp_path / "run", )
+    path = tv.write_video(tmp_path / "run", speed=5)             # 49 s of run at 5x: ≈ 11 s of video
+    seconds = _mp4(path)["frames"] / 30
+    assert path.stat().st_size * 8 / seconds < 4e6, f"{path.stat().st_size * 8 / seconds / 1e6:.1f} Mbit/s"
