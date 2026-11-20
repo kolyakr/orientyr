@@ -129,7 +129,12 @@ def test_jpeg_adds_error(image):
     mse = [_mse(Jpeg(s, seed=1).image(image, 0), image) for s in STRENGTHS]
     # lower quality, coarser quantisation: the error rises every step; 5 % margin, the low strengths are close
     assert mse[0] == 0 and mse[1] > 0 and all(b > 1.05 * a for a, b in _steps(mse[1:])), mse
-    assert mse[-1] > 10 * mse[1]                           # blocks at full strength, near-lossless at a quarter
+    # blocks at full strength: over 3x the error of a quarter (measured 5x; this noisy texture costs JPEG ~70
+    # of MSE already at quality 72, so the first draft's 10x was a guess no JPEG setting reaches)
+    assert mse[-1] > 3 * mse[1]
+    # and no jump at the start: a hair of strength is near-lossless (measured 14 at quality 95 with full chroma;
+    # the usual 4:2:0 chroma would cost 108 on its own, more than a quarter of the Noise scale)
+    assert 0 < _mse(Jpeg(0.01, seed=1).image(image, 0), image) < 25
 
 
 def test_gamma_moves_the_brightness(image):
