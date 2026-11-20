@@ -2,9 +2,14 @@ data/
 outputs/
 *.mp4
 *.mov
+*.avi
+*.mkv
+*.webm
 *.pt
 *.pth
 __pycache__/
+*.egg-info/
+build/
 .venv/
 .DS_Store
 .claude/settings.local.json
@@ -31,4 +36,6 @@ experiments/**/*.png
 *.onnx
 *.ckpt
 *.safetensors
+*.bin
+weights/
 cache/
