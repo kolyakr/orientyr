@@ -12,7 +12,8 @@ Conventions used everywhere:
 - **Homographies** map frame pixels to map pixels: ``p_map ~ H @ [x, y, 1]``.
 - **Heading** is in degrees in [0, 360), clockwise from map up: 0 = the frame's "up" points to map
   north (up), 90 = east (right). Inputs are normalised into that range.
-- **Scale** is map pixels per frame pixel at the frame centre (> 1: the frame is more detailed than the map).
+- **Scale** is map pixels per frame pixel at the frame centre (< 1: the frame is more detailed than the map,
+  e.g. 0.2535 for the task crops).
 - **Time** is in seconds from the start of the flight; durations are in milliseconds.
 
 Values are validated on construction so a malformed object fails where it is made, not three modules later.
@@ -31,7 +32,11 @@ __all__ = ["Fix", "Frame", "FrameSource", "Matcher", "Matches", "TrackMode", "Tr
 
 def _wrap_deg(a: float | None) -> float | None:
     """Normalise an angle to [0, 360); None stays None."""
-    return None if a is None else float(a) % 360.0
+    if a is None:
+        return None
+    a = float(a) % 360.0
+    # a hair below zero (e.g. -1e-17) rounds up to exactly 360.0, outside the range (#86)
+    return 0.0 if a == 360.0 else a
 
 
 def _array(value, shape: tuple, name: str) -> np.ndarray:

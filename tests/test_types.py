@@ -87,6 +87,14 @@ def test_frame_heading_prior_is_normalised_to_0_360():
     assert T.Frame(idx=0, t=0.0, image=_img(), source="x", heading_prior_deg=-90).heading_prior_deg == 270
 
 
+@pytest.mark.parametrize("a", [-1e-17, -1e-15, -1e-14, -2e-14, -5e-324])
+def test_tiny_negative_heading_wraps_below_360(a):
+    # float % 360 rounds a hair below zero up to exactly 360.0, outside the documented [0, 360) (#86)
+    h = T._wrap_deg(a)
+    assert 0.0 <= h < 360.0
+    assert h == 0.0 or h > 359.9
+
+
 def test_types_are_immutable():
     f = T.Frame(idx=0, t=0.0, image=_img(), source="x")
     with pytest.raises(dataclasses.FrozenInstanceError):
