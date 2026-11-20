@@ -6,14 +6,24 @@ truncated file is reported by name." See data/README.md for the layout this chec
 A missing directory that should hold many expected files (an undownloaded irpin/, a whole flight folder, ...)
 is reported once, not once per file that would have been inside it - the point is to find the one bad file in
 an otherwise-complete download, not to flood the output on a bare clone.
+
+The Irpin map sidecars are checked with ``dronenav.georef.load_georef`` and ``dronenav.io.load_map`` - the same
+code the rest of the pipeline uses to read them - rather than a second, looser parser: a sidecar missing a
+field those modules require, or a map image whose pixel size no longer matches its sidecar, is exactly the
+kind of "truncated" problem this checker exists to catch before a real run hits it instead.
 """
 from __future__ import annotations
 
 import json
+import math
+import numbers
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
+
+from dronenav import io as _io
+from dronenav.georef import GeorefError, load_georef
 
 __all__ = ["CheckReport", "Problem", "check_data"]
 
@@ -85,33 +95,74 @@ def _check_irpin(report: CheckReport, data_dir: Path) -> None:
 
 
 def _check_map_year(report: CheckReport, irpin: Path, year: str, data_dir: Path) -> None:
-    sidecar = _check_json(report, irpin / "maps" / f"irpin_{year}.json", data_dir)
-    _check_image(report, irpin / "maps" / f"irpin_{year}.png", data_dir)
-    if not sidecar:
+    """The sidecar via georef.load_georef (full schema: required fields, no NaN/Infinity, both blocks present),
+    then each layer's image via io.load_map (decodes it and cross-checks its pixel size against the sidecar)."""
+    sidecar_path = irpin / "maps" / f"irpin_{year}.json"
+    map_path = irpin / "maps" / f"irpin_{year}.png"
+    georef = None
+    if _require_file(report, sidecar_path, data_dir):
+        report.checked += 1
+        try:
+            georef = load_georef(sidecar_path)
+        except (OSError, GeorefError) as e:
+            report.problems.append(Problem(_rel(sidecar_path, data_dir), "truncated", str(e)))
+    _check_map_image(report, map_path, data_dir)
+    if georef is not None and georef.hires.file != georef.map.file:   # 2017 has no separate hires layer
+        _check_map_image(report, irpin / georef.hires.file, data_dir)
+
+
+def _check_map_image(report: CheckReport, path: Path, data_dir: Path) -> None:
+    if not _require_file(report, path, data_dir):
         return
-    map_file = sidecar.get("map", {}).get("file")
-    hires = sidecar.get("hires", {})
-    if hires.get("file") and hires["file"] != map_file:   # 2017 has no separate hires layer
-        _check_image(report, irpin / hires["file"], data_dir)
+    report.checked += 1
+    try:
+        _io.load_map(path)
+    except (FileNotFoundError, ValueError) as e:
+        report.problems.append(Problem(_rel(path, data_dir), "truncated", str(e)))
 
 
 def _check_flight(report: CheckReport, flight: Path, data_dir: Path) -> None:
     if not _require_dir(report, flight, data_dir):
         return
-    meta = _check_json(report, flight / "meta.json", data_dir)
+    meta_path = flight / "meta.json"
+    meta = _check_json(report, meta_path, data_dir)
+    if isinstance(meta, dict) and "fps" in meta and not _is_rate(meta["fps"]):
+        report.problems.append(Problem(_rel(meta_path, data_dir), "truncated",
+                                       f"fps must be a positive, finite number, got {meta['fps']!r}"))
     expect_lines = meta.get("frames") if isinstance(meta, dict) else None
     _check_jsonl(report, flight / "truth.jsonl", data_dir, expect_lines=expect_lines)
     _check_video(report, flight / "flight.mp4", data_dir)
     for kf in (meta or {}).get("keyframes", []):
-        _check_image(report, flight / kf["file"], data_dir)
+        name = kf.get("file") if isinstance(kf, dict) else None
+        if not name:
+            report.problems.append(Problem(_rel(meta_path, data_dir), "truncated",
+                                           f"keyframes entry missing \"file\": {kf!r}"))
+            continue
+        _check_image(report, flight / name, data_dir)
 
 
 def _check_drone(report: CheckReport, drone: Path, data_dir: Path) -> None:
     if not _require_dir(report, drone, data_dir):
         return
-    truth = _check_json(report, drone / "truth.json", data_dir)
+    truth_path = drone / "truth.json"
+    truth = _check_json(report, truth_path, data_dir)
     for f in (truth or {}).get("frames", []):
-        _check_image(report, drone / f["frame"], data_dir)
+        name = f.get("frame") if isinstance(f, dict) else None
+        if not name:
+            report.problems.append(Problem(_rel(truth_path, data_dir), "truncated",
+                                           f"frames entry missing \"frame\": {f!r}"))
+            continue
+        _check_image(report, drone / name, data_dir)
+
+
+def _is_rate(v) -> bool:
+    """A positive, finite number; not a bool (True would mean 1 fps). Mirrors dronenav.io's own fps check."""
+    if isinstance(v, bool) or not isinstance(v, numbers.Real):
+        return False
+    try:
+        return math.isfinite(v) and v > 0
+    except OverflowError:
+        return False
 
 
 # --- file-level checks: each appends at most one problem, by the file's own name -------------------------------
@@ -155,10 +206,12 @@ def _check_video(report: CheckReport, path: Path, data_dir: Path) -> None:
         return
     report.checked += 1
     cap = cv2.VideoCapture(str(path))
-    ok = cap.isOpened() and cap.get(cv2.CAP_PROP_FRAME_COUNT) > 0
+    # a decoded frame is a far more reliable truncation signal than CAP_PROP_FRAME_COUNT, which some
+    # codecs/containers misreport as 0 or -1 for perfectly good files
+    ok = cap.isOpened() and cap.read()[0]
     cap.release()
     if not ok:
-        report.problems.append(Problem(_rel(path, data_dir), "truncated", "cannot open video"))
+        report.problems.append(Problem(_rel(path, data_dir), "truncated", "cannot decode a frame from the video"))
 
 
 def _check_json(report: CheckReport, path: Path, data_dir: Path) -> dict | None:

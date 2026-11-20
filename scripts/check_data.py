@@ -26,10 +26,10 @@ def main(argv: list[str] | None = None) -> int:
     if not Path(a.data).is_dir():
         return 2
     if not report.ok:
-        print(f"check_data: {len(report.problems)} problem(s) in {report.checked} files/dirs checked",
+        print(f"check_data: {len(report.problems)} problem(s) in {report.checked} files checked",
               file=sys.stderr)
         return 1
-    print(f"check_data: ok ({report.checked} files/dirs checked)")
+    print(f"check_data: ok ({report.checked} files checked)")
     return 0
 
 
