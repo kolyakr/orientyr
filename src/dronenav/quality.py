@@ -53,6 +53,12 @@ log = logging.getLogger(__name__)
 REASONS = ("too_small", "blank", "glare", "blur")
 
 BLUR_SIDE = 256            # the shorter side the blur score is measured at, px
+# Under this share of the running median a frame is a smear. Measured on the Irpin mild/2022 keyframes against
+# their truth (RootSIFT, whole-map search): sharp frames score 0.71..1.6 x the median; frames under the chaos blur
+# at strength 0.25 score 0.14..0.36 and every one still matches; at 0.5 and above they score under 0.09 and
+# 79 of 141 get no fix. 0.12 sits in that gap: it drops every frame that failed and keeps every lightly blurred
+# one. A different camera or matcher moves the gap: retune with scripts/quality_sheet.py --map.
+BLUR_RATIO = 0.12
 PRE_SIGMA = 0.7            # px at that size: the smoothing before the Laplacian, see blur_score
 # The notch looks for the screen grid above this frequency only (periods under 25 px): below it the scene's own
 # structure (streets, field borders) owns the spectrum and must not be cut.
@@ -147,7 +153,7 @@ class RunningMedian:
     Until ``min_history`` scores are in, every score is kept: there is no median yet.
     """
 
-    def __init__(self, window: int = 15, ratio: float = 0.4, min_history: int = 3):
+    def __init__(self, window: int = 15, ratio: float = BLUR_RATIO, min_history: int = 3):
         if not _is_count(window):
             raise ValueError(f"window must be a whole number of frames >= 1, got {window!r}")
         if not _is_number(ratio) or not 0.0 < ratio < 1.0:
@@ -284,7 +290,7 @@ class QualityConfig:
     """
 
     window: int = 15
-    blur_ratio: float = 0.4
+    blur_ratio: float = BLUR_RATIO
     min_history: int = 3
     blur_side: int = BLUR_SIDE
     blank_std: float = 2.0

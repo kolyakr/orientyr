@@ -256,6 +256,7 @@ python tools/make_ci_fixtures.py --data data             # regenerate tests/fixt
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)
+python scripts/quality_sheet.py --video data/video/take.mp4 --fps 12 --out outputs/quality_sheets   # M2-03 quality gate: contact sheet (kept / rejected + reason) and summary.txt; also --frames <dir>, or --flight <dir> --map <map> for the gate against the truth
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
 python scripts/scale_table.py --task data/hackatons-data --probe experiments/data_probe/results/probe.json \
     --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png   # M1-03 scale table (README notes)
