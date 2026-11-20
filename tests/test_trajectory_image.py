@@ -510,3 +510,15 @@ def test_the_legend_skips_corners_with_points_but_still_appears(tmp_path):
 def test_bad_arguments_are_refused(plain, kw):
     with pytest.raises(ValueError):
         ti.render_trajectory(plain["dir"], **kw)
+
+
+def test_on_a_dense_run_footprints_follow_the_numbering(tmp_path):
+    # every footprint of a dense run makes a solid band; one per numbered point keeps the map visible
+    pts = [(200 + 3 * i, 500.0) for i in range(300)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    numbered = sorted(lab.idx for lab in layout.labels if lab.idx is not None)
+    assert layout.footprints == numbered and len(numbered) < 100
+
+
+def test_on_a_sparse_run_every_accepted_fix_has_its_footprint(plain):
+    assert plain["layout"].footprints == [0, 1, 2, 3, 7, 9]      # not 4, 5 (no fix), 6 (rejected), 8 (interpolated)
