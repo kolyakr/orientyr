@@ -450,3 +450,55 @@ def test_the_preview_long_side_is_exactly_the_preview_size(tmp_path, size):
     d = _make_run(tmp_path, size, _line(size, n=4), frame=(16, 16))
     _, prev = ti.write_trajectory(d)
     assert max(cv2.imread(str(prev)).shape[:2]) == 1600
+
+
+# --- third review: crowded routes, off-map points, the legend's corner ------------------------------------------
+
+def test_numbers_keep_their_spacing_on_a_zigzag(tmp_path):
+    # a zigzag point is far from the last numbered point but on top of the one before: spacing must hold
+    # against every numbered point, or a third of the numbers collide and are dropped
+    pts = [(600 + 400 * i / 119, 400 if i % 2 else 700) for i in range(120)]     # points two apart: 6.7 px
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    numbered = [pts[lab.idx] for lab in layout.labels if lab.idx is not None]
+    assert len(numbered) > 15 and layout.unlabelled == []
+    for a, b in itertools.combinations(numbered, 2):
+        assert math.hypot(a[0] - b[0], a[1] - b[1]) >= ti.MIN_LABEL_SPACING * layout.unit
+
+
+def test_points_off_the_map_are_counted_not_numbered(tmp_path):
+    pts = [(-500 + 2600 * i / 39, 500 - 5 * i) for i in range(40)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    off = [i for i, (x, y) in enumerate(pts) if not (0 <= x <= 1600 and 0 <= y <= 1000)]
+    assert layout.off_map == off and len(off) > 10
+    assert not {lab.idx for lab in layout.labels} & set(off)
+    assert layout.unlabelled == []
+
+
+def test_dense_points_are_dots_so_the_dashed_route_stays_visible(tmp_path):
+    # 3 px apart: full markers would bury the route; unnumbered points are small dots and the dashes run on
+    pts = [(200 + 3 * i, 500.0) for i in range(300)]
+    img, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, missed=set(range(1, 299))))
+    numbered = {lab.idx for lab in layout.labels if lab.idx is not None}
+    plain = [i for i in range(1, 299) if all(abs(i - j) > 3 for j in numbered)]
+    assert len(plain) > 100
+    beside = [_changed(img[round(pts[i][1] - 4), round(pts[i][0])]) for i in plain]   # 4 px off the route line
+    assert sum(beside) / len(beside) < 0.1
+    on_line = [_close(img[round(pts[i][1]), round(pts[i][0]) + 1], ti.MISSED) for i in plain]
+    assert 0.2 <= sum(on_line) / len(on_line) <= 0.85                                  # dashes, not a solid line
+
+
+def test_the_legend_skips_corners_with_points_but_still_appears(tmp_path):
+    # points sit in three corners; the fourth is only crossed by the route, and that is where the legend goes
+    pts = [(60, 60), (1540, 60), (60, 940), (1650, 940), (1650, 500)]
+    _, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, frame=(16, 16)))
+    assert layout.legend is not None
+    x0, y0, x1, y1 = layout.legend
+    r = ti.END_R * layout.unit
+    markers = [(60, 60), (1540, 60), (60, 940), (1600 - (ti.END_R + 2) * layout.unit, 500)]   # FINISH at the edge
+    assert not any(x0 - r <= x <= x1 + r and y0 - r <= y <= y1 + r for x, y in markers)
+
+
+@pytest.mark.parametrize("kw", [{"label_every": 0}, {"label_every": -2}, {"preview_px": 0}])
+def test_bad_arguments_are_refused(plain, kw):
+    with pytest.raises(ValueError):
+        ti.render_trajectory(plain["dir"], **kw)
