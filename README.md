@@ -59,3 +59,23 @@ What the tables show:
   budget (M4-09) can.
 - Every frame localises at every factor. With RootSIFT + FLANN, the downscale is a speed setting, not
   what makes the task crops work.
+
+### Search strategy (M1-05)
+
+[src/dronenav/search.py](src/dronenav/search.py) decides where on the map to look for each frame:
+- **global:** the first frame, and the frame after a miss, search the whole map. With no scale known yet, the
+  probe factors are tried.
+- **window:** after a fix, the frame is matched only against the last footprint moved by the observed step,
+  plus a margin of max(96 px, 25% of the footprint).
+- **fallback:** if the window gives no accepted fix, the whole map is searched in the same frame.
+
+Measured with `python scripts/search_run.py`. Frame 25 (task) and frame 200 (Irpin) were replaced by a black
+frame as a forced miss:
+
+| sequence | frames | global / window / fallback | error px (median / max) | ms window / global (median) | window size |
+|---|---|---|---|---|---|
+| Task crops | 50 | 2 / 47 / 1 | 0.21 / 0.51 | 71 / 903 | 2.6% of the map |
+| Irpin mild 2025 keyframes | 442 | 2 / 439 / 1 | 0.43 / 1.19 | 383 / 1708 | 5.8% of the map |
+
+Every frame after frame 0 is found in its window, except the forced miss. The miss falls back to the whole
+map, finds nothing (correctly), and the next frame is found again by the global search.

@@ -257,6 +257,7 @@ python scripts/render_image.py --run outputs/fake          # trajectory.png + tr
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4: camera following the drone, HUD, inset
 python scripts/scale_table.py --task data/hackatons-data --probe experiments/data_probe/results/probe.json \
     --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png   # M1-03 scale table (README notes)
+python scripts/search_run.py --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png --miss 200   # M1-05 search modes
 python scripts/run.py --map data/map.png --frames data/frames --out outputs/run1
 python scripts/run.py --map data/map.png --video data/phone.mp4 --out outputs/phone
 python scripts/benchmark.py --map data/map.png
