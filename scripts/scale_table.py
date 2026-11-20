@@ -21,6 +21,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.geometry import localize
 from dronenav.matching import RootSiftMatcher
 from dronenav.scale import ScaleConfig, downscale_factor, match_scaled
@@ -93,7 +94,11 @@ def main() -> None:
     ap.add_argument("--irpin-map", type=Path, help="the map that flight's truth refers to")
     ap.add_argument("--n", type=int, default=50, help="Irpin keyframes to use")
     ap.add_argument("--cache", type=Path, default=Path("outputs/cache"))
+    add_shared_args(ap)
     args = ap.parse_args()
+    # Picked and logged like in every matching script; RootSIFT itself runs on the CPU, a torch matcher
+    # plugged in here later takes this device.
+    init_cli(args)
     factors = (*FACTORS, "rule")
     print(f"Rule: factor = scale / {ScaleConfig().target_scale}, clipped to [{ScaleConfig().min_factor}, 1].\n")
     if args.task:
