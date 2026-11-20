@@ -279,7 +279,7 @@ def test_cli_exits_two_when_the_data_folder_is_missing(tmp_path):
 # --- on the real data/, when present ------------------------------------------------------------------------------
 
 @pytest.mark.data
-@pytest.mark.skipif(not DATA.exists(), reason="data/ not downloaded")
+@pytest.mark.skipif(not (DATA / "hackatons-data").exists(), reason="data/ not downloaded")
 def test_real_data_passes_check():
     report = check_data(DATA)
     assert report.ok, [f"{p.kind}: {p.path} ({p.detail})" for p in report.problems]
