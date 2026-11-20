@@ -322,3 +322,26 @@ def test_task_map_renders_quickly(tmp_path):
     _, prev = ti.write_trajectory(tmp_path / "run")
     assert time.perf_counter() - t0 < 10
     assert cv2.imread(str(prev)).shape == (810, 1600, 3)
+
+
+# --- from the review -------------------------------------------------------------------------------------------
+
+def test_a_map_that_does_not_match_run_json_is_refused(tmp_path):
+    # a replaced map, or another zoom of the same area: every position would be drawn in the wrong place
+    d = _make_run(tmp_path, (1600, 1000), _line((1600, 1000)))
+    cv2.imwrite(str(d / "map.png"), np.full((500, 800, 3), GREY, np.uint8))
+    with pytest.raises(ValueError, match=r"800 x 500.*1600 x 1000"):
+        ti.render_trajectory(d)
+    res = _cli("--run", d)
+    assert res.returncode != 0 and "1600 x 1000" in res.stderr
+
+
+@pytest.mark.parametrize("channels", [1, 2, 4])
+def test_a_map_given_in_memory_may_be_grey_or_have_alpha(plain, channels):
+    # run.py may hand over the map it already loaded; the drawing must stay in colour
+    grey = np.full((1000, 1600), GREY, np.uint8)
+    m = {1: grey, 2: grey[..., None], 4: np.dstack([grey] * 3 + [np.full_like(grey, 255)])}[channels]
+    img, _ = ti.render_trajectory(plain["dir"], map_img=m)
+    assert img.shape == (1000, 1600, 3)
+    x, y = plain["pts"][1]
+    assert _close(img[round(y), round(x)], ti.FIXED)
