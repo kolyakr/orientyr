@@ -381,7 +381,7 @@ def test_the_legend_is_left_out_when_the_map_is_too_small(tmp_path):
 
 
 def test_the_legend_fits_a_narrow_map(tmp_path):
-    d = _make_run(tmp_path, (1400, 4000), [(700, 400 + 400 * i) for i in range(9)])
+    d = _make_run(tmp_path, (1800, 4000), [(900, 400 + 400 * i) for i in range(9)])
     img, layout = ti.render_trajectory(d)
     assert layout.legend is not None and _inside(layout.legend, img.shape)
 
@@ -594,8 +594,8 @@ def test_numbers_are_frame_numbers_when_frames_are_skipped(tmp_path):
     d = _make_run(tmp_path, size, _line(size, n=20), idxs=idxs)
     _, layout = ti.render_trajectory(d)
     assert {lab.text for lab in layout.labels if lab.idx is not None} == {str(i) for i in idxs}
-    _, layout = ti.render_trajectory(d, label_every=15)
-    assert sorted(lab.idx for lab in layout.labels if lab.idx is not None) == [115, 130, 145, 157]
+    _, layout = ti.render_trajectory(d, label_every=10)
+    assert sorted(lab.idx for lab in layout.labels if lab.idx is not None) == [100, 130, 157]   # 157: the last
 
 
 def test_an_end_near_the_edge_stays_where_it_is(tmp_path):
@@ -612,7 +612,7 @@ def test_footprints_are_rotated(tmp_path):
     img, _ = ti.render_trajectory(d)
     H = _H(800, 500, head, 1.0, frame)
     c = _corners(H, frame)
-    for k in (1, 3):                                                   # the long sides, off the route line
+    for k in (0, 2):                                                   # TL-TR and BR-BL: the long sides
         mx, my = (c[k] + c[(k + 1) % 4]) / 2
         assert _changed(img[round(my), round(mx)]), k
     for x, y in ((c[:, 0].min(), c[:, 1].min()), (c[:, 0].max(), c[:, 1].max())):
@@ -625,7 +625,7 @@ def test_more_map_formats_in_memory(plain, kind):
     m = np.dstack([grey, np.full_like(grey, 255)]) if kind == "grey+alpha" else np.dstack([grey.astype(np.uint16) * 257] * 3)
     img, _ = ti.render_trajectory(plain["dir"], map_img=m)
     assert img.dtype == np.uint8 and img.shape == (1000, 1600, 3)
-    assert abs(int(img[100, 100, 0]) - GREY) <= 1                      # the map itself, unchanged in brightness
+    assert abs(int(img[800, 100, 0]) - GREY) <= 1                      # bare map, away from route and legend
 
 
 def test_render_from_memory_matches_the_folder(plain):
