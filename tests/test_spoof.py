@@ -23,7 +23,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+from dronenav.georef import GeorefBlock
 from dronenav.sim.gps import GpsSample, TruthPoint, WalkOff, read_truth_track, simulate_gps
+from dronenav.telemetry import Record, read_run, write_run
+from dronenav.tracking.kalman import KalmanFilter
 from dronenav.tracking.spoof import (
     SpoofConfig,
     SpoofDetector,
@@ -31,10 +35,6 @@ from dronenav.tracking.spoof import (
     annotate_run,
     score_trial,
 )
-
-from dronenav.georef import GeorefBlock
-from dronenav.telemetry import Record, read_run, write_run
-from dronenav.tracking.kalman import KalmanFilter
 from dronenav.types import TrackMode, TrackState
 
 ROOT = Path(__file__).resolve().parents[1]
