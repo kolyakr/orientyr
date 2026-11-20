@@ -13,6 +13,7 @@ import sys
 
 import cv2
 
+from dronenav.config import add_shared_args, init_cli
 from dronenav.pipeline import MATCHERS, NothingLocalized, run
 
 
@@ -29,7 +30,10 @@ def main(argv: list[str] | None = None) -> int:
                          "30 fps video: 30). Default: meta.json next to the frames, else 1")
     ap.add_argument("--speed", type=float, default=1.0, help="video: run seconds per video second (default 1)")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
+    add_shared_args(ap)
     a = ap.parse_args(argv)
+    # Picked and logged like in every matching script; the SIFT matcher runs on the CPU, a torch matcher takes this device.
+    init_cli(a)
     if a.video is not None:
         print("run: error: --video needs the video frame source (M2-02), which is not built yet; "
               "extract frames to a folder and use --frames", file=sys.stderr)

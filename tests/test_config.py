@@ -25,10 +25,14 @@ from dronenav.config import CommonArgs, add_arguments, add_shared_args, arg, ini
 from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("check_data.py", "fake_run.py", "render_image.py", "render_video.py", "scale_table.py", "search_run.py")
+SCRIPTS = ("check_data.py", "fake_run.py", "render_image.py", "render_video.py", "run.py", "scale_table.py",
+           "search_run.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
 # The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
 DEVICE_SCRIPTS = ("scale_table.py", "search_run.py")
+# run.py matches too and takes --device, but its required --map / --out stop it before any work when called bare,
+# so only the option itself is checked here; its device line is the same init_cli() call as in the two above.
+DEVICE_OPTION_SCRIPTS = (*DEVICE_SCRIPTS, "run.py")
 
 
 def _size(text: str) -> tuple[int, int]:
@@ -262,7 +266,7 @@ def test_every_script_rejects_a_bad_log_level(name):
     assert res.returncode == 2 and "--log-level" in res.stderr and "Traceback" not in res.stderr, res.stderr
 
 
-@pytest.mark.parametrize("name", DEVICE_SCRIPTS)
+@pytest.mark.parametrize("name", DEVICE_OPTION_SCRIPTS)
 def test_matching_scripts_expose_the_device_option(name):
     res = _script(name, "--help")
     assert res.returncode == 0, res.stderr
@@ -289,7 +293,7 @@ def test_matching_scripts_pick_a_device_by_default(name):
     assert m.group("requested") == "auto" and m.group("device") in ("mps", "cuda", "cpu")
 
 
-@pytest.mark.parametrize("name", DEVICE_SCRIPTS)
+@pytest.mark.parametrize("name", DEVICE_OPTION_SCRIPTS)
 def test_matching_scripts_reject_an_unknown_device(name):
     res = _script(name, "--device", "gpu")
     assert res.returncode == 2 and "invalid choice" in res.stderr and not _device_lines(res.stderr)
