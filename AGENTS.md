@@ -100,7 +100,35 @@ main ◄──── release PR (owner only) ──── develop ◄───�
 | `develop` | Integration: the default branch. All finished tasks land here. | Anyone, **only through a PR** from a task branch. No direct pushes, no force-push. |
 | `M<n>-<nn>-<slug>` | One task = one branch, e.g. `M1-04-geometry`. | Its owner. Branch off `develop`, PR back into `develop`. Deleted after merge. |
 
-### Workflow for a task (humans and agents alike)
+### One-time setup per person
+
+```bash
+gh auth login                      # as your own GitHub user
+gh auth refresh -s project         # lets gh move cards on the board
+git clone git@github.com:kolyakr/orientyr.git && cd orientyr   # lands on develop (the default branch)
+git config user.name "<you>" && git config user.email "<your GitHub email>"
+```
+
+Open Claude Code (or any agent) at the repo root: `CLAUDE.md` imports this file, so the agent starts with these rules.
+
+### Task lifecycle: always through `tools/task.sh`
+
+Every step that touches GitHub goes through [`tools/task.sh`](tools/task.sh), so the board, issues and branches never
+drift apart. In Claude Code the same flow is `/start-task` and `/finish-task` (in `.claude/skills/`).
+
+| Step | Command | What it does |
+|---|---|---|
+| 1. Pick | `tools/task.sh ready` | lists open, unassigned tasks whose blockers are all closed; pick one (prefer the critical path M0 → M1 → M4 → M5 → M7) |
+| 2. Start | `tools/task.sh start <issue#>` | refuses if blocked or taken; assigns you; board → **In Progress**; branch `M1-04-<slug>` off fresh `develop`, pushed; prints the spec |
+| 3. Tests (red) | write tests, see them fail, `git commit -m "M1-04: tests for … (red)"` | see TDD rules below |
+| 4. Implement (green) | code until all tests pass; `git commit -m "M1-04: …"` | small commits, ID first |
+| 5. PR | `tools/task.sh pr` | rebases on `develop`, pushes, opens PR into `develop` titled like the issue, `Closes #N` |
+| 6. Merge | `tools/task.sh finish` | after tests and CI are green: squash-merge, delete branch, board → **Done**, back on fresh `develop` |
+
+Blocked midway, or giving a task up? `tools/task.sh status <issue#> Todo`, unassign yourself, and say why in the issue.
+One task in progress per person at a time.
+
+### Workflow for a task: the rules behind the commands (humans and agents alike)
 
 1. **Pick a task** on the board whose blockers are all closed; assign yourself and move it to *In Progress*.
 2. **Branch off the latest `develop`:** `git switch develop && git pull && git switch -c M1-04-geometry`.
@@ -149,7 +177,14 @@ What makes a test reliable here:
 ### Rules for coding agents
 
 - Never commit or push to `main` or `develop` directly; never force-push a shared branch; never merge into `main`.
-- Before starting, confirm the task ID with the human; if there is none, ask for one rather than inventing work.
+- At the start of a session, run `git status` and `tools/task.sh mine`. If the human already has a task in
+  progress, continue it on its branch; otherwise propose tasks from `tools/task.sh ready` and let the human choose.
+  If the work asked for matches no task, ask for one (or ask the human to open an issue) rather than inventing work.
+- Use `tools/task.sh` for start / PR / finish / status; don't hand-edit the board or invent branch names.
+- Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.
+  Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
+- Run the full test suite (`pytest`) before `tools/task.sh pr` and before `finish`; never merge red.
+- `finish` merges into `develop` only after the human says so.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
 
