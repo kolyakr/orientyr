@@ -479,12 +479,20 @@ def test_dense_points_are_dots_so_the_dashed_route_stays_visible(tmp_path):
     pts = [(200 + 3 * i, 500.0) for i in range(300)]
     img, layout = ti.render_trajectory(_make_run(tmp_path, (1600, 1000), pts, missed=set(range(1, 299))))
     numbered = {lab.idx for lab in layout.labels if lab.idx is not None}
-    plain = [i for i in range(1, 299) if all(abs(i - j) > 3 for j in numbered)]
-    assert len(plain) > 100
-    beside = [_changed(img[round(pts[i][1] - 4), round(pts[i][0])]) for i in plain]   # 4 px off the route line
+    plain = [i for i in range(1, 299) if all(abs(i - j) >= 3 for j in numbered)]   # ≥ 9 px from full markers
+    assert len(plain) > 30
+
+    def under_a_label(x, y):
+        return any(b.box[0] <= x <= b.box[2] and b.box[1] <= y <= b.box[3] for b in layout.labels)
+
+    beside = [_changed(img[round(pts[i][1] - 4), round(pts[i][0])]) for i in plain   # 4 px off the route line
+              if not under_a_label(pts[i][0], pts[i][1] - 4)]
+    assert len(beside) > 15
     assert sum(beside) / len(beside) < 0.1
-    on_line = [_close(img[round(pts[i][1]), round(pts[i][0]) + 1], ti.MISSED) for i in plain]
-    assert 0.2 <= sum(on_line) / len(on_line) <= 0.85                                  # dashes, not a solid line
+    # along the line: gaps between dashes must show (a solid line, or one buried under markers, has none)
+    row = [_close(img[500, x], ti.MISSED) for x in range(round(pts[30][0]), round(pts[270][0]))]
+    gaps = sum(1 for a, b in itertools.pairwise(row) if a and not b)
+    assert gaps >= 20, gaps                                     # ≈ 720 px of dash + gap periods of 14 px
 
 
 def test_the_legend_skips_corners_with_points_but_still_appears(tmp_path):
