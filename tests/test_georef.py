@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 import pytest
 
-from dronenav.georef import GeorefBlock, GeorefError, load_georef, load_map
+from dronenav.georef import Georef, GeorefBlock, GeorefError, load_georef, load_map
 
 ROOT = Path(__file__).resolve().parents[1]
 IRPIN_2025 = ROOT / "data" / "irpin" / "maps" / "irpin_2025.json"
@@ -57,6 +57,41 @@ def test_px_m_round_trip():
     block = _block()
     mx, my = block.px_to_m(100.0, -40.0)
     assert block.m_to_px(mx, my) == pytest.approx((100.0, -40.0))
+
+
+@pytest.mark.parametrize("field,bad,words", [
+    ("m_per_px", None, ["m_per_px", "number"]),
+    ("m_per_px", True, ["m_per_px", "number"]),            # bool sneaking in as a number
+    ("capture_coverage", "1.0", ["capture_coverage", "number"]),
+    ("size_px", (3936,), ["size_px"]),                      # wrong length
+    ("size_px", (-10, 10), ["size_px"]),                    # not positive
+    ("merc_origin_px", (1.0,), ["merc_origin_px"]),         # wrong length
+    ("bounds_lonlat", (1.0, 2.0, 3.0), ["bounds_lonlat"]),  # wrong length
+    ("alignment_to_2025", "not aligned", ["alignment_to_2025"]),
+])
+def test_block_rejects_malformed_fields(field, bad, words):
+    with pytest.raises(GeorefError) as e:
+        _block(**{field: bad})
+    msg = str(e.value)
+    for w in words:
+        assert w in msg, f"{w!r} not in {msg!r}"
+
+
+def test_georef_rejects_wrong_field_types():
+    block = _block()
+    with pytest.raises(GeorefError):
+        Georef(capture="oops", source="x", map=block, hires=block)
+    with pytest.raises(GeorefError):
+        Georef(capture={}, source=123, map=block, hires=block)
+    with pytest.raises(GeorefError):
+        Georef(capture={}, source="x", map="oops", hires=block)
+
+
+def test_reproject_rejects_unknown_block_name():
+    block = _block()
+    g = Georef(capture={}, source="x", map=block, hires=block)
+    with pytest.raises(GeorefError):
+        g.reproject(0.0, 0.0, src="maps", dst="hires")
 
 
 def test_doubling_zoom_doubles_world_pixel_position():
@@ -127,6 +162,11 @@ def test_load_map_with_no_sidecar_has_no_georeference(tmp_path):
     cv2.imwrite(str(img_path), np.zeros((10, 10, 3), np.uint8))
     image, georef = load_map(img_path)
     assert image is not None and georef is None
+
+
+def test_load_map_raises_file_not_found_for_an_unreadable_map(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_map(tmp_path / "missing.png")
 
 
 # --- on the real Irpin sidecar, when data/ is present --------------------------------------------

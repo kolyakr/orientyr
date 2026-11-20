@@ -59,6 +59,37 @@ def _world_lonlat(x: float, y: float, zoom: int) -> tuple[float, float]:
     return lon, lat
 
 
+def _is_number(v) -> bool:
+    # bool is an int in Python, but true/false as a coordinate is a bug, not a number
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _number(name: str, v) -> float:
+    if not _is_number(v):
+        raise GeorefError(f"{name} must be a number, got {type(v).__name__}")
+    v = float(v)
+    if not math.isfinite(v):
+        raise GeorefError(f"{name} must be finite, got {v}")
+    return v
+
+
+def _point(name: str, v, n: int) -> tuple[float, ...]:
+    """A sequence of exactly n numbers, as a tuple of floats."""
+    if not isinstance(v, (list, tuple)) or len(v) != n:
+        raise GeorefError(f"{name} must be {n} numbers, got {v!r}")
+    return tuple(_number(f"{name}[{i}]", x) for i, x in enumerate(v))
+
+
+def _size_px(name: str, v) -> tuple[int, int]:
+    """(w, h): two positive ints, from a tuple or a JSON list."""
+    if not isinstance(v, (list, tuple)) or len(v) != 2:
+        raise GeorefError(f"{name} must be [w, h], got {v!r}")
+    w, h = v
+    if not all(isinstance(e, int) and not isinstance(e, bool) and e > 0 for e in (w, h)):
+        raise GeorefError(f"{name} must be two positive integers, got {v!r}")
+    return int(w), int(h)
+
+
 @dataclass(frozen=True)
 class GeorefBlock:
     """One resolution of a georeferenced map (the sidecar's ``map`` or ``hires`` block).
@@ -83,13 +114,19 @@ class GeorefBlock:
     def __post_init__(self):
         if not isinstance(self.zoom, int) or isinstance(self.zoom, bool) or self.zoom < 0:
             raise GeorefError(f"zoom must be a non-negative integer, got {self.zoom!r}")
-        if not self.m_per_px > 0:
-            raise GeorefError(f"m_per_px must be > 0, got {self.m_per_px!r}")
-        if not 0.0 <= self.capture_coverage <= 1.0:
-            raise GeorefError(f"capture_coverage must be in [0, 1], got {self.capture_coverage!r}")
-        object.__setattr__(self, "size_px", tuple(self.size_px))
-        object.__setattr__(self, "merc_origin_px", tuple(self.merc_origin_px))
-        object.__setattr__(self, "bounds_lonlat", tuple(self.bounds_lonlat))
+        m_per_px = _number("m_per_px", self.m_per_px)
+        if not m_per_px > 0:
+            raise GeorefError(f"m_per_px must be > 0, got {m_per_px!r}")
+        object.__setattr__(self, "m_per_px", m_per_px)
+        capture_coverage = _number("capture_coverage", self.capture_coverage)
+        if not 0.0 <= capture_coverage <= 1.0:
+            raise GeorefError(f"capture_coverage must be in [0, 1], got {capture_coverage!r}")
+        object.__setattr__(self, "capture_coverage", capture_coverage)
+        object.__setattr__(self, "size_px", _size_px("size_px", self.size_px))
+        object.__setattr__(self, "merc_origin_px", _point("merc_origin_px", self.merc_origin_px, 2))
+        object.__setattr__(self, "bounds_lonlat", _point("bounds_lonlat", self.bounds_lonlat, 4))
+        if not isinstance(self.alignment_to_2025, dict):
+            raise GeorefError(f"alignment_to_2025 must be an object, got {type(self.alignment_to_2025).__name__}")
 
     def lonlat_to_px(self, lon: float, lat: float) -> tuple[float, float]:
         """WGS84 lon/lat -> this block's pixel (x, y)."""
@@ -125,8 +162,20 @@ class Georef:
     map: GeorefBlock
     hires: GeorefBlock
 
+    def __post_init__(self):
+        if not isinstance(self.capture, dict):
+            raise GeorefError(f"capture must be an object, got {type(self.capture).__name__}")
+        if not isinstance(self.source, str):
+            raise GeorefError(f"source must be a string, got {type(self.source).__name__}")
+        for name in ("map", "hires"):
+            if not isinstance(getattr(self, name), GeorefBlock):
+                raise GeorefError(f"{name} must be a GeorefBlock, got {type(getattr(self, name)).__name__}")
+
     def reproject(self, x: float, y: float, *, src: str, dst: str) -> tuple[float, float]:
         """A pixel in the ``src`` block ("map"/"hires") -> the same location in the ``dst`` block."""
+        for name in (src, dst):
+            if name not in ("map", "hires"):
+                raise GeorefError(f"src/dst must be 'map' or 'hires', got {name!r}")
         lon, lat = getattr(self, src).px_to_lonlat(x, y)
         return getattr(self, dst).lonlat_to_px(lon, lat)
 
@@ -177,10 +226,13 @@ def load_georef(path: str | Path) -> Georef:
 
 
 def load_map(map_path: str | Path) -> tuple[np.ndarray, Georef | None]:
-    """Read a map image and its sidecar, if one sits next to it (same path, '.json'). No sidecar -> georef=None."""
+    """Read a map image and its sidecar, if one sits next to it (same path, '.json'). No sidecar -> georef=None.
+
+    Raises FileNotFoundError for an unreadable map and GeorefError for a malformed sidecar.
+    """
     map_path = Path(map_path)
-    image = cv2.imread(str(map_path))
+    image = cv2.imread(str(map_path), cv2.IMREAD_COLOR)
     if image is None:
-        raise GeorefError(f"{map_path}: could not be read as an image")
+        raise FileNotFoundError(f"cannot read the map {map_path}")
     sidecar = map_path.with_suffix(".json")
     return image, (load_georef(sidecar) if sidecar.exists() else None)
