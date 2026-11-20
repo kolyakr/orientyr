@@ -127,7 +127,8 @@ drift apart. In Claude Code the same flow is `/start-task` and `/finish-task` (i
 
 Other commands: `tools/task.sh mine` (my tasks and what blocks them), `claim <issue#>` (reserve a task, blocked or
 not), `drop` (give the current task back: board → Todo, unassigned; then say why in the issue),
-`status <issue#> <Todo|In Progress|Done>`. One task in progress per person at a time.
+`status <issue#> <Todo|In Progress|Done>`, `notify` (tasks just unblocked for me; the Claude Code hooks run it).
+One task in progress per person at a time.
 
 **Owner-only tasks** (label `owner-only`, e.g. M8-07: repo clean-up and publishing) are done by @kolyakr alone.
 `tools/task.sh` refuses them for anyone else and hides them from `ready`; the `owner-only` workflow unassigns
@@ -144,6 +145,10 @@ anyone else and fails their PR's check.
   notification and email. An unclaimed task gets a "free to take" comment instead, and the closed task gets a list of
   what it unblocked. Reopening a task re-blocks its dependants.
 - Make sure GitHub notifications for this repo reach you (Watch → Participating and @mentions, or All Activity).
+- **Your Claude hears it too.** The shared [.claude/settings.json](.claude/settings.json) runs `tools/task.sh notify` when
+  a Claude Code session starts, and again on your prompts at most every 10 minutes. It lists tasks the `unblock`
+  workflow has opened since the last check that are claimed by you or unclaimed, and the agent tells you about them
+  before anything else. It prints nothing when there is no news and never blocks the session. You can also run it by hand.
 - Edited a "blocked by" link by hand? Labels re-sync every 6 hours, or at once with `gh workflow run unblock.yml`.
 
 ### Workflow for a task: the rules behind the commands (humans and agents alike)
@@ -198,6 +203,8 @@ What makes a test reliable here:
 - At the start of a session, run `git status` and `tools/task.sh mine`. If the human already has a task in
   progress, continue it on its branch; otherwise propose tasks from `tools/task.sh ready` and let the human choose.
   If the work asked for matches no task, ask for one (or ask the human to open an issue) rather than inventing work.
+- When a "🔓 Orientyr board news" block appears in your context (from the `notify` hook), tell the human about those
+  tasks first and offer to start one, but don't drop a task already in progress without asking.
 - Use `tools/task.sh` for start / PR / finish / status; don't hand-edit the board or invent branch names.
 - Never propose, claim or work on an `owner-only` task unless the human is @kolyakr.
 - Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.

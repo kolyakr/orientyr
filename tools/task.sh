@@ -11,6 +11,7 @@
 #   tools/task.sh test [pytest args]  run the tests the way pr/finish do (repo root and src/ importable)
 #   tools/task.sh status <issue#> <Todo|In Progress|Done>
 #   tools/task.sh drop              give the current task back: board → Todo, unassign, back on develop
+#   tools/task.sh notify [--throttle SEC]  tasks unblocked for me since the last check (run by Claude Code hooks)
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -201,7 +202,41 @@ case "${1:-}" in
     echo "Dropped #$n (its branch stays on GitHub). Say why in the issue: gh issue comment $n"
     ;;
 
+  notify)
+    # Called by the hooks in .claude/settings.json, so every teammate's Claude hears about tasks the `unblock`
+    # workflow has just opened for them (claimed by them, or unclaimed). Prints nothing when there is no news, never
+    # fails (a hook must not break the session), and remembers what was already reported in the local git dir.
+    [[ "${2:-}" == --throttle ]] && throttle="${3:-600}" || throttle=0
+    state="$(git rev-parse --git-dir)/task-notify"
+    now=$(date +%s)
+    last_check=$(cat "$state.checked" 2>/dev/null || echo 0)
+    (( now - last_check >= throttle )) || exit 0
+    echo "$now" >"$state.checked"
+    # first run: report the last 3 days, so a fresh clone still hears about recent news
+    since=$(cat "$state.since" 2>/dev/null || date -u -v-3d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+            || date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+    stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    m=$(me 2>/dev/null) || exit 0
+    news=$(gql 'query($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues(states:OPEN,first:100){nodes{
+        number title labels(first:10){nodes{name}} assignees(first:10){nodes{login}}
+        comments(last:10){nodes{author{login} createdAt body}}}}}}' \
+      ".data.repository.issues.nodes[]
+       | select([.comments.nodes[] | select(.author.login==\"github-actions\" and .createdAt > \"$since\"
+                                           and (.body | startswith(\"🔓 **Unblocked.**\")))] | length > 0)
+       | select(([.labels.nodes[].name] | index(\"owner-only\") | not) or \"$m\" == \"$TASK_OWNER\")
+       | [.assignees.nodes[].login] as \$who
+       | if (\$who | index(\"$m\")) then \"- #\(.number) \(.title): unblocked and claimed by you → tools/task.sh start \(.number)\"
+         elif (\$who | length) == 0 then \"- #\(.number) \(.title): unblocked, nobody has claimed it → tools/task.sh start \(.number)\"
+         else empty end" 2>/dev/null) || exit 0
+    echo "$stamp" >"$state.since"
+    if [[ -n "$news" ]]; then
+      echo "🔓 Orientyr board news for @$m: tasks just unblocked (their blockers were merged)."
+      echo "Tell the user about these first, before anything else, and offer to start one:"
+      echo "$news"
+    fi
+    ;;
+
   *)
-    sed -n '2,14p' "$0"; exit 1
+    sed -n '2,15p' "$0"; exit 1
     ;;
 esac
