@@ -340,3 +340,16 @@ def test_a_map_without_features_is_a_clear_error(tmp_path, world):
     res = _cli("--map", flat, "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
     assert res.returncode != 0 and "feature" in res.stderr and "Traceback" not in res.stderr, res.stderr
     assert not (tmp_path / "out").exists()
+
+
+def test_a_looser_fit_is_a_less_certain_position(tmp_path):
+    # cut-outs fit to under 1 px, where the 1 px floor hides the rule; a real 2.5 px fit must widen sigma to 2.5
+    from dronenav.pipeline import _Found, _records
+    from dronenav.types import Fix
+    H = np.array([[1.0, 0, 100], [0, 1.0, 100], [0, 0, 1]])
+    fp = np.array([[100, 100], [420, 100], [420, 340], [100, 340]], float)
+    found = [_Found(0, 0.0, tmp_path / "f.png", (320, 240),
+                    Fix(idx=0, H=H, x=260, y=220, heading_deg=0, scale=1, footprint=fp, inliers=80,
+                        inlier_ratio=0.5, reproj_px=2.5, accepted=True), "global", None, 1.0, 5.0)]
+    (rec,) = _records(found, tmp_path, "rootsift")
+    assert math.sqrt(rec.track.cov[0, 0]) == pytest.approx(2.5)
