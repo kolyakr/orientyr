@@ -8,6 +8,7 @@ Done when (issue spec update):
    jammed frames before the first fix take its position; all frames jammed -> exit 1, clear message;
 4. errors (missing map/frames, unknown matcher, --video) are clear and leave no output folder.
 """
+import itertools
 import json
 import math
 import subprocess
@@ -189,3 +190,153 @@ def test_the_acceptance_command_on_the_task_data(tmp_path):
         n += 1
     assert n == pytest.approx((49 + 1) * 30, abs=1)                      # 49 s of run at 1 fps, plus 1 s hold
     assert json.loads((out / "run.json").read_text())["generator"] == "run.py"
+
+
+# --- review ----------------------------------------------------------------------------------------------------
+
+def test_coasting_stops_after_a_few_seconds(tmp_path, world):
+    # a 213-frame loss on a stale map coasted 8.8 km off the map on a stale velocity: after COAST_MAX_S the
+    # position holds (the uncertainty keeps growing)
+    from dronenav.pipeline import COAST_MAX_S
+    frames, _ = _frames(tmp_path, world, n=14, jam=set(range(4, 13)))      # 9 s lost at 1 fps
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    recs = {r.idx: r for r in read_run(tmp_path / "out" / "run.jsonl")}
+    held = (recs[3 + COAST_MAX_S].track.x, recs[3 + COAST_MAX_S].track.y)   # the last fix was frame 3
+    for i in range(4 + COAST_MAX_S, 13):
+        assert (recs[i].track.x, recs[i].track.y) == (pytest.approx(held[0]), pytest.approx(held[1])), i
+        assert recs[i].track.vx == 0 and recs[i].track.vy == 0
+    sig = [recs[i].track.cov[0, 0] for i in range(4, 13)]
+    assert all(b > a for a, b in itertools.pairwise(sig))                   # less and less sure
+
+
+def _gapped_frames(tmp_path, world, idxs, jam=()):
+    """Cut-out frames named by video frame number (frame_000, frame_030, ...), as Irpin keyframes are."""
+    _, img = world
+    poses = cutout_route((img.shape[1], img.shape[0]), len(idxs), seed=5, frame_size=(320, 240), scale=(0.9, 1.1),
+                         tilt_max_deg=3.0)
+    src = CutoutSource(img, poses, (320, 240))
+    d = tmp_path / "gapped"
+    d.mkdir()
+    for f, i in zip(src, idxs, strict=True):
+        cv2.imwrite(str(d / f"frame_{i:03d}.png"), _jam(f.image.shape, i) if i in jam else f.image)
+    return d
+
+
+def test_time_not_frame_numbers_drives_coasting_and_uncertainty(tmp_path, world):
+    # keyframes numbered 0, 30, 60 ... at 30 fps are 1 s apart: sigma grew 600 px per missed keyframe when it
+    # counted frame numbers instead of seconds
+    from dronenav.pipeline import LOST_SIGMA_GROWTH_PX_PER_S
+    frames = _gapped_frames(tmp_path, world, [0, 30, 60, 90, 120, 150], jam={90, 120})
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--fps", 30,
+                "--cache", tmp_path / "cache").returncode == 0
+    r = {x.idx: x for x in read_run(tmp_path / "out" / "run.jsonl")}
+    assert [r[i].t for i in sorted(r)] == pytest.approx([0, 1, 2, 3, 4, 5])
+    # velocity in map px per second between the last two fixes, and the coast uses seconds
+    vx = (r[60].track.x - r[30].track.x) / 1.0
+    assert r[60].track.vx == pytest.approx(vx) and r[90].track.vx == pytest.approx(vx)
+    assert r[120].track.x == pytest.approx(r[60].track.x + 2 * vx)
+    s60, s90, s120 = (math.sqrt(r[i].track.cov[0, 0]) for i in (60, 90, 120))
+    assert s90 == pytest.approx(s60 + LOST_SIGMA_GROWTH_PX_PER_S) and s120 == pytest.approx(s60 + 2 * LOST_SIGMA_GROWTH_PX_PER_S)
+
+
+def test_a_fix_carries_its_velocity_and_uncertainty(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=4)
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    assert (recs[0].track.vx, recs[0].track.vy) == (0, 0)                   # one fix: no motion yet
+    for a, b in itertools.pairwise(recs):
+        assert b.track.vx == pytest.approx(b.track.x - a.track.x) and b.track.vy == pytest.approx(b.track.y - a.track.y)
+    for r in recs:
+        assert r.track.cov[0, 0] == pytest.approx(max(1.0, r.track.fix.reproj_px) ** 2)
+        assert r.track.cov[0, 1] == 0
+
+
+def test_window_searches_record_their_window(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=4)
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    assert recs[0].extra["window"] is None
+    for r in recs[1:]:
+        if r.extra["search"] == "window":
+            x0, y0, x1, y1 = r.extra["window"]
+            assert x0 <= r.track.fix.x <= x1 and y0 <= r.track.fix.y <= y1
+
+
+def test_sources_are_relative_to_the_run_folder(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=2)
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    for r in read_run(tmp_path / "out" / "run.jsonl"):
+        assert not Path(r.source).is_absolute() and (tmp_path / "out" / r.source).is_file()
+
+
+def test_nothing_localized_leaves_no_folder(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=2, jam={0, 1})
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 1
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("case", ["speed", "out is a file"])
+def test_bad_settings_fail_before_any_work(tmp_path, world, case):
+    frames, _ = _frames(tmp_path, world, n=2)
+    out = tmp_path / "out"
+    if case == "out is a file":
+        out.write_text("not a folder")
+    args = ["--speed", "0"] if case == "speed" else []
+    res = _cli("--map", world[0], "--frames", frames, "--out", out, "--cache", tmp_path / "cache", *args)
+    assert res.returncode != 0 and ("speed" in res.stderr or "not a folder" in res.stderr), res.stderr
+    assert not (tmp_path / "cache").exists()                                   # no map features were computed
+    assert case == "out is a file" or not out.exists()
+
+
+def test_a_failed_render_leaves_the_previous_run_whole(tmp_path, world, monkeypatch):
+    # run.jsonl of a new run next to trajectory.mp4 of an old one would be a silently inconsistent folder
+    from dronenav import pipeline
+    frames, _ = _frames(tmp_path, world, n=2)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "run.jsonl").write_text("old run\n")
+    (out / "trajectory.mp4").write_bytes(b"old video")
+    (out / "notes.txt").write_text("mine")
+
+    def broken(*a, **k):
+        raise RuntimeError("encoder exploded")
+
+    monkeypatch.setattr(pipeline, "write_video", broken)
+    with pytest.raises(RuntimeError, match="exploded"):
+        pipeline.run(world[0], frames, out, cache_dir=tmp_path / "cache")
+    assert (out / "run.jsonl").read_text() == "old run\n" and (out / "trajectory.mp4").read_bytes() == b"old video"
+    assert sorted(p.name for p in tmp_path.iterdir() if "partial" in p.name) == []
+
+
+def test_a_new_run_replaces_the_old_outputs_and_keeps_other_files(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=2)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "run.jsonl").write_text("old run\n")
+    (out / "notes.txt").write_text("mine")
+    assert _cli("--map", world[0], "--frames", frames, "--out", out, "--cache", tmp_path / "cache").returncode == 0
+    assert len(read_run(out / "run.jsonl")) == 2 and (out / "notes.txt").read_text() == "mine"
+
+
+def test_frames_of_mixed_sizes_have_no_single_frame_size(tmp_path, world):
+    from dronenav.sim import CutoutPose, cutout_homography, render_cutout
+    frames, _ = _frames(tmp_path, world, n=3)
+    pose = CutoutPose(1000, 750, 0, 1.0)
+    cv2.imwrite(str(frames / "frame_003.png"), render_cutout(world[1], cutout_homography(pose, (400, 300)), (400, 300)))
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    assert read_run_info(tmp_path / "out").frame_size is None
+
+
+def test_a_map_without_features_is_a_clear_error(tmp_path, world):
+    flat = tmp_path / "flat.png"
+    cv2.imwrite(str(flat), np.full((600, 800, 3), 120, np.uint8))
+    frames, _ = _frames(tmp_path, world, n=2)
+    res = _cli("--map", flat, "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
+    assert res.returncode != 0 and "feature" in res.stderr and "Traceback" not in res.stderr, res.stderr
+    assert not (tmp_path / "out").exists()
