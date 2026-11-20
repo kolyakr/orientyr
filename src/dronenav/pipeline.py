@@ -1,12 +1,18 @@
 """The pipeline (M1-09): a map and a folder of frames in, a run folder with the trajectory image and video out.
 
-    frames (io.FolderSource) ─► Searcher.locate per frame ─► records ─► run.json + run.jsonl ─► image, video
-                                (matcher, scale, geometry,      (states,      (telemetry)       (viz)
-                                 window or whole map)            coasting)
+    frames (io.FolderSource) ─► Searcher.locate per frame ─► tracker ─► records ─► run.json + run.jsonl ─► viz
+                                (matcher, scale, geometry,     (states,              (telemetry)
+                                 window or whole map)           Kalman)
 
 The engine (matcher, scale rule, geometry checks, search strategy) is M1-02 to M1-05; this module wires it to the
-run folder the renderers read (M0-03, M0-04 convention) and gives every frame a state until the Kalman filter
-(M5) takes over:
+run folder the renderers read (M0-03, M0-04 convention) and gives every frame a state.
+
+``tracker="kalman"`` (the default, M5-02): the tracker (``dronenav.tracking.states``) takes each frame's fix; its
+state (TRACKING / LOST / RELOCALIZING), filtered position, velocity and covariance are the frame's TrackState, and
+the filter step (INIT, HIT, GATED, COAST, NONE) is written to ``extra["step"]``. While it is LOST the next frame is
+searched on the whole map. Frames before the first fix are LOST at that fix's position, as below.
+
+``tracker="none"``: M1's interim rule, kept for comparison:
 
 - TRACKING: an accepted fix; RELOCALIZING: the first accepted fix after the track was lost (misses before the
   very first fix are not a lost track: that first fix is TRACKING);
@@ -34,17 +40,28 @@ import numpy as np
 
 from dronenav.io import FolderSource, _is_rate, load_map
 from dronenav.matching import RootSiftMatcher
-from dronenav.search import Located, Searcher
+from dronenav.search import Located, Searcher, SearchMode
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
+from dronenav.tracking.states import Tracker, TrackerUpdate
 from dronenav.types import Fix, TrackMode, TrackState
 from dronenav.viz.trajectory_image import write_trajectory
 from dronenav.viz.trajectory_video import write_video
 
-__all__ = ["COAST_MAX_S", "LOST_SIGMA_GROWTH_PX_PER_S", "MATCHERS", "OUTPUTS", "NothingLocalized", "RunSummary",
-           "localize_run", "run"]
+__all__ = [
+    "COAST_MAX_S",
+    "LOST_SIGMA_GROWTH_PX_PER_S",
+    "MATCHERS",
+    "OUTPUTS",
+    "TRACKERS",
+    "NothingLocalized",
+    "RunSummary",
+    "localize_run",
+    "run",
+]
 
 # --matcher name -> (backend, factory); the learned matchers (M4) join here
 MATCHERS = {"sift": (RootSiftMatcher.backend, lambda map_img, cache_dir: RootSiftMatcher(map_img, cache_dir=cache_dir))}
+TRACKERS = ("kalman", "none")    # --tracker: the M5 tracker, or M1's interim states
 OUTPUTS = ("run.json", "run.jsonl", "trajectory.png", "trajectory_preview.jpg", "trajectory.mp4")
 
 COAST_MAX_S = 5                  # seconds a lost track coasts on its last velocity before it holds
@@ -78,6 +95,7 @@ class _Found:
     window: tuple[int, int, int, int] | None
     factor: float
     ms: float
+    tracked: TrackerUpdate | None = None      # the tracker's result for this frame (tracker="kalman")
 
     @property
     def accepted(self) -> bool:
@@ -89,19 +107,29 @@ def _check_out(out_dir: Path) -> None:
         raise ValueError(f"--out {out_dir} exists and is not a folder")
 
 
-def _localize(map_path, frames_dir, matcher: str, fps, cache_dir):
-    """Check the inputs and find every frame; nothing is written. Returns (map image, frames source, found)."""
+def _check_options(matcher: str, tracker: str) -> None:
     if matcher not in MATCHERS:
         raise ValueError(f"unknown matcher {matcher!r} (available: {', '.join(sorted(MATCHERS))})")
+    if tracker not in TRACKERS:
+        raise ValueError(f"unknown tracker {tracker!r} (available: {', '.join(TRACKERS)})")
+
+
+def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman"):
+    """Check the inputs and find every frame; nothing is written. Returns (map image, frames source, found)."""
+    _check_options(matcher, tracker)
     the_map = load_map(map_path)
     frames = FolderSource(frames_dir, fps=fps)
+    track = Tracker() if tracker == "kalman" else None
     try:
         searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir), the_map.image)
         found = []
         for f in frames:
+            if track is not None and track.search is SearchMode.GLOBAL:
+                searcher.reset()                  # LOST: the old track is not trusted, search the whole map
             loc: Located = searcher.locate(f.idx, f.image)
+            tracked = None if track is None else track.update(f.idx, f.t, loc.fix)
             found.append(_Found(f.idx, f.t, Path(f.source), (f.image.shape[1], f.image.shape[0]), loc.fix,
-                                loc.mode.value, loc.window, float(loc.factor), float(loc.ms)))
+                                loc.mode.value, loc.window, float(loc.factor), float(loc.ms), tracked))
     except cv2.error as e:                # FLANN refuses an empty index: a blank or flat map
         raise ValueError(f"matching on {map_path} failed: the map has no usable features (blank or flat image?) "
                          f"[{e.err}]") from None
@@ -123,12 +151,13 @@ def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource, found, ba
 
 
 def localize_run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, matcher: str = "sift",
-                 fps: float | None = None, cache_dir: str | Path | None = "outputs/cache") -> RunSummary:
+                 fps: float | None = None, cache_dir: str | Path | None = "outputs/cache",
+                 tracker: str = "kalman") -> RunSummary:
     """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no images)."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     _check_out(out_dir)
-    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir)
+    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker)
     _write_run(out_dir, map_path, map_img, frames, found, MATCHERS[matcher][0])
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
                       seconds=time.perf_counter() - t0)
@@ -136,7 +165,7 @@ def localize_run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Pa
 
 def run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, matcher: str = "sift",
         fps: float | None = None, speed: float = 1.0,
-        cache_dir: str | Path | None = "outputs/cache") -> RunSummary:
+        cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman") -> RunSummary:
     """The whole deliverable: localize, then the trajectory image (M1-07) and the video (M1-08), all into
     ``out_dir`` at once (see the module docstring)."""
     t0 = time.perf_counter()
@@ -144,7 +173,8 @@ def run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, ma
     if not _is_rate(speed):
         raise ValueError(f"speed must be a positive number, got {speed!r}")
     _check_out(out_dir)
-    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir)
+    _check_options(matcher, tracker)
+    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker)
     # a sibling folder: the same depth, so every relative path written into it holds in out_dir too
     part = out_dir.parent / f".{out_dir.name}.partial"
     shutil.rmtree(part, ignore_errors=True)
@@ -164,11 +194,14 @@ def run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, ma
 
 def _records(found: list[_Found], out_dir: Path, backend: str):
     """One Record per frame, with the states, coasting and uncertainty described in the module docstring."""
+    if found and found[0].tracked is not None:
+        yield from _tracked_records(found, out_dir, backend)
+        return
     anchor = next(x.fix for x in found if x.accepted)    # where misses before the first fix are put
     last = prev = None                                   # the last two accepted fixes: (t, x, y, sigma)
     lost = False
     for x in found:
-        source = Path(os.path.relpath(x.path.resolve(), out_dir.resolve())).as_posix()
+        source = _source(x, out_dir)
         if x.accepted:
             fix = x.fix
             sigma = max(1.0, float(fix.reproj_px))
@@ -192,11 +225,31 @@ def _records(found: list[_Found], out_dir: Path, backend: str):
                 if dt >= COAST_MAX_S:                    # holding: no longer moving in the estimate
                     vx = vy = 0.0
                 sigma = last[3] + LOST_SIGMA_GROWTH_PX_PER_S * dt
-        extra = {"search": x.mode, "factor": x.factor,
-                 "window": None if x.window is None else [int(v) for v in x.window]}
+        extra = _extra(x)
         track = TrackState(idx=x.idx, state=state, x=px, y=py, vx=vx, vy=vy, cov=np.eye(2) * sigma ** 2, fix=x.fix)
         yield Record(idx=x.idx, t=x.t, source=source, track=track, backend=backend,
                      ms=round(x.ms, 2) if math.isfinite(x.ms) else None, extra=extra)
+
+
+def _tracked_records(found: list[_Found], out_dir: Path, backend: str):
+    """Records from the tracker's results (tracker="kalman")."""
+    anchor = next(x.fix for x in found if x.accepted)    # frames before the first fix: LOST at its position
+    for x in found:
+        up = x.tracked
+        track = up.track
+        if track is None:
+            track = TrackState(idx=x.idx, state=up.mode, x=anchor.x, y=anchor.y, vx=0.0, vy=0.0,
+                               cov=np.eye(2) * 1e6, fix=x.fix)
+        yield Record(idx=x.idx, t=x.t, source=_source(x, out_dir), track=track, backend=backend,
+                     ms=round(x.ms, 2) if math.isfinite(x.ms) else None, extra=_extra(x) | {"step": up.step.kind.value})
+
+
+def _source(x: _Found, out_dir: Path) -> str:
+    return Path(os.path.relpath(x.path.resolve(), out_dir.resolve())).as_posix()
+
+
+def _extra(x: _Found) -> dict:
+    return {"search": x.mode, "factor": x.factor, "window": None if x.window is None else [int(v) for v in x.window]}
 
 
 def _velocity(last, prev) -> tuple[float, float]:
