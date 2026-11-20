@@ -352,8 +352,9 @@ def test_routes_are_reproducible_from_a_seed_and_differ_between_seeds():
 
 def test_frames_are_byte_identical_for_the_same_seed():
     world = _texture(1200, 900)
-    first = [f.image.tobytes() for f in CutoutSource(world, cutout_route((1200, 900), 8, seed=4), (160, 120))]
-    second = [f.image.tobytes() for f in CutoutSource(world, cutout_route((1200, 900), 8, seed=4), (160, 120))]
+    route = {"frame_size": (160, 120)}                       # the frames the route is planned for and rendered at
+    first = [f.image.tobytes() for f in CutoutSource(world, cutout_route((1200, 900), 8, seed=4, **route), (160, 120))]
+    second = [f.image.tobytes() for f in CutoutSource(world, cutout_route((1200, 900), 8, seed=4, **route), (160, 120))]
     assert first == second
 
 
@@ -373,7 +374,7 @@ def test_routes_stay_inside_the_map_and_are_smooth(seed):
 
 def test_the_cutout_source_carries_each_frames_truth():
     world = _texture(1200, 900)
-    poses = cutout_route((1200, 900), 5, seed=0)
+    poses = cutout_route((1200, 900), 5, seed=0, frame_size=(160, 120))
     src = CutoutSource(world, poses, (160, 120), fps=2.0)
     frames = list(src)
     assert isinstance(src, FrameSource)
@@ -416,7 +417,8 @@ def test_a_tilted_pose_keeps_its_centre_and_scale():
         c = cv2.perspectiveTransform(np.float32([[[160, 120]]]), H)[0, 0]
         assert c == pytest.approx([812.0, 455.0], abs=1e-3)
         e = cv2.perspectiveTransform(np.float32([[[161, 120]], [[160, 121]]]), H)[:, 0] - c   # 1 px steps
-        assert math.sqrt(abs(np.cross(e[0], e[1]))) == pytest.approx(1.3, rel=1e-3)
+        area = e[0][0] * e[1][1] - e[0][1] * e[1][0]                      # of the 1 x 1 frame pixel, on the map
+        assert math.sqrt(abs(area)) == pytest.approx(1.3, rel=1e-3)
 
 
 @pytest.mark.parametrize("where", [(400.0, 400.0), (2000.0, 1500.0), (6000.0, 5000.0)])
@@ -461,11 +463,11 @@ def test_route_settings_that_cannot_work_are_refused(kw, word):
 
 def test_footprints_stay_inside_with_strong_tilt_on_a_small_map():
     # the margin must account for tilt: a margin from untilted frames let tilted corners leave the map
-    for seed in range(20):
-        for p in cutout_route((1500, 1150), 60, seed=seed, frame_size=(320, 240), tilt_max_deg=15.0):
+    for seed in range(20):                       # the smallest map that leaves room to turn, with 15° of tilt
+        for p in cutout_route((1700, 1450), 60, seed=seed, frame_size=(320, 240), tilt_max_deg=15.0):
             fp = cv2.perspectiveTransform(np.float32([[[0, 0], [320, 0], [320, 240], [0, 240]]]),
                                           cutout_homography(p, (320, 240)))[0]
-            assert (fp >= 0).all() and (fp[:, 0] <= 1500).all() and (fp[:, 1] <= 1150).all(), seed
+            assert (fp >= 0).all() and (fp[:, 0] <= 1700).all() and (fp[:, 1] <= 1450).all(), seed
 
 
 def test_a_cutout_source_needs_a_real_frame_rate():
@@ -564,3 +566,10 @@ def test_priors_are_opt_in_and_come_from_the_truth(synthetic_flight):
     poses = [CutoutPose(200, 150, 33.0, 1.1)]
     f = next(iter(CutoutSource(_texture(400, 300), poses, (64, 48), priors=True)))
     assert f.heading_prior_deg == pytest.approx(33.0) and f.scale_prior == pytest.approx(1.1)
+
+
+def test_the_truth_carries_its_own_recorded_time(synthetic_flight, tmp_path):
+    # the record's t is the truth's clock: a source that recomputed it from i would hide a clock that differs
+    d = _edit_flight(synthetic_flight[0], tmp_path, truth=lambda rs: [dict(r, t=100 + r["i"] / 10) for r in rs])
+    src = FlightSource(d, fps=10)
+    assert [src.truth(i).t for i in range(3)] == pytest.approx([100.0, 100.1, 100.2])
