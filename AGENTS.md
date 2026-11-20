@@ -104,13 +104,41 @@ main ◄──── release PR (owner only) ──── develop ◄───�
 
 1. **Pick a task** on the board whose blockers are all closed; assign yourself and move it to *In Progress*.
 2. **Branch off the latest `develop`:** `git switch develop && git pull && git switch -c M1-04-geometry`.
-3. **Work only within the task's scope.** Don't edit another milestone's module without a linked task; if you find
-   needed work outside the scope, open or reference an issue instead of doing it silently.
-4. **Commit** with the ID first: `M1-04: add MAGSAC++ homography and sanity checks`.
-5. **Keep up to date:** `git fetch && git rebase origin/develop` (or merge `develop` into your branch) before opening the PR.
-6. **Open the PR into `develop`** (never into `main`): title `M1-04 · <title>`, body with what changed, how it was
-   tested, and `Closes #<issue>`. CI must pass.
-7. **Done means the issue's "Done when" is met**, not "code exists". Merge (squash), delete the branch, the issue closes.
+3. **Spec first.** The issue (What / Depends on / Done when) is the spec. If it is ambiguous or wrong, settle it in
+   the issue *before* coding and edit the issue text, so the spec always matches what gets built.
+4. **Tests first (TDD), see below.** Write the tests that encode "Done when", run them, see them **fail**, and commit
+   them before any implementation: `M1-04: tests for homography checks (red)`.
+5. **Implement until the tests pass**, then refactor with the tests green. Work only within the task's scope; don't
+   edit another milestone's module without a linked task; open or reference an issue for anything outside it.
+6. **Commit** with the ID first: `M1-04: add MAGSAC++ homography and sanity checks`.
+7. **Keep up to date:** `git fetch && git rebase origin/develop` (or merge `develop` into your branch) before opening the PR.
+8. **Open the PR into `develop`** (never into `main`): title `M1-04 · <title>`, body with what changed, which tests
+   cover each "Done when" item, and `Closes #<issue>`. The tests commit must come before the implementation commits.
+   CI must pass.
+9. **Done means the issue's "Done when" is met and proven by tests**, not "code exists". Merge (squash), delete the
+   branch, the issue closes.
+
+### Spec-driven development and TDD
+
+No implementation without a failing test that the spec demands. Every "Done when" item maps to at least one test.
+
+What makes a test reliable here:
+
+- **Derived from the spec, not from the code.** Test the contract (inputs → outputs, errors), not internals, so a
+  refactor doesn't break it. It must fail before the implementation exists; a test that can't fail is not a test.
+- **Ground truth you control.** Prefer synthetic data with exact answers: warp a map patch with a known homography,
+  generate a flight with a known route (seeded), then assert the recovered pose within an **explicit tolerance**
+  (e.g. `≤ 2 px`, `≤ 1°`) with the reason for that tolerance in a comment.
+- **Edge and failure cases too:** degenerate / mirrored homographies, empty or blank frames, no matches, lost track,
+  wrong input paths. The rejection path is as much part of the spec as the happy path.
+- **Deterministic and fast:** fixed seeds, CPU only, no network, no full dataset. Unit tests run in seconds; tiny
+  fixtures live in `tests/fixtures/` (a few KB). Tests that need the full data are marked `@pytest.mark.data` and
+  skip cleanly when `data/` is missing; CI runs everything else.
+- **Never weaken a test to make it pass.** If a test or the spec is wrong, say so in the issue, fix the spec first,
+  then the test, and mention it in the PR.
+- **Visual and data tasks** (renderers, UI, recordings, area choice): test the contract that can be checked (file
+  exists, size, frame count, codec, schema, runs on the fake `run.jsonl`) and add a screenshot or a checklist in the PR
+  for the part only a human can judge.
 
 ### Releasing to `main`
 
