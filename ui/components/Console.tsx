@@ -184,7 +184,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <path className="needle" d="m16 9 4 9-4-2.2L12 18Z" />
           </svg>
           <div>
-            <p><b>Orientyr</b> / replay</p>
+            <p>Orientyr / replay</p>
             <h1>Live tracking</h1>
           </div>
         </header>
@@ -291,7 +291,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         </section>
 
         <section data-part="events" className="log glass">
-          <h2>Mission log <span className="num">{log.filter((e) => e.frame <= frame).length} / {log.length}</span></h2>
+          <h2>Mission log</h2>
           <ol>
             {log.map((e) => (
               <li key={e.frame} data-state={e.state} data-ahead={e.frame > frame || undefined}
