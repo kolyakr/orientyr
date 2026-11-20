@@ -251,6 +251,7 @@ pip install -r requirements.txt && pip install -e .   # stack, then the dronenav
 tools/data.sh setup && tools/data.sh pull               # get the data from the team Drive into data/
 tools/task.sh test                                       # the test suite (pytest over tests/)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
+python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/run.py --map data/map.png --frames data/frames --out outputs/run1
 python scripts/run.py --map data/map.png --video data/phone.mp4 --out outputs/phone
 python scripts/benchmark.py --map data/map.png
