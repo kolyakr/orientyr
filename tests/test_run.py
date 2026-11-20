@@ -36,32 +36,15 @@ def _cli(*args, cwd=None):
                           cwd=cwd)
 
 
-def _city(w, h, seed=3):
-    """A stand-in for satellite imagery that SIFT can work with: buildings (rotated boxes of varied brightness)
-    and roads on a noisy ground. Blurred noise alone gave SIFT 6 keypoints on 2000 x 1500 px; this gives ~17 000."""
-    rng = np.random.default_rng(seed)
-    img = cv2.add(np.full((h, w), 90, np.uint8), rng.integers(0, 25, (h, w), dtype=np.uint8))
-    for _ in range(w * h // 900):
-        c = (float(rng.uniform(0, w)), float(rng.uniform(0, h)))
-        size = (float(rng.uniform(6, 40)), float(rng.uniform(6, 40)))
-        box = cv2.boxPoints((c, size, float(rng.uniform(0, 180)))).astype(np.int32)
-        cv2.fillConvexPoly(img, box, int(rng.integers(0, 256)))
-    for _ in range(w * h // 60000):
-        p1 = tuple(int(v) for v in rng.uniform(0, (w, h)))
-        p2 = tuple(int(v) for v in rng.uniform(0, (w, h)))
-        cv2.line(img, p1, p2, int(rng.integers(150, 230)), int(rng.integers(3, 9)))
-    return cv2.cvtColor(cv2.GaussianBlur(img, (0, 0), 0.8), cv2.COLOR_GRAY2BGR)
-
-
 def _jam(shape, seed):
     """What a jammed camera sends: noise, nothing of the map."""
     return np.random.default_rng(seed).integers(0, 256, shape, dtype=np.uint8)
 
 
 @pytest.fixture(scope="module")
-def world(tmp_path_factory):
+def world(tmp_path_factory, city_map):
     d = tmp_path_factory.mktemp("world")
-    img = _city(2000, 1500)                        # room for a cut-out route to turn around in (M6-01)
+    img = city_map(2000, 1500)                        # room for a cut-out route to turn around in (M6-01)
     cv2.imwrite(str(d / "map.png"), img)
     return d / "map.png", img
 
