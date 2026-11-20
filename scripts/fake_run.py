@@ -17,6 +17,8 @@ from dronenav.fake_run import FakeRunConfig, make_fake_run
 def _frame_size(text: str) -> tuple[int, int]:
     """'640' or '640x480'."""
     parts = text.lower().split("x")
+    if len(parts) > 2:
+        raise argparse.ArgumentTypeError(f"frame size must be W or WxH, got {text!r}")
     try:
         w, h = (int(parts[0]), int(parts[0])) if len(parts) == 1 else (int(parts[0]), int(parts[1]))
     except ValueError:

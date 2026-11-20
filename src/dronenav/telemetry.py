@@ -279,8 +279,9 @@ class RunInfo:
     seed: int | None = None
 
     def __post_init__(self):
-        if not isinstance(self.map, (str, os.PathLike)) or not str(self.map):
-            raise TelemetryError(f"map must be a path, got {self.map!r}")
+        # Path("") turns into ".", so both mean "no map given"
+        if not isinstance(self.map, (str, os.PathLike)) or os.fspath(self.map) in ("", "."):
+            raise TelemetryError(f"map must be a path to the map, got {self.map!r}")
         object.__setattr__(self, "map", os.fspath(self.map))
         object.__setattr__(self, "map_size", _size("map_size", self.map_size))
         if not isinstance(self.generator, str):
@@ -308,8 +309,10 @@ def write_run_info(run_dir: str | Path, info: RunInfo) -> Path:
     """Write ``run.json`` into ``run_dir`` (created if needed); returns its path."""
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    # relative to the run folder, so the folder can be read from any working directory (or moved with its map)
-    rel = Path(os.path.relpath(os.path.abspath(info.map), os.path.abspath(run_dir))).as_posix()
+    # relative to the run folder, so the folder can be read from any working directory (or moved with its map).
+    # realpath on both sides: through a symlinked folder (macOS /var, a linked outputs/) a path built from the
+    # folder's spelling would climb out of the wrong parent.
+    rel = Path(os.path.relpath(os.path.realpath(info.map), os.path.realpath(run_dir))).as_posix()
     d = {"map": rel, "map_size": list(info.map_size), "generator": info.generator,
          "frame_size": None if info.frame_size is None else list(info.frame_size), "fps": info.fps, "seed": info.seed}
     path = run_dir / RUN_INFO
@@ -327,9 +330,10 @@ def read_run_info(run_dir: str | Path) -> RunInfo:
         if not isinstance(d, dict):
             raise TelemetryError(f"must be a JSON object, got {type(d).__name__}")
         _check_keys(d, _INFO_REQUIRED, _INFO_OPTIONAL, prefix="")
-        if not isinstance(d["map"], str) or not d["map"]:
-            raise TelemetryError(f"map must be a non-empty path, got {d['map']!r}")
-        return RunInfo(map=os.path.normpath(os.path.join(os.path.abspath(run_dir), d["map"])),
+        if not isinstance(d["map"], str) or d["map"] in ("", "."):
+            raise TelemetryError(f"map must be a path to the map, got {d['map']!r}")
+        # joined to the folder's real path, as the writer made it, so any spelling of run_dir works
+        return RunInfo(map=os.path.normpath(os.path.join(os.path.realpath(run_dir), d["map"])),
                        map_size=d["map_size"], generator=d["generator"], frame_size=d.get("frame_size"),
                        fps=d.get("fps"), seed=d.get("seed"))
     except _NonFinite as e:

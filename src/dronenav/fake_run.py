@@ -111,7 +111,7 @@ def make_fake_run(map_path: str | Path, out_dir: str | Path, cfg: FakeRunConfig 
             elif i == jam_end:
                 # camera back, global search finds a false match somewhere else: rejected, still coasting
                 state, search, ms = TrackMode.RELOCALIZING, "global", rng.uniform(230, 260)
-                fix = _rejected_fix(i, cfg, map_w, map_h, rng)
+                fix = _rejected_fix(i, truth, cfg, map_w, map_h, rng)
                 k = i - jam_start + 1
                 x, y = last_x + coast[0] * k / cfg.fps, last_y + coast[1] * k / cfg.fps
                 cov = _cov(6.0 + 10.0 * k)
@@ -279,11 +279,24 @@ def _accepted_fix(i: int, truth: _Pose, inliers: int, cfg: FakeRunConfig, rng: n
                 reproj_px=0.3 + 60 / inliers + abs(rng.normal(0, 0.05)), accepted=True)
 
 
-def _rejected_fix(i: int, cfg: FakeRunConfig, map_w: int, map_h: int, rng: np.random.Generator) -> Fix:
-    """A false match from the global search: somewhere else on the map, few inliers, rejected."""
+def _rejected_fix(i: int, truth: _Pose, cfg: FakeRunConfig, map_w: int, map_h: int,
+                  rng: np.random.Generator) -> Fix:
+    """A false match from the global search: somewhere else on the map, few inliers, rejected.
+
+    "Somewhere else" means more than a footprint diagonal from the truth: a false match next to the truth would
+    look like a good fix rejected for nothing. On a map too small for that, the farthest of the draws is used.
+    """
     m = _margin(cfg)
-    wrong = _Pose(rng.uniform(m, map_w - m), rng.uniform(m, map_h - m), _heading_add(rng.uniform(0, 360), 0),
-                  cfg.scale * rng.uniform(0.97, 1.0))
+    far = cfg.scale * math.hypot(*cfg.frame_size)
+    best, best_d = (0.0, 0.0), -1.0
+    for _ in range(100):
+        x, y = rng.uniform(m, map_w - m), rng.uniform(m, map_h - m)
+        d = math.hypot(x - truth.x, y - truth.y)
+        if d > best_d:
+            best, best_d = (x, y), d
+        if d > far:
+            break
+    wrong = _Pose(*best, _heading_add(rng.uniform(0, 360), 0), cfg.scale * rng.uniform(0.97, 1.0))
     return _fix(i, wrong, cfg, inliers=int(rng.integers(5, 9)), inlier_ratio=float(rng.uniform(0.03, 0.06)),
                 reproj_px=float(rng.uniform(5, 9)), accepted=False, reject_reason="too_few_inliers")
 
