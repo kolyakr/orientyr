@@ -22,12 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install ruff (the version pinned in requirements.txt)
-        run: pip install "$(sed -nE 's/^(ruff[^ #]*).*/\1/p' requirements.txt)"
+        # a block scalar, not a plain one: in plain YAML the " #" below would start a comment and cut the command
+        run: |
+          pip install "$(sed -nE 's/^(ruff[^ #]*).*/\1/p' requirements.txt)"
       - name: ruff
         run: ruff check --output-format=github .
 
@@ -38,8 +40,8 @@ jobs:
       # CPU wheels for torch: the default Linux wheel pulls ~2 GB of CUDA libraries a GPU-less runner never uses
       PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip

@@ -74,6 +74,15 @@ def test_runs_pytest_like_task_sh():
     assert re.search(r"PYTHONPATH=\S*src\S*\s+pytest\b", runs) or "tools/task.sh test" in runs
 
 
+def test_every_run_step_is_valid_bash():
+    # check what GitHub will actually execute: the YAML-parsed script, not the text as it looks in the file.
+    # (A plain-scalar `run:` containing " #" is cut there by YAML as a comment, leaving an unclosed quote.)
+    for step in _steps(_workflow()):
+        if "run" in step:
+            r = subprocess.run(["bash", "-n"], input=step["run"], capture_output=True, text=True, check=False)
+            assert r.returncode == 0, f"{step.get('name', step['run'])!r}: {r.stderr.strip()}"
+
+
 def test_ruff_is_pinned():
     # ruff's default rule set changes between minor versions: an unpinned ruff can turn CI red with no code change
     line = next(ln for ln in (ROOT / "requirements.txt").read_text().splitlines() if ln.startswith("ruff"))
