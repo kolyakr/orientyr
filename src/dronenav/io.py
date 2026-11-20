@@ -131,7 +131,8 @@ class MapImage:
     """A map image and what its sidecar says about it.
 
     image: BGR uint8. sidecar: the whole sidecar JSON, or None (the task's ``global_map.png`` has none).
-    level: the sidecar block whose ``size_px`` is this image's size (``map`` or ``hires``), or None.
+    level: the sidecar block for this image: the one whose ``file`` names it, else the one whose ``size_px`` is
+    its size (``map`` or ``hires``); None without a sidecar. Its size always matches the image.
     """
 
     image: np.ndarray
@@ -171,8 +172,9 @@ def load_map(path: str | Path) -> MapImage:
 
 
 def _rel_name(path: Path) -> str:
-    """How a sidecar names a layer: its folder and file, e.g. hires/irpin_2025_z18.png."""
-    path = path.resolve()
+    """How a sidecar names a layer: its folder and file, e.g. hires/irpin_2025_z18.png. Absolute but not resolved:
+    a symlinked hires/ keeps its name."""
+    path = path.absolute()
     return f"{path.parent.name}/{path.name}"
 
 
@@ -182,7 +184,7 @@ def _find_sidecar(path: Path) -> tuple[Path, dict] | None:
     beside = path.with_suffix(".json")
     if beside.is_file():
         return beside, _read_sidecar(beside)
-    maps = path.resolve().parent.parent / "maps"
+    maps = path.absolute().parent.parent / "maps"
     wanted = _rel_name(path)
     claims = []
     for candidate in sorted(maps.glob("*.json")) if maps.is_dir() else []:
