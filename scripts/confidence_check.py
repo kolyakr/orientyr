@@ -24,6 +24,7 @@ import cv2
 import numpy as np
 
 from dronenav.confidence import fix_confidence, fix_sigma
+from dronenav.config import add_shared_args, init_cli
 from dronenav.matching import RootSiftMatcher
 from dronenav.search import Searcher
 from dronenav.types import Fix
@@ -121,7 +122,10 @@ def main() -> None:
     p.add_argument("--maps", nargs="+", default=["2025", "2022", "2017"])
     p.add_argument("--keyframes", type=int, default=80, help="first N keyframes of each flight")
     p.add_argument("--refresh", action="store_true", help="re-run the matching even if fixes.json exists")
+    add_shared_args(p)
     a = p.parse_args()
+    # Picked and logged like in every matching script; RootSIFT runs on the CPU, a torch matcher takes this device.
+    init_cli(a)
     a.out.mkdir(parents=True, exist_ok=True)
     cache = a.out / "fixes.json"
     key = {"maps": a.maps, "keyframes": a.keyframes}
