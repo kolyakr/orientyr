@@ -8,10 +8,12 @@ What is drawn, bottom to top:
 - **footprints** of accepted fixes, at true size and rotation (thin, translucent);
 - **the route** through each record's filtered position: solid between fixed points, dashed where a point is
   **missed** (no accepted fix, or interpolated);
-- **points**, one per frame, filled in the fixed or the missed colour; START and FINISH on top;
-- **labels**: each point numbered by its frame index (the task's ``crop_N`` is point N), placed where they cover
-  no route, no marker and no other label; on a dense run a point is numbered only when it is far enough from the
-  last numbered one (MIN_LABEL_SPACING); START and FINISH always, at the map's edge if the route leaves the map;
+- **points**, filled in the fixed or the missed colour: a full marker for numbered points, a small dot for the
+  others, at most one per DOT_SPACING (on a dense run more would bury the route); START and FINISH on top;
+- **labels**: points numbered by their frame index (the task's ``crop_N`` is point N), placed where they cover no
+  route, no marker and no other label. A point is numbered when it is at least MIN_LABEL_SPACING from every
+  numbered point, so hovers, loops and zigzags stay readable. Points off the map are not numbered; the legend
+  counts them. START and FINISH always show, at the map's edge if the route leaves the map;
 - **a legend** in the corner the route uses least, left out when the map is too small for it.
 
 Sizes (lines, markers, fonts) are fixed in *preview* pixels and multiplied by ``unit`` = map size / preview size,
@@ -44,6 +46,8 @@ OUTLINE = (0, 0, 0)
 LINE = 3.0
 DASH, GAP = 6.0, 8.0         # each dash also gets round caps (LINE / 2 per end): visible gap ≈ 5 px
 POINT_R = 4.5
+DOT_R = 1.6                  # unnumbered points: a dot within the route line's width
+DOT_SPACING = 8.0            # preview px between drawn points: denser dots would bury the dashes
 END_R = 7.5
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.42            # ≈ 10 px digits in the preview
@@ -73,6 +77,7 @@ class Layout:
     unit: float
     label_every: int | None                             # None: numbered by spacing
     unlabelled: list[int]                               # frames meant to be numbered that found no free spot
+    off_map: list[int]                                  # frames whose position is outside the map (not numbered)
 
 
 def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, preview_px: int = 1600,
@@ -82,6 +87,10 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
     label_every: number every k-th point (plus the last); None numbers points spaced far enough apart.
     map_img: the map, if already loaded; otherwise it is read from the path in run.json.
     """
+    if label_every is not None and label_every < 1:
+        raise ValueError(f"label_every must be at least 1, got {label_every}")
+    if preview_px < 1:
+        raise ValueError(f"preview_px must be at least 1, got {preview_px}")
     run_dir = Path(run_dir)
     info = read_run_info(run_dir)
     records = read_run(run_dir / "run.jsonl")
@@ -102,15 +111,20 @@ def render_trajectory(run_dir: str | Path, *, label_every: int | None = None, pr
 
     pts = np.array([[r.track.x, r.track.y] for r in records])
     missed = [_is_missed(r) for r in records]
+    on_map = (pts[:, 0] >= 0) & (pts[:, 0] <= w) & (pts[:, 1] >= 0) & (pts[:, 1] <= h)
+    numbered = _numbered(pts, on_map, label_every, unit)
+    ends = [_clamp_end(*pts[0], w, h, unit), _clamp_end(*pts[-1], w, h, unit)]
 
     _draw_footprints(img, records, unit)
     obstacles = _Obstacles(w, h, unit)
     _draw_route(img, obstacles, pts, missed, unit)
-    _draw_points(img, obstacles, pts, missed, unit)
+    _draw_points(img, obstacles, pts, missed, set(numbered), ends, unit)
 
-    legend_box = _place_legend(img, obstacles, records, pts, missed, unit)
-    labels, unlabelled = _place_labels(img, obstacles, records, pts, label_every, unit)
-    return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every, unlabelled=unlabelled)
+    markers = [tuple(p) for p in pts[on_map]] + ends
+    legend_box = _place_legend(img, obstacles, records, markers, missed, int((~on_map).sum()), unit)
+    labels, unlabelled = _place_labels(img, obstacles, records, pts, numbered, ends, unit)
+    return img, Layout(labels=labels, legend=legend_box, unit=unit, label_every=label_every, unlabelled=unlabelled,
+                       off_map=[records[i].idx for i in np.flatnonzero(~on_map)])
 
 
 def write_trajectory(run_dir: str | Path, out_dir: str | Path | None = None, *, preview_px: int = 1600,
@@ -173,40 +187,51 @@ def _draw_footprints(img: np.ndarray, records: list[Record], unit: float) -> Non
 
 def _draw_route(img, obstacles, pts, missed, unit) -> None:
     thick = _t(LINE, unit)
+    phase = 0.0          # the dash pattern runs on across consecutive dashed segments: short steps stay dashed
     for i in range(len(pts) - 1):
         a, b = pts[i], pts[i + 1]
         obstacles.segment(a, b)
         if missed[i] or missed[i + 1]:
-            _dashed(img, a, b, MISSED, thick, DASH * unit, GAP * unit)
+            phase = _dashed(img, a, b, MISSED, thick, DASH * unit, GAP * unit, phase)
         else:
             cv2.line(img, _px(*a), _px(*b), FIXED, thick, cv2.LINE_AA, _SHIFT)
+            phase = 0.0
 
 
-def _dashed(img, a, b, colour, thick, dash, gap) -> None:
+def _dashed(img, a, b, colour, thick, dash, gap, phase: float = 0.0) -> float:
+    """Dashes from a to b, starting ``phase`` px into the dash+gap pattern; returns the phase at b."""
     length = float(np.hypot(*(b - a)))
+    period = dash + gap
     if length == 0:
-        return
+        return phase
     d = (b - a) / length
-    s = 0.0
+    s = -phase                                   # where the current pattern period started, relative to a
     while s < length:
-        e = min(s + dash, length)
-        cv2.line(img, _px(*(a + d * s)), _px(*(a + d * e)), colour, thick, cv2.LINE_AA, _SHIFT)
-        s = e + gap
+        ds, de = max(s, 0.0), min(s + dash, length)
+        if de > ds:
+            cv2.line(img, _px(*(a + d * ds)), _px(*(a + d * de)), colour, thick, cv2.LINE_AA, _SHIFT)
+        s += period
+    return (length + phase) % period
 
 
-def _draw_points(img, obstacles, pts, missed, unit) -> None:
+def _draw_points(img, obstacles, pts, missed, numbered: set[int], ends, unit) -> None:
     edge = _t(1.0, unit)
+    last = pts[0]                                       # the last point drawn, to keep dots apart
     for i, (x, y) in enumerate(pts):
-        end = i == 0 or i == len(pts) - 1
-        if end:
+        if i == 0 or i == len(pts) - 1:
             continue
-        r = _t(POINT_R, unit)
-        cv2.circle(img, _px(x, y), r << _SHIFT, MISSED if missed[i] else FIXED, -1, cv2.LINE_AA, _SHIFT)
-        cv2.circle(img, _px(x, y), r << _SHIFT, OUTLINE, edge, cv2.LINE_AA, _SHIFT)
-        obstacles.disc(x, y, POINT_R + 1.5)
-    h, w = img.shape[:2]
-    for (x, y), colour in ((pts[0], START), (pts[-1], FINISH)):   # on top of everything else on the route
-        x, y = _clamp_end(x, y, w, h, unit)                         # off the map: shown at its edge
+        colour = MISSED if missed[i] else FIXED
+        if i not in numbered and np.hypot(x - last[0], y - last[1]) < DOT_SPACING * unit:
+            continue                                    # too close to the last point drawn: the route shows it
+        last = (x, y)
+        if i in numbered:
+            r = _t(POINT_R, unit)
+            cv2.circle(img, _px(x, y), r << _SHIFT, colour, -1, cv2.LINE_AA, _SHIFT)
+            cv2.circle(img, _px(x, y), r << _SHIFT, OUTLINE, edge, cv2.LINE_AA, _SHIFT)
+            obstacles.disc(x, y, POINT_R + 1.5)
+        else:
+            cv2.circle(img, _px(x, y), _t(DOT_R, unit) << _SHIFT, colour, -1, cv2.LINE_AA, _SHIFT)
+    for (x, y), colour in zip(ends, (START, FINISH), strict=True):   # on top of everything else on the route
         r = _t(END_R, unit)
         cv2.circle(img, _px(x, y), r << _SHIFT, colour, -1, cv2.LINE_AA, _SHIFT)
         cv2.circle(img, _px(x, y), r << _SHIFT, TEXT, _t(1.6, unit), cv2.LINE_AA, _SHIFT)
@@ -221,31 +246,37 @@ def _clamp_end(x: float, y: float, w: int, h: int, unit: float) -> tuple[float, 
     return min(max(x, r), w - r), min(max(y, r), h - r)
 
 
-def _numbered(pts: np.ndarray, every: int | None, unit: float) -> list[int]:
-    """Which points get their frame number: every k-th (plus the last), or by spacing: a point is numbered when it
-    is at least MIN_LABEL_SPACING preview px from the last numbered one (a hover is numbered once)."""
+def _numbered(pts: np.ndarray, on_map: np.ndarray, every: int | None, unit: float) -> list[int]:
+    """Which points get their frame number (only points on the map can be numbered).
+
+    With ``every``: every k-th point, plus the last. Otherwise by spacing: a point is numbered when it is at least
+    MIN_LABEL_SPACING preview px from every numbered point, so hovers, loops and zigzags do not pile up numbers.
+    The first and last points on the map are tried first.
+    """
     n = len(pts)
+    idx = np.flatnonzero(on_map)
     if every is not None:
-        return [i for i in range(n) if i % every == 0 or i == n - 1]
-    chosen = [0]
-    for i in range(1, n):
-        if np.hypot(*(pts[i] - pts[chosen[-1]])) / unit >= MIN_LABEL_SPACING:
-            chosen.append(i)
-    if chosen[-1] != n - 1:
-        chosen.append(n - 1)
-    return chosen
+        return [i for i in idx if i % every == 0 or i == n - 1]
+    if len(idx) == 0:
+        return []
+    order = [idx[0], idx[-1]] + list(idx[1:-1]) if len(idx) > 1 else [idx[0]]
+    gap = MIN_LABEL_SPACING * unit
+    chosen: list[int] = []
+    for i in order:
+        if not chosen or np.hypot(*(pts[chosen] - pts[i]).T).min() >= gap:
+            chosen.append(int(i))
+    return sorted(chosen)
 
 
-def _place_labels(img, obstacles, records, pts, every, unit) -> tuple[list[Label], list[int]]:
+def _place_labels(img, obstacles, records, pts, numbered, ends, unit) -> tuple[list[Label], list[int]]:
     n = len(pts)
-    h, w = img.shape[:2]
-    ends = {0: _clamp_end(*pts[0], w, h, unit), n - 1: _clamp_end(*pts[-1], w, h, unit)}
+    end_at = {0: ends[0], n - 1: ends[1]}
     wanted = [(None, "START", 0), (None, "FINISH", n - 1)]          # always, and first: they matter most
-    wanted += [(records[i].idx, str(records[i].idx), i) for i in _numbered(pts, every, unit)]
+    wanted += [(records[i].idx, str(records[i].idx), i) for i in numbered]
     labels, unlabelled = [], []
     for idx, text, i in wanted:
-        x, y = ends.get(i, pts[i])
-        radius = END_R if i in ends else POINT_R
+        x, y = end_at.get(i, pts[i])
+        radius = END_R if i in end_at else POINT_R
         box = _find_label_spot(img, obstacles, text, x, y, radius, unit, force=idx is None)
         if box is None:
             unlabelled.append(idx)
@@ -309,7 +340,9 @@ def _draw_text(img, text, box, unit, tag: tuple | None = None) -> None:
 
 # --- legend ----------------------------------------------------------------------------------------------------
 
-def _place_legend(img, obstacles, records, pts, missed, unit) -> tuple[float, float, float, float] | None:
+def _place_legend(img, obstacles, records, markers, missed, n_off, unit) -> tuple[float, float, float, float] | None:
+    """In the corner with the least drawn under it, among corners where it hides no point marker; None if the
+    map is too small for it or every corner has a marker."""
     n_missed = sum(missed)
     rows = [("line", FIXED, "route, fixed point"),
             ("dash", MISSED, "missed: no fix / interpolated"),
@@ -317,6 +350,8 @@ def _place_legend(img, obstacles, records, pts, missed, unit) -> tuple[float, fl
             ("dot", START, "start"),
             ("dot", FINISH, "finish")]
     title = f"{len(records)} frames, {len(records) - n_missed} fixed, {n_missed} missed"
+    if n_off:
+        title += f", {n_off} off the map"
     scale, thick = FONT_SCALE * unit, _t(1.0, unit)
     row_h = 17 * unit
     swatch = 26 * unit
@@ -328,12 +363,17 @@ def _place_legend(img, obstacles, records, pts, missed, unit) -> tuple[float, fl
     m = MARGIN * unit
     if bw + 2 * m > 0.5 * w or bh + 2 * m > 0.5 * h:      # it would hide too much of a small map: leave it out
         return None
-    corners = [(m, m), (w - m - bw, m), (m, h - m - bh), (w - m - bw, h - m - bh)]
-    box = min(((x, y, x + bw, y + bh) for x, y in corners), key=lambda b: obstacles.cover(b))
-    x0, y0, x1, y1 = box
     reach = END_R * unit                                   # no point marker under the legend, even partly
-    if any(x0 - reach <= x <= x1 + reach and y0 - reach <= y <= y1 + reach for x, y in pts):
+
+    def hides_a_marker(b):
+        return any(b[0] - reach <= x <= b[2] + reach and b[1] - reach <= y <= b[3] + reach for x, y in markers)
+
+    corners = [(m, m), (w - m - bw, m), (m, h - m - bh), (w - m - bw, h - m - bh)]
+    free = [b for b in ((x, y, x + bw, y + bh) for x, y in corners) if not hides_a_marker(b)]
+    if not free:
         return None
+    box = min(free, key=obstacles.cover)
+    x0, y0, x1, y1 = box
 
     layer = img.copy()
     cv2.rectangle(layer, (round(x0), round(y0)), (round(x1), round(y1)), (20, 20, 20), -1)
