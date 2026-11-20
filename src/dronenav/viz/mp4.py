@@ -21,6 +21,8 @@ def _boxes(data: bytes | bytearray, start: int, end: int):
         size, kind = struct.unpack(">I4s", data[i:i + 8])
         header = 8
         if size == 1:                                   # 64-bit size follows the type
+            if i + 16 > end:
+                raise ValueError(f"truncated MP4 box {kind!r} at byte {i}")
             size = struct.unpack(">Q", data[i + 8:i + 16])[0]
             header = 16
         elif size == 0:                                 # to the end of the file
@@ -31,16 +33,19 @@ def _boxes(data: bytes | bytearray, start: int, end: int):
         i += size
 
 
-def _shift_offsets(moov: bytearray, start: int, end: int, delta: int) -> None:
+def _shift_offsets(moov: bytearray, start: int, end: int, delta: int, below: int) -> None:
+    """Add ``delta`` to every chunk offset that points before byte ``below`` (media that moves); media after the
+    old index stays where it was."""
     for kind, i, header, size in _boxes(moov, start, end):
         if kind in _CONTAINERS:
-            _shift_offsets(moov, i + header, i + size, delta)
+            _shift_offsets(moov, i + header, i + size, delta, below)
         elif kind in (b"stco", b"co64"):
             n = struct.unpack(">I", moov[i + header + 4:i + header + 8])[0]
             width, fmt = (4, ">I") if kind == b"stco" else (8, ">Q")
             for k in range(n):
                 p = i + header + 8 + k * width
-                value = struct.unpack(fmt, moov[p:p + width])[0] + delta
+                value = struct.unpack(fmt, moov[p:p + width])[0]
+                value += delta if value < below else 0
                 if kind == b"stco" and value >= 2 ** 32:
                     raise ValueError("chunk offsets past 4 GB: cannot move the index of this file")
                 moov[p:p + width] = struct.pack(fmt, value)
@@ -57,9 +62,9 @@ def faststart(path: str | Path) -> bool:
         raise ValueError(f"{path} has no moov/mdat boxes: not an MP4 written by a video encoder")
     if kinds.index(b"moov") < kinds.index(b"mdat"):
         return False
-    _, mi, _, msize = top[kinds.index(b"moov")]
+    _, mi, mheader, msize = top[kinds.index(b"moov")]
     moov = bytearray(data[mi:mi + msize])
-    _shift_offsets(moov, 8, len(moov), msize)            # everything after the new moov moves by its size
+    _shift_offsets(moov, mheader, len(moov), msize, mi)  # media before the old index moves by its size
     first_media = top[kinds.index(b"mdat")][1]
     out = data[:first_media] + bytes(moov) + b"".join(
         data[i:i + size] for kind, i, _, size in top if i >= first_media and kind != b"moov")

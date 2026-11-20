@@ -9,10 +9,12 @@ Two steps, so the motion can be checked without drawing and drawn without re-pla
 - :func:`plan_video` turns the records into one pose per video frame. Video time is run time / ``speed``, then
   a 1 s hold on the last frame. Between records the position follows a cubic Hermite curve through each
   record's filtered position (tangents from the neighbours, like Catmull-Rom), so the motion is smooth and
-  passes exactly through every record at its time. The heading comes from the fixes (turning along the shortest
-  arc) and, where there is no fix, from the direction of motion. The zoom is fixed per run: the view spans six
+  passes exactly through every record at its time. Each record has one heading (its fix's, else the direction of
+  motion there) and frames turn between them along the shortest arc, so the arrow never snaps. The zoom is fixed per run: the view spans six
   median footprint diagonals, and the camera keeps the view on the map where it can.
-- :class:`FrameRenderer` draws plan frame k and reports what it showed (:class:`FrameInfo`).
+- :class:`FrameRenderer` draws plan frame k (in any order) and reports what it showed (:class:`FrameInfo`).
+  The trail is cut once, in map px, into solid polylines and dash pieces (the dash pattern runs on across a
+  stretch of missed points), and drawn each frame in video px, so it looks the same at any zoom.
   :func:`write_video` does it for every frame and writes an H.264 MP4 (8-bit 4:2:0, index first) that plays in
   QuickTime and browsers.
 
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import math
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +43,7 @@ __all__ = ["FrameInfo", "FrameRenderer", "VideoFrame", "VideoPlan", "plan_video"
 VIEW_FOOTPRINTS = 6.0       # the view spans this many median footprint diagonals
 HOLD_S = 1.0                # seconds the last frame is held
 CRF = 23                    # x264 quality: lower is better and bigger; 23 is its default
+MIN_SIZE = (320, 180)       # smaller leaves no room for the inset and the HUD
 INSET_W = 0.28              # inset width, as a fraction of the video width
 MARGIN = 16                 # px around the inset and the HUD
 BACKGROUND = (30, 30, 30)   # outside the map
@@ -94,18 +98,18 @@ def plan_video(records: list[Record], info: RunInfo, *, fps: float = 30.0, speed
     t = np.array([r.t for r in records])
     p = np.array([[r.track.x, r.track.y] for r in records])
     tang = _tangents(t, p)
+    heads = _record_headings(records, tang)
     map_w, map_h = info.map_size
     view_w = _view_width(records, map_w, map_h, size)
     half_w, half_h = view_w / 2, view_w * size[1] / size[0] / 2
 
     n = math.floor((t[-1] - t[0]) * fps / speed + 1e-9) + 1
     times = [t[0] + k * speed / fps for k in range(n)] + [t[-1]] * round(hold_s * fps)
-    frames, last_heading = [], None
+    frames = []
     for tk in times:
         i = min(int(np.searchsorted(t, tk, side="right")) - 1, len(t) - 1)
-        x, y, vx, vy = _hermite(t, p, tang, i, tk)
-        heading = _heading(records, t, i, tk, vx, vy, last_heading)
-        last_heading = heading
+        x, y, _, _ = _hermite(t, p, tang, i, tk)
+        heading = _heading(heads, t, i, tk)
         cx = map_w / 2 if 2 * half_w >= map_w else min(max(x, half_w), map_w - half_w)
         cy = map_h / 2 if 2 * half_h >= map_h else min(max(y, half_h), map_h - half_h)
         frames.append(VideoFrame(t=float(tk), x=x, y=y, heading_deg=heading, rec=i,
@@ -119,8 +123,8 @@ def _check_options(fps, speed, size) -> None:
     if not speed > 0:
         raise ValueError(f"speed must be positive, got {speed}")
     w, h = size
-    if w < 16 or h < 16 or w % 2 or h % 2:   # H.264 4:2:0 needs even sides
-        raise ValueError(f"the video size must be even and at least 16 x 16 px, got {w} x {h}")
+    if w < MIN_SIZE[0] or h < MIN_SIZE[1] or w % 2 or h % 2:   # H.264 4:2:0 needs even sides; inset + HUD need room
+        raise ValueError(f"the video size must be even and at least {MIN_SIZE[0]} x {MIN_SIZE[1]} px, got {w} x {h}")
 
 
 def _tangents(t: np.ndarray, p: np.ndarray) -> np.ndarray:
@@ -150,19 +154,31 @@ def _measured(r: Record) -> bool:
     return not is_missed(r)
 
 
-def _heading(records, t, i, tk, vx, vy, last) -> float:
-    """From the fixes on both sides (shortest arc), else from the motion, else the last heading."""
-    j = min(i + 1, len(records) - 1)
-    if _measured(records[i]) and (_measured(records[j]) or j == i):
-        h0 = records[i].track.fix.heading_deg
-        if j == i or t[j] <= t[i]:
-            return h0
-        u = (tk - t[i]) / (t[j] - t[i])
-        d = (records[j].track.fix.heading_deg - h0 + 180) % 360 - 180
-        return (h0 + u * d) % 360
-    if math.hypot(vx, vy) > 1e-9:
-        return math.degrees(math.atan2(vx, -vy)) % 360   # y points down: east is 90
-    return last if last is not None else 0.0
+def _record_headings(records, tang) -> list[float]:
+    """One heading per record: its fix's if measured, else the direction of motion there (y down: east is 90),
+    else (hovering) the nearest record's before it, else after it."""
+    heads: list[float | None] = []
+    for r, (vx, vy) in zip(records, tang, strict=True):
+        if _measured(r):
+            heads.append(r.track.fix.heading_deg)
+        elif math.hypot(vx, vy) > 1e-9:
+            heads.append(math.degrees(math.atan2(vx, -vy)) % 360)
+        else:
+            heads.append(None)
+    known = next((h for h in heads if h is not None), 0.0)
+    for i, h in enumerate(heads):                       # fill hovers from the left, leading ones from the first known
+        heads[i] = known = h if h is not None else known
+    return heads
+
+
+def _heading(heads, t, i, tk) -> float:
+    """Between records i and i + 1 along the shortest arc (so 350° -> 10° turns through north)."""
+    j = i + 1
+    if j >= len(heads) or t[j] <= t[i]:
+        return heads[i] % 360
+    u = (tk - t[i]) / (t[j] - t[i])
+    d = (heads[j] - heads[i] + 180) % 360 - 180
+    return (heads[i] + u * d) % 360
 
 
 def _footprint(records, t, i, tk) -> np.ndarray | None:
@@ -190,8 +206,8 @@ def _view_width(records, map_w, map_h, size) -> float:
 # --- drawing ---------------------------------------------------------------------------------------------------
 
 class FrameRenderer:
-    """Draws the frames of a plan. The trail is drawn once, onto a copy of the map scaled to video px, as the
-    flight passes each record; a frame is then a crop of that layer plus what moves."""
+    """Draws the frames of a plan, in any order. The map is scaled once (when zoomed out); the trail is cut once
+    into solid runs and dash pieces in map px and drawn each frame in video px."""
 
     def __init__(self, run_dir: str | Path, records: list[Record], info: RunInfo, plan: VideoPlan,
                  map_img: np.ndarray | None = None):
@@ -210,38 +226,63 @@ class FrameRenderer:
         self.k = min(self.s, 1.0)                        # layer px per map px
         self.layer = cv2.resize(map_img, None, fx=self.k, fy=self.k, interpolation=cv2.INTER_AREA) \
             if self.k < 1 else map_img.copy()
-        self.drawn_upto = 0                              # records whose trail is on the layer
-        self.phase = 0.0
         self.pts = np.array([[r.track.x, r.track.y] for r in records])
         self.missed = [is_missed(r) for r in records]
+        self._cut_trail()
         self._frame_cache: tuple[int, np.ndarray | None] = (-1, None)
 
-    # -- the trail layer
-    def _grow_trail(self, upto: int) -> None:
-        """Draw the trail up to record ``upto`` onto the layer (the trail only grows, so each piece once)."""
-        thick = max(1, round(TRAIL * self.k / self.s))
-        while self.drawn_upto < upto:
-            i = self.drawn_upto
-            a, b = self.pts[i] * self.k, self.pts[i + 1] * self.k
-            if self.missed[i] or self.missed[i + 1]:
-                self.phase = dashed(self.layer, a, b, MISSED, thick, DASH * self.k / self.s, GAP * self.k / self.s,
-                                    self.phase)
+    def _cut_trail(self) -> None:
+        """Solid runs (record ranges) and dash pieces (map px), and the dash phase at each segment's start."""
+        n = len(self.pts)
+        dash, gap = DASH / self.s, GAP / self.s          # map px, so they are DASH and GAP px in the video
+        self.seg_dashed = [self.missed[i] or self.missed[i + 1] for i in range(n - 1)]
+        self.seg_phase = [0.0] * max(n - 1, 0)           # map px into the dash pattern, at each segment's start
+        self.pieces: list[np.ndarray] = []
+        self.pieces_before = [0] * n                     # dash pieces of segments before record i
+        self.runs: list[tuple[int, int]] = []            # solid runs: records a..b joined by fixed segments
+        phase = 0.0
+        for i in range(n - 1):
+            self.pieces_before[i] = len(self.pieces)
+            if self.seg_dashed[i]:
+                self.seg_phase[i] = phase
+                phase = _dash_pieces(self.pts[i], self.pts[i + 1], dash, gap, phase, self.pieces)
             else:
-                cv2.line(self.layer, px(*a), px(*b), FIXED, thick, cv2.LINE_AA, SHIFT)
-                self.phase = 0.0
-            self.drawn_upto += 1
+                phase = 0.0
+                if self.runs and self.runs[-1][1] == i:
+                    self.runs[-1] = (self.runs[-1][0], i + 1)
+                else:
+                    self.runs.append((i, i + 1))
+        if n:
+            self.pieces_before[n - 1] = len(self.pieces)
 
     def _to_video(self, f: VideoFrame, x: float, y: float) -> tuple[float, float]:
         w, h = self.plan.size
         return w / 2 + (x - f.cx) * self.s, h / 2 + (y - f.cy) * self.s
 
+    def _video_px(self, f: VideoFrame, pts: np.ndarray) -> np.ndarray:
+        """Map px -> OpenCV's sub-pixel video coordinates (int32, SHIFT bits), for many points at once."""
+        w, h = self.plan.size
+        v = (pts - (f.cx, f.cy)) * self.s + (w / 2, h / 2)
+        return np.round((v - 0.5) * (1 << SHIFT)).astype(np.int32)
+
+    def _draw_trail(self, img: np.ndarray, f: VideoFrame) -> None:
+        """The trail up to record f.rec, then the live piece from there to the drone."""
+        solid = [self._video_px(f, self.pts[a:min(b, f.rec) + 1]) for a, b in self.runs if a < f.rec]
+        cv2.polylines(img, solid, False, FIXED, TRAIL, cv2.LINE_AA, SHIFT)
+        pieces = self.pieces[:self.pieces_before[f.rec]]
+        if pieces:
+            cv2.polylines(img, [self._video_px(f, q) for q in pieces], False, MISSED, TRAIL, cv2.LINE_AA, SHIFT)
+        if f.rec < len(self.seg_dashed):
+            a, d = self._to_video(f, *self.pts[f.rec]), self._to_video(f, f.x, f.y)
+            if self.seg_dashed[f.rec]:
+                dashed(img, a, d, MISSED, TRAIL, DASH, GAP, self.seg_phase[f.rec] * self.s)
+            else:
+                cv2.line(img, px(*a), px(*d), FIXED, TRAIL, cv2.LINE_AA, SHIFT)
+
     def draw(self, k: int) -> tuple[np.ndarray, FrameInfo]:
         """Video frame k of the plan (BGR uint8) and what it shows."""
         f = self.plan.frames[k]
         rec = self.records[f.rec]
-        if f.rec < self.drawn_upto:                      # drawing out of order: start the layer's trail again
-            raise ValueError("frames must be drawn in order")
-        self._grow_trail(f.rec)
         w, h = self.plan.size
         z = self.s / self.k                              # layer px -> video px
         # video px (corner origin) -> layer px; OpenCV's pixel centres sit at integers on both sides
@@ -250,14 +291,8 @@ class FrameRenderer:
         img = cv2.warpAffine(self.layer, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,
                              borderValue=BACKGROUND)
 
-        # the piece of trail from the last record to the drone
-        a = self._to_video(f, *self.pts[f.rec])
+        self._draw_trail(img, f)
         d = self._to_video(f, f.x, f.y)
-        nxt = min(f.rec + 1, len(self.records) - 1)
-        if self.missed[f.rec] or self.missed[nxt]:
-            dashed(img, a, d, MISSED, TRAIL, DASH, GAP, self.phase)
-        else:
-            cv2.line(img, px(*a), px(*d), FIXED, TRAIL, cv2.LINE_AA, SHIFT)
 
         if f.footprint is not None:
             poly = np.array([px(*self._to_video(f, *c)) for c in f.footprint], np.int32)
@@ -319,6 +354,22 @@ class FrameRenderer:
         return x0, y0, x1, y1
 
 
+def _dash_pieces(a, b, dash: float, gap: float, phase: float, out: list) -> float:
+    """Append the dashes from a to b (map px), ``phase`` into the pattern, to ``out``; return the phase at b."""
+    length = float(np.hypot(*(b - a)))
+    period = dash + gap
+    if length == 0:
+        return phase
+    d = (b - a) / length
+    s = -phase
+    while s < length:
+        ds, de = max(s, 0.0), min(s + dash, length)
+        if de > ds:
+            out.append(np.array([a + d * ds, a + d * de]))
+        s += period
+    return (length + phase) % period
+
+
 # --- writing ---------------------------------------------------------------------------------------------------
 
 def write_video(run_dir: str | Path, out_dir: str | Path | None = None, *, fps: float = 30.0, speed: float = 1.0,
@@ -335,9 +386,15 @@ def write_video(run_dir: str | Path, out_dir: str | Path | None = None, *, fps: 
     out_dir = Path(out_dir) if out_dir is not None else run_dir
     out_dir.mkdir(parents=True, exist_ok=True)          # only once the run and map are known to be good
     path = out_dir / "trajectory.mp4"
-    with _encoder(path, fps, size) as encode:
-        for k in range(len(plan.frames)):
-            encode(renderer.draw(k)[0])
+    part = out_dir / ".trajectory.partial.mp4"            # replaces the video only when complete
+    try:
+        with _encoder(part, fps, size) as encode:
+            for k in range(len(plan.frames)):
+                encode(renderer.draw(k)[0])
+        part.replace(path)
+    except BaseException:                                  # also Ctrl-C: the previous video stays as it was
+        part.unlink(missing_ok=True)
+        raise
     return path
 
 
@@ -347,7 +404,7 @@ class _encoder:
 
     def __init__(self, path: Path, fps: float, size: tuple[int, int]):
         self.path, self.fps, self.size = path, fps, size
-        self.proc = self.writer = None
+        self.proc = self.writer = self.err = None
 
     def __enter__(self):
         try:
@@ -360,7 +417,8 @@ class _encoder:
             cmd = [exe, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{w}x{h}",
                    "-r", f"{self.fps:g}", "-i", "-", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", str(CRF),
                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(self.path)]
-            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.err = tempfile.TemporaryFile()        # a file, not a pipe: ffmpeg can never block on it
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=self.err)
             return self._pipe
         self.writer = cv2.VideoWriter(str(self.path), cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*"avc1"), self.fps,
                                       self.size)
@@ -375,22 +433,31 @@ class _encoder:
             self._fail()
 
     def _fail(self):
-        err = self.proc.stderr.read().decode(errors="replace").strip()
         self.proc.wait()
-        raise RuntimeError(f"ffmpeg failed to encode {self.path}: {err[-500:] or 'no message'}")
+        self.err.seek(0)
+        err = self.err.read().decode(errors="replace").strip()
+        raise RuntimeError(f"ffmpeg failed to encode the video: {err[-500:] or 'no message'}")
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if self.proc is not None:
-            if exc_type is not None:                     # our error (or _fail's): stop ffmpeg, keep the error
-                self.proc.kill()
-                self.proc.wait()
-                return
             try:
-                self.proc.stdin.close()
-            except BrokenPipeError:
-                pass
-            if self.proc.wait() != 0:
-                self._fail()
+                if exc_type is not None:                 # our error (or _fail's): stop ffmpeg, keep the error
+                    self.proc.kill()
+                    self.proc.wait()
+                    return
+                try:
+                    self.proc.stdin.close()
+                except BrokenPipeError:
+                    pass
+                if self.proc.wait() != 0:
+                    self._fail()
+            finally:
+                if not self.proc.stdin.closed:
+                    try:
+                        self.proc.stdin.close()
+                    except BrokenPipeError:
+                        pass
+                self.err.close()
         else:
             self.writer.release()
             if exc_type is None:

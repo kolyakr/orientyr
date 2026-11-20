@@ -12,6 +12,8 @@ import argparse
 import sys
 import time
 
+import cv2
+
 from dronenav.viz.trajectory_video import write_video
 
 
@@ -34,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.perf_counter()
     try:
         path = write_video(a.run, a.out, fps=a.fps, speed=a.speed, size=a.size)
-    except (OSError, ValueError, RuntimeError) as e:   # missing run or map, bad options, no H.264 encoder
+    except (OSError, ValueError, RuntimeError, cv2.error) as e:   # missing run/map, bad options, no encoder
         print(f"render_video: error: {e}", file=sys.stderr)
         return 2
     print(f"render_video: {path} in {time.perf_counter() - t0:.1f} s")
