@@ -126,30 +126,52 @@ button:disabled { cursor: default; }
 /* ---- on the map ------------------------------------------------------------------------------------------------ */
 .map-dim { fill: #000; opacity: .22; }   /* a little darker, so the coloured trail reads on any terrain */
 .map-rim { fill: none; stroke: rgb(255 255 255 / .2); }   /* the map ends on a clean line */
-.trail-casing { fill: none; stroke: rgb(4 6 10 / .62); stroke-linecap: round; stroke-linejoin: round; }
+.trail-casing { fill: none; stroke: rgb(4 6 10 / .6); stroke-linecap: round; stroke-linejoin: round; }
 /* a new piece of the route draws itself from its start to its end, then it is a plain solid line again */
-.seg { stroke-linecap: round; animation: draw var(--step, 250ms) linear backwards; }
+.seg { stroke-linecap: round; animation: draw var(--step, 250ms) linear backwards; transition: stroke-width .6s ease, opacity .6s ease; }
+.seg.old { opacity: .8; }               /* behind the comet's tail the route is thinner and a little quieter */
+.seg.coast { stroke-linecap: butt; animation-name: fade; }   /* dead-reckoned: dashed, the dashes set by MapView */
 .waypoint { animation: pop .5s var(--spring) backwards; transform-box: fill-box; transform-origin: center; }
-.point { fill: #fff; stroke: rgb(4 6 10 / .7); }
-.point-num { fill: #10131a; font-weight: 700; font-family: var(--mono); }
-.label { fill: #fff; font-weight: 700; font-family: var(--sans); paint-order: stroke; stroke: rgb(4 6 10 / .78);
-  stroke-width: .24em; stroke-linejoin: round; }
-.label.finish { animation: fade .6s ease-out backwards; }
-.footprint { fill: rgb(245 210 31 / .1); stroke: var(--footprint); stroke-linejoin: round; }
-.rejected polygon { fill: rgb(255 90 77 / .08); stroke: #ff5a4d; }
+.point { fill: rgb(13 14 16 / .86); stroke: rgb(236 231 220 / .75); }
+.point-num { fill: #ece7dc; font-weight: 400; font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace); }
+.label { fill: #ece7dc; font-weight: 700; font-family: var(--sans); paint-order: stroke; stroke: rgb(4 6 10 / .82);
+  stroke-width: .26em; stroke-linejoin: round; }
+.marker circle { fill: none; }
+.marker-case { stroke: rgb(4 6 10 / .7); }
+.marker-ring { stroke: #ece7dc; }
+.marker.finish { animation: fade .6s ease-out backwards; }
+/* the camera's view on the ground: a very light patch, a thin outline, heavier viewfinder corners */
+.footprint { fill: rgb(245 210 31 / .06); stroke: rgb(245 210 31 / .55); stroke-linejoin: round; }
+.view-ticks { fill: none; stroke: var(--footprint); stroke-linecap: round; stroke-linejoin: round; }
+.view-cone { fill: none; stroke: rgb(245 210 31 / .3); }
+.rejected polygon { fill: rgb(255 90 77 / .07); stroke: #ff5a4d; }
 .rejected { animation: fade .3s ease-out backwards; }
 
-.sigma { fill: rgb(76 201 245 / .13); stroke: var(--sigma); transition: rx .6s var(--out), ry .6s var(--out), fill .6s ease; }
-.drone[data-state="LOST"] .sigma { fill: rgb(76 201 245 / .2); animation: throb 1.2s ease-in-out infinite; }
+/* where the drone can be: a soft area with a thin edge; it grows smoothly while the camera is jammed */
+.sigma { fill: rgb(76 201 245 / .14); stroke: rgb(76 201 245 / .9); transition: rx .6s var(--out), ry .6s var(--out), fill .6s ease; }
+.drone[data-state="LOST"] .sigma { fill: rgb(76 201 245 / .2); }
 .sonar, .search, .lock { fill: none; opacity: 0; transform-box: fill-box; transform-origin: center; pointer-events: none; }
-.sonar { stroke: #fff; }
+.sonar { stroke: #ece7dc; }
 .drone[data-state="TRACKING"] .sonar { animation: sonar 2.6s var(--out) infinite; }
 .drone[data-state="TRACKING"] .sonar.late { animation-delay: 1.3s; }
 .search { stroke: var(--warn); stroke-linecap: round; }
 .drone[data-state="RELOCALIZING"] .search { opacity: 1; animation: spin 2.4s linear infinite; }
 .lock { stroke: var(--ok); animation: lock 1.1s var(--out) both; }   /* tracking again: a ring closes on the drone */
-.beam { stroke: #fff; stroke-linecap: round; opacity: .9; filter: drop-shadow(0 0 3px rgb(0 0 0 / .6)); }
-.puck { fill: #fff; stroke: #10131a; stroke-linejoin: round; }
+/* the drone marker */
+.craft { transition-property: transform, opacity; }
+.beam { stroke: #ece7dc; stroke-linecap: round; opacity: .85; }
+.craft-case { fill: rgb(6 8 12 / .88); stroke: rgb(6 8 12 / .88); stroke-linecap: round; stroke-linejoin: round; }
+.craft-shape { stroke: #ece7dc; stroke-linecap: round; stroke-linejoin: round; fill: #ece7dc; }
+.craft-shape .rotor-disc { fill: rgb(30 33 38 / .8); }
+.craft-shape .craft-nose { fill: var(--state); stroke: none; }
+.craft-case .craft-nose { stroke-width: 0; }
+.blade { stroke: rgb(236 231 220 / .7); stroke-linecap: round; transform-box: fill-box; transform-origin: center; }
+.drone[data-state="TRACKING"] .blade { animation: spin .5s linear infinite; }
+/* a lost signal: the marker is a ghost, outlines only */
+.drone[data-state="LOST"] .craft { opacity: .7; }
+.drone[data-state="LOST"] .craft-shape, .drone[data-state="LOST"] .craft-shape .rotor-disc { fill: none; }
+.drone[data-state="LOST"] .craft-case { fill: rgb(6 8 12 / .45); stroke: rgb(6 8 12 / .45); }
+.drone[data-state="LOST"] .blade { opacity: 0; }
 
 /* ---- over the stage: brand, legend, follow, camera ------------------------------------------------------------- */
 .brand { top: 0; left: 0; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 10px; }
@@ -163,8 +185,15 @@ button:disabled { cursor: default; }
 .legend { top: 58px; left: 0; display: grid; gap: 6px; padding: 10px 14px 10px 12px; font-size: 12px; }
 .legend li { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
 .legend i { flex: none; width: 16px; height: 4px; border-radius: 1px; box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
-.legend i.box { height: 11px; width: 13px; margin-right: 3px; background: rgb(245 210 31 / .14); border: 2px solid var(--footprint); box-shadow: none; }
-.legend i.ring { height: 11px; width: 16px; border-radius: 50%; background: rgb(76 201 245 / .16); border: 2px solid var(--sigma); box-shadow: none; }
+/* the same drawing as on the map: a light patch with viewfinder corners; a soft area with a thin edge */
+.legend i.box { height: 11px; width: 13px; margin-right: 3px; border-radius: 0; box-shadow: inset 0 0 0 1px rgb(245 210 31 / .5);
+  background: linear-gradient(var(--footprint) 0 0) top left / 4px 2px, linear-gradient(var(--footprint) 0 0) top left / 2px 4px,
+    linear-gradient(var(--footprint) 0 0) top right / 4px 2px, linear-gradient(var(--footprint) 0 0) top right / 2px 4px,
+    linear-gradient(var(--footprint) 0 0) bottom left / 4px 2px, linear-gradient(var(--footprint) 0 0) bottom left / 2px 4px,
+    linear-gradient(var(--footprint) 0 0) bottom right / 4px 2px, linear-gradient(var(--footprint) 0 0) bottom right / 2px 4px,
+    rgb(245 210 31 / .08);
+  background-repeat: no-repeat; }
+.legend i.ring { height: 12px; width: 16px; border-radius: 50%; background: rgb(76 201 245 / .2); border: 1px solid var(--sigma); box-shadow: none; }
 
 .follow { top: 0; right: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 13px 0 10px; font-size: 12.5px; }
 .follow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; transition: transform .6s var(--spring); }

@@ -21,9 +21,25 @@ export interface StageLayout {
 const FOLLOW_ZOOM = 2.4; // follow mode, against the map fitted into the stage cell
 const STAGE_RATIO = 1.36; // before the stage is measured: it is about this wide for its height
 const INTRO_MS = 1500; // on load the flown route draws itself once, start to drone, in about this long
+const TAIL = 18; // the newest steps of the route are drawn wide and bright, like a comet's tail: the present dominates
+const ROTORS = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; // a quadcopter from above: the four arms of an X
 
 const pts = (points: number[][]) => points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 const tenth = (v: number) => Math.round(v * 10) / 10;
+/** The angle equal to `next` (mod 360) that is nearest to `prev`: a turn from 359° to 1° is 2°, not a full spin back. */
+const nearestTurn = (prev: number, next: number) => drawAngle(prev + ((((next - prev) % 360) + 540) % 360) - 180);
+
+/** Short ticks at the corners of a polygon, along both of its edges: the corners of a viewfinder. */
+function cornerTicks(poly: number[][], size: number): string {
+  return poly.map((c, i) => {
+    const arm = (to: number[]) => {
+      const dx = to[0] - c[0], dy = to[1] - c[1];
+      const k = Math.min(size, Math.hypot(dx, dy) / 3) / (Math.hypot(dx, dy) || 1);
+      return `${(c[0] + dx * k).toFixed(1)} ${(c[1] + dy * k).toFixed(1)}`;
+    };
+    return `M ${arm(poly[(i + poly.length - 1) % poly.length])} L ${c[0].toFixed(1)} ${c[1].toFixed(1)} L ${arm(poly[(i + 1) % poly.length])}`;
+  }).join(" ");
+}
 
 export function MapView({ run, frame, follow, stepMs, layout }: {
   run: Run;
@@ -59,6 +75,24 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
   const ellipse = sigmaEllipse(rec.cov);
   const start = run.records[0];
   const startOnRight = start.x > w * 0.9;
+  const atEnd = frame === run.records.length - 1;
+  const lost = rec.state === "LOST";
+  // The marker turns along the shortest arc: the drawn angle follows the heading without ever wrapping at 360°.
+  const [turn, setTurn] = useState(drawAngle(heading ?? 0));
+  if (heading !== null && nearestTurn(turn, heading) !== turn) setTurn(nearestTurn(turn, heading));
+  // The camera's footprint, counted from the drone: it is drawn inside the drone's group and glides with it.
+  const view = fix?.accepted ? fix.footprint.map(([x, y]) => [x - rec.x, y - rec.y]) : null;
+  // Dead-reckoned steps are dashed. Each step is its own line, so the dash pattern is carried on from one step to
+  // the next by an offset: the dashes stay even along the whole coasted stretch.
+  const dash = [5.5 * u, 4.5 * u];
+  let coasted = 0;
+  const phase = segs.map((s) => {
+    const at = coasted;
+    coasted = s.coasting ? coasted + Math.hypot(s.x2 - s.x1, s.y2 - s.y1) : 0;
+    return at % (dash[0] + dash[1]);
+  });
+  // START and FINISH: when the flight ends near its start, one label goes above its point and the other below
+  const startAbove = !atEnd || start.y <= rec.y;
   // The frame at which the current state began: a new state replays its one-shot animation (the lock-on ring).
   const runs = useMemo(() => stateRuns(run.records), [run]);
   const since = runs.find((r) => frame >= r.from && frame <= r.to)?.from ?? 0;
@@ -93,33 +127,51 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
 
         <g data-part="trail">
           {/* a dark casing under the coloured route, as one element: the three colours read on any terrain */}
-          {flown.length > 1 && <polyline className="trail-casing" points={pts(flown.map((r) => [r.x, r.y]))} strokeWidth={6.4 * u} />}
-          {segs.map((s, i) => (
-            <line key={i} data-part="trail-segment" className="seg" pathLength={1} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-                  stroke={confidenceColor(s.confidence)} strokeWidth={3.4 * u}
-                  style={intro && i < introFrames ? { animationDelay: `${Math.round(500 + (i / introFrames) * INTRO_MS)}ms`, animationDuration: "160ms" } : undefined} />
-          ))}
-          {flown.map((r, i) => i % labelEvery === 0 && (
+          {flown.length > 1 && <polyline className="trail-casing" points={pts(flown.map((r) => [r.x, r.y]))} strokeWidth={5 * u} />}
+          {flown.length > 1 && <polyline className="trail-casing" points={pts(flown.slice(-TAIL - 1).map((r) => [r.x, r.y]))} strokeWidth={7 * u} />}
+          {segs.map((s, i) => {
+            const recent = i >= segs.length - TAIL;
+            return (
+              <line key={i} data-part="trail-segment" className={`seg${s.coasting ? " coast" : ""}${recent ? "" : " old"}`}
+                    pathLength={s.coasting ? undefined : 1} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+                    stroke={confidenceColor(s.confidence)} strokeWidth={tenth((recent ? 4 : 2.6) * u)}
+                    strokeDasharray={s.coasting ? `${tenth(dash[0])} ${tenth(dash[1])}` : undefined}
+                    strokeDashoffset={s.coasting ? tenth(phase[i]) : undefined}
+                    style={intro && i < introFrames ? { animationDelay: `${Math.round(500 + (i / introFrames) * INTRO_MS)}ms`, animationDuration: "160ms" } : undefined} />
+            );
+          })}
+          {/* numbered points: small dark chips. The start and the finish have their own markers, and a chip never
+              lies under the drone. */}
+          {flown.map((r, i) => i % labelEvery === 0 && i > 0 && !(atEnd && i === frame) && Math.hypot(r.x - rec.x, r.y - rec.y) > 26 * u && (
             <g key={r.idx} transform={`translate(${r.x} ${r.y})`} className="waypoint">
-              <circle r={8.2 * u} className="point" strokeWidth={1.2 * u} />
-              <text fontSize={8.4 * u} className="point-num" textAnchor="middle" dominantBaseline="central">{r.idx}</text>
+              <circle r={6.4 * u} className="point" strokeWidth={0.9 * u} />
+              <text fontSize={6.6 * u} className="point-num" textAnchor="middle" dominantBaseline="central">{r.idx}</text>
             </g>
           ))}
-          {/* near the right edge the label goes to the left of the point, so the screen never clips it */}
-          <text x={start.x + (startOnRight ? -14 : 14) * u} y={start.y - 12 * u} fontSize={12.5 * u}
-                className="label" textAnchor={startOnRight ? "end" : "start"}>START</text>
-          {frame === run.records.length - 1 && (
-            <text x={rec.x + 16 * u} y={rec.y + 26 * u} fontSize={12.5 * u} className="label finish">FINISH</text>
+          {/* the start: a ring. Near the right edge its label goes to the left, so the screen never clips it. */}
+          <g transform={`translate(${start.x} ${start.y})`} className="marker">
+            <circle r={5.4 * u} className="marker-case" strokeWidth={4.6 * u} />
+            <circle r={5.4 * u} className="marker-ring" strokeWidth={2.2 * u} />
+            <text x={(startOnRight ? -13 : 13) * u} y={(startAbove ? -9 : 17) * u} fontSize={10.5 * u}
+                  className="label" textAnchor={startOnRight ? "end" : "start"}>START</text>
+          </g>
+          {/* the finish: a double ring, with its label on the far side of the start's */}
+          {atEnd && (
+            <g transform={`translate(${rec.x} ${rec.y})`} className="marker finish">
+              <circle r={9 * u} className="marker-case" strokeWidth={3.6 * u} />
+              <circle r={9 * u} className="marker-ring" strokeWidth={1.5 * u} />
+              <circle r={4 * u} className="marker-case" strokeWidth={3.6 * u} />
+              <circle r={4 * u} className="marker-ring" strokeWidth={1.5 * u} />
+              <text x={(startOnRight ? -24 : 24) * u} y={(startAbove ? 30 : -24) * u} fontSize={10.5 * u}
+                    className="label" textAnchor={startOnRight ? "end" : "start"}>FINISH</text>
+            </g>
           )}
         </g>
 
-        {fix?.accepted && (
-          <polygon data-part="footprint" className="footprint" points={pts(fix.footprint)} strokeWidth={2 * u} />
-        )}
         {fix && !fix.accepted && (
           <g data-part="rejected-fix" className="rejected">
-            <polygon points={pts(fix.footprint)} strokeWidth={2 * u} strokeDasharray={`${7 * u} ${5 * u}`} />
-            <text x={fix.x} y={fix.y} fontSize={12 * u} className="label" textAnchor="middle" dominantBaseline="central">
+            <polygon points={pts(fix.footprint)} strokeWidth={1.4 * u} strokeDasharray={`${7 * u} ${5 * u}`} />
+            <text x={fix.x} y={fix.y} fontSize={10.5 * u} className="label" textAnchor="middle" dominantBaseline="central">
               rejected: {(fix.reject_reason ?? "bad fix").replaceAll("_", " ")}
             </text>
           </g>
@@ -127,23 +179,45 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
 
         <g data-part="drone" data-state={rec.state} className="drone"
            style={{ transform: `translate(${tenth(rec.x)}px, ${tenth(rec.y)}px)`, transition: `transform ${Math.round(stepMs)}ms linear` }}>
-          {/* 3σ ellipse: where the drone is with ~99 % probability; it swells while the camera is jammed */}
-          <ellipse rx={tenth(Math.max(ellipse.rx, 22 * u))} ry={tenth(Math.max(ellipse.ry, 17 * u))}
-                   transform={`rotate(${drawAngle(ellipse.angle)})`} className="sigma" strokeWidth={2 * u} />
-          {/* decoration only: a sonar ring while tracking, a turning search ring while relocalizing */}
-          <circle r={44 * u} className="sonar" strokeWidth={1.6 * u} />
-          <circle r={44 * u} className="sonar late" strokeWidth={1.6 * u} />
-          <circle r={34 * u} className="search" strokeWidth={2.2 * u} strokeDasharray={`${12 * u} ${9 * u}`} />
-          {rec.state === "TRACKING" && since > 0 && (
-            <circle key={since} r={30 * u} className="lock" strokeWidth={2.4 * u} />
-          )}
-          {heading !== null && (
-            <g transform={`rotate(${drawAngle(heading)})`}>
-              <line y1={-14 * u} y2={-46 * u} className="beam" strokeWidth={2.4 * u} />
-              <path d={`M 0 ${-15 * u} L ${9.5 * u} ${9 * u} L 0 ${4 * u} L ${-9.5 * u} ${9 * u} Z`} className="puck" strokeWidth={1.4 * u} />
+          {/* what the camera sees: a light patch with viewfinder corners, and faint lines from the drone to them */}
+          {view && (
+            <g className="view">
+              <path className="view-cone" d={view.map(([x, y]) => `M 0 0 L ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ")} strokeWidth={0.9 * u} />
+              <polygon data-part="footprint" className="footprint" points={pts(view)} strokeWidth={1.1 * u} />
+              <path className="view-ticks" d={cornerTicks(view, 13 * u)} strokeWidth={2.6 * u} />
             </g>
           )}
-          {heading === null && <circle r={6 * u} className="puck" strokeWidth={1.4 * u} />}
+          {/* 3σ ellipse: where the drone is with ~99 % probability; it swells while the camera is jammed */}
+          <ellipse rx={tenth(Math.max(ellipse.rx, 21 * u))} ry={tenth(Math.max(ellipse.ry, 21 * u))}
+                   transform={`rotate(${drawAngle(ellipse.angle)})`} className="sigma" strokeWidth={1.2 * u} />
+          {/* decoration only: a sonar ring while tracking, a turning search ring while relocalizing */}
+          <circle r={44 * u} className="sonar" strokeWidth={1.4 * u} />
+          <circle r={44 * u} className="sonar late" strokeWidth={1.4 * u} />
+          <circle r={34 * u} className="search" strokeWidth={2 * u} strokeDasharray={`${12 * u} ${9 * u}`} />
+          {rec.state === "TRACKING" && since > 0 && (
+            <circle key={since} r={30 * u} className="lock" strokeWidth={2.2 * u} />
+          )}
+          {/* the drone from above: four arms with rotor discs, a body, and a nose mark that shows the heading.
+              Every part is drawn twice, a dark casing under a light shape, to read on bright and on dark ground.
+              While the signal is lost it is a ghost: outlines only, dashed. */}
+          <g className="craft" style={{ transform: `rotate(${turn}deg)`, transition: `transform ${Math.round(Math.max(stepMs, 200))}ms ease-out` }}>
+            {heading !== null && (
+              <line y1={-19 * u} y2={-44 * u} className="beam" strokeWidth={1.8 * u} strokeDasharray={lost ? `${4 * u} ${4 * u}` : undefined} />
+            )}
+            {[5.2, 1.8].map((width, pass) => (
+              <g key={pass} className={pass ? "craft-shape" : "craft-case"} strokeWidth={width * u}
+                 strokeDasharray={lost && pass ? `${2.6 * u} ${2.2 * u}` : undefined}>
+                {ROTORS.map(([x, y], i) => <line key={i} x2={x * 9.5 * u} y2={y * 9.5 * u} />)}
+                {ROTORS.map(([x, y], i) => <circle key={i} cx={x * 9.5 * u} cy={y * 9.5 * u} r={5 * u} className="rotor-disc" />)}
+                <rect x={-3.6 * u} y={-6 * u} width={7.2 * u} height={11.5 * u} rx={3 * u} className="craft-body" />
+                {heading !== null && <path d={`M 0 ${-16.5 * u} L ${4.6 * u} ${-8.5 * u} L ${-4.6 * u} ${-8.5 * u} Z`} className="craft-nose" />}
+              </g>
+            ))}
+            {/* a blade in each disc: it turns only while tracking, as a faint shimmer */}
+            {ROTORS.map(([x, y], i) => (
+              <line key={i} x1={(x * 9.5 - 3.6) * u} y1={y * 9.5 * u} x2={(x * 9.5 + 3.6) * u} y2={y * 9.5 * u} className="blade" strokeWidth={1.1 * u} />
+            ))}
+          </g>
         </g>
       </g>
     </svg>
