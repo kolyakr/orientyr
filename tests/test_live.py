@@ -289,7 +289,10 @@ def test_one_command_plays_a_flight_live(tmp_path, world):
     status = json.loads((out / STATUS).read_text())
     recs = read_run(out / "run.jsonl")
     assert status["state"] == "done" and status["frames"] == len(recs) and len(recs) + status["skipped"] == 6
-    assert recs[0].idx == 0 and recs[-1].idx == 5
+    # the first frame is never late (the clock starts on it); any later one may be skipped on a busy machine
+    # (a real camera does not wait), so the last record is not always frame 5: the order and the range are the contract
+    idxs = [r.idx for r in recs]
+    assert idxs[0] == 0 and idxs == sorted(set(idxs)) and idxs[-1] <= 5
     assert read_run_info(out).generator == "live.py"
     for r in recs:
         assert (out / r.source).is_file() and "truth" in r.extra
