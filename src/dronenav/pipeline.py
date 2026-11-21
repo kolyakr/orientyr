@@ -22,6 +22,12 @@ footprint at the predicted centre, grown by 3σ; ``extra["predicted_window"]`` a
 larger axis σ) record it, so the window shrinking while tracking and growing while coasting is in the telemetry.
 Frames before the first fix are LOST at that fix's position, as below.
 
+``vo=True`` (M9-02, needs the Kalman tracker): visual odometry (``dronenav.vo``) matches every frame to the one
+before and hands the tracker the velocity on the map, so map-match misses no longer mean coasting blind;
+``extra["vo"]`` records it ({vx, vy, sigma, inliers} or None). ``jam_match`` (a set of frame indices) simulates a
+jammed or failing map matcher on those frames: they are not searched (``extra["search"] == "jammed"``, no fix),
+while the camera, and so VO, still works. ``scripts/run.py --vo --jam-match 8-19`` shows the difference.
+
 ``tracker="none"``: M1's interim rule, kept for comparison:
 
 - TRACKING: an accepted fix; RELOCALIZING: the first accepted fix after the track was lost (misses before the
@@ -60,7 +66,7 @@ import numpy as np
 from dronenav.geometry import GeometryConfig, pose_from_homography
 from dronenav.io import FolderSource, _is_rate, load_map
 from dronenav.matching import RootSiftMatcher, XFeatMatcher
-from dronenav.search import Located, Searcher, SearchMode, prediction_window
+from dronenav.search import Searcher, SearchMode, prediction_window
 from dronenav.sim.chaos import ChaosSource, Jam
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
 from dronenav.tracking.states import Tracker, TrackerUpdate
@@ -68,9 +74,11 @@ from dronenav.types import Fix, Matches, TrackMode, TrackState
 from dronenav.video import VideoSource
 from dronenav.viz.trajectory_image import write_trajectory
 from dronenav.viz.trajectory_video import write_video
+from dronenav.vo import VisualOdometry, VoVelocity
 
 __all__ = [
     "COAST_MAX_S",
+    "JAMMED",
     "LOST_SIGMA_GROWTH_PX_PER_S",
     "MATCHERS",
     "MATCH_SAMPLE",
@@ -81,6 +89,7 @@ __all__ = [
     "RunSummary",
     "localize_run",
     "match_sample",
+    "parse_frame_set",
     "run",
 ]
 
@@ -97,12 +106,29 @@ FRAMES_DIR = "frames"            # a video's sampled frames (and a jam's noise f
 MATCH_SAMPLE = 24                # match pairs kept per frame for the renderers: enough to read, small in run.jsonl
 OUTPUTS = ("run.json", "run.jsonl", "trajectory.png", "trajectory_preview.jpg", "trajectory.mp4")
 
+JAMMED = "jammed"                # extra["search"] of a frame whose map match was jammed (jam_match)
 COAST_MAX_S = 5                  # seconds a lost track coasts on its last velocity before it holds
 LOST_SIGMA_GROWTH_PX_PER_S = 20.0  # how much less sure the position gets every second without a fix
 
 
 class NothingLocalized(ValueError):
     """No frame of the run could be found on the map."""
+
+
+def parse_frame_set(text: str) -> set[int]:
+    """Frame indices from a list like ``"3-5,9"`` (ranges inclusive) -> {3, 4, 5, 9}; ``""`` -> the empty set."""
+    out: set[int] = set()
+    if not text.strip():
+        return out
+    for part in text.split(","):
+        a, sep, b = part.strip().partition("-")
+        if not a.isdigit() or (sep and not b.isdigit()):
+            raise ValueError(f"bad frame list {text!r}: expected numbers and ranges like 3-5,9")
+        lo, hi = int(a), int(b) if sep else int(a)
+        if hi < lo:
+            raise ValueError(f"bad frame range {part.strip()!r} in {text!r}: the end is before the start")
+        out.update(range(lo, hi + 1))
+    return out
 
 
 @dataclass(frozen=True)
@@ -133,6 +159,8 @@ class _Found:
     sigma: float | None = None                # the prediction's larger axis σ, px (tracker="kalman")
     sample: dict | None = None                # match_sample of the fix
     jammed: bool = False                      # the frame reached the engine as noise (jam)
+    vo: VoVelocity | None = None              # the visual odometry velocity into this frame (vo=True)
+    vo_on: bool = False                       # whether VO ran at all: extra["vo"] is then written, None or not
 
     @property
     def accepted(self) -> bool:
@@ -144,11 +172,13 @@ def _check_out(out_dir: Path) -> None:
         raise ValueError(f"--out {out_dir} exists and is not a folder")
 
 
-def _check_options(matcher: str, tracker: str) -> None:
+def _check_options(matcher: str, tracker: str, vo: bool = False) -> None:
     if matcher not in MATCHERS:
         raise ValueError(f"unknown matcher {matcher!r} (available: {', '.join(sorted(MATCHERS))})")
     if tracker not in TRACKERS:
         raise ValueError(f"unknown tracker {tracker!r} (available: {', '.join(TRACKERS)})")
+    if vo and tracker != "kalman":
+        raise ValueError("visual odometry (--vo) feeds the Kalman tracker: it needs --tracker kalman")
 
 
 def match_sample(matches: Matches, fix: Fix | None, cap: int = MATCH_SAMPLE) -> dict | None:
@@ -224,24 +254,28 @@ def _keep(f, keep_dir: Path | None, jammed: bool = False) -> Path:
     return path
 
 
-def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", *, video=None,
-              every=None, keep_dir: Path | None = None, device: str | None = None, jam=None):
+def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", vo: bool = False,
+              jam_match=(), *, video=None, every=None, keep_dir: Path | None = None, device: str | None = None,
+              jam=None):
     """Check the inputs and find every frame; nothing is written but a video's sampled frames and a jam's noise
     frames (into keep_dir). Returns (map image, frames source, found)."""
-    _check_options(matcher, tracker)
+    _check_options(matcher, tracker, vo)
     jammer = _jam(jam)
+    jam_match = frozenset(int(i) for i in jam_match)
     frames = _frame_source(frames_dir, video, fps, every)
     stream = frames if jammer is None else ChaosSource(frames, [jammer])
     the_map = load_map(map_path)
     track = Tracker() if tracker == "kalman" else None
+    odo = VisualOdometry() if vo else None
     try:
         searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir, device), the_map.image)
         found = []
         for f in stream:
-            window = sigma = tracked = None
-            jammed = jammer is not None and jammer.covers(f.t)
+            window = sigma = tracked = motion = None
+            jammed = jammer is not None and jammer.covers(f.t)     # the camera jammed: the frame is noise
+            blind = f.idx in jam_match            # the map matcher jammed: no search, no fix (the camera still works)
             if track is None:
-                loc: Located = searcher.locate(f.idx, f.image)            # M1's window rule
+                loc = None if jammed else searcher.locate(f.idx, f.image)    # M1's window rule
             else:
                 if track.search is SearchMode.GLOBAL:
                     searcher.reset()              # LOST: the old track is not trusted, search the whole map
@@ -250,11 +284,19 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
                     sigma = math.sqrt(max(pred.cov[0, 0], pred.cov[1, 1]))
                     window = prediction_window(track.last_fix, (pred.x, pred.y), pred.cov, searcher.map_size,
                                                searcher.cfg)
-                loc = searcher.locate_in(f.idx, f.image, window)
-                tracked = track.update(f.idx, f.t, loc.fix)
-            found.append(_Found(f.idx, f.t, _keep(f, keep_dir, jammed), (f.image.shape[1], f.image.shape[0]),
-                                loc.fix, loc.mode.value, loc.window, float(loc.factor), float(loc.ms), tracked,
-                                window, sigma, match_sample(loc.matches, loc.fix), jammed))
+                loc = None if blind else searcher.locate_in(f.idx, f.image, window)
+                fix = None if loc is None else loc.fix
+                motion = odo.step(f.t, f.image, fix) if odo is not None else None
+                tracked = track.update(f.idx, f.t, fix, vo=motion)
+            size = (f.image.shape[1], f.image.shape[0])
+            path = _keep(f, keep_dir, jammed)
+            if loc is None:
+                found.append(_Found(f.idx, f.t, path, size, None, JAMMED, None, 1.0, 0.0, tracked,
+                                    window, sigma, None, jammed, motion, odo is not None))
+            else:
+                found.append(_Found(f.idx, f.t, path, size, loc.fix, loc.mode.value, loc.window,
+                                    float(loc.factor), float(loc.ms), tracked, window, sigma,
+                                    match_sample(loc.matches, loc.fix), jammed, motion, odo is not None))
     except cv2.error as e:                # FLANN refuses an empty index: a blank or flat map
         raise ValueError(f"matching on {map_path} failed: the map has no usable features (blank or flat image?) "
                          f"[{e.err}]") from None
@@ -277,7 +319,8 @@ def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource | VideoSou
 
 def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
                  fps: float | None = None, cache_dir: str | Path | None = "outputs/cache",
-                 tracker: str = "kalman", video: str | Path | None = None, every: int | None = None,
+                 tracker: str = "kalman", vo: bool = False, jam_match=(),
+                 video: str | Path | None = None, every: int | None = None,
                  device: str | None = None, jam: tuple[float, float] | None = None) -> RunSummary:
     """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no trajectory
     image or video; a video's sampled frames and a jam's noise frames go to ``out_dir/frames``). ``device`` is
@@ -285,8 +328,8 @@ def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: s
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     _check_out(out_dir)
-    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
-                                       every=every, device=device, jam=jam,
+    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, vo, jam_match,
+                                       video=video, every=every, device=device, jam=jam,
                                        keep_dir=None if video is None and jam is None else out_dir / FRAMES_DIR)
     _write_run(out_dir, map_path, map_img, frames, found, MATCHERS[matcher][0])
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
@@ -295,8 +338,8 @@ def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: s
 
 def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
         fps: float | None = None, speed: float = 1.0,
-        cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman",
-        video: str | Path | None = None, every: int | None = None, device: str | None = None,
+        cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman", vo: bool = False,
+        jam_match=(), video: str | Path | None = None, every: int | None = None, device: str | None = None,
         jam: tuple[float, float] | None = None) -> RunSummary:
     """The whole deliverable: localize, then the trajectory image (M1-07) and the video (M1-08), all into
     ``out_dir`` at once (see the module docstring). Frames come from ``frames_dir`` or, instead, ``video``
@@ -308,13 +351,13 @@ def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path
     if not _is_rate(speed):
         raise ValueError(f"speed must be a positive number, got {speed!r}")
     _check_out(out_dir)
-    _check_options(matcher, tracker)
+    _check_options(matcher, tracker, vo)
     # a sibling folder: the same depth, so every relative path written into it holds in out_dir too
     part = out_dir.parent / f".{out_dir.name}.partial"
     shutil.rmtree(part, ignore_errors=True)
     try:
-        map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
-                                           every=every, device=device, jam=jam,
+        map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, vo, jam_match,
+                                           video=video, every=every, device=device, jam=jam,
                                            keep_dir=None if video is None and jam is None else part / FRAMES_DIR)
         _write_run(part, map_path, map_img, frames, found, MATCHERS[matcher][0])
         write_trajectory(part, map_img=map_img)
@@ -392,8 +435,9 @@ def _source(x: _Found, out_dir: Path) -> str:
 
 
 def _extra(x: _Found) -> dict:
-    """The search behind the record and, for an accepted fix, the camera's tilt off nadir read from its homography
-    (M2-04): Fix.x, y is where the image centre lands, which a tilt moves away from the point under the drone."""
+    """The search behind the record; for an accepted fix, the camera's tilt off nadir read from its homography
+    (M2-04): Fix.x, y is where the image centre lands, which a tilt moves away from the point under the drone; with
+    visual odometry on (M9-02), the frame's VO velocity ("vo": None when VO found no motion)."""
     extra = {"search": x.mode, "factor": x.factor, "window": None if x.window is None else [int(v) for v in x.window]}
     if x.accepted:
         extra["tilt_deg"] = pose_from_homography(x.fix.H, x.size).tilt_deg
@@ -401,6 +445,12 @@ def _extra(x: _Found) -> dict:
         extra["matches"] = x.sample
     if x.jammed:
         extra["jammed"] = True
+    if x.vo_on:
+        extra["vo"] = None
+    if x.vo is not None:
+        sigma = math.sqrt(max(x.vo.cov[0, 0], x.vo.cov[1, 1]))
+        extra["vo"] = {"vx": round(float(x.vo.v[0]), 3), "vy": round(float(x.vo.v[1]), 3), "sigma": round(sigma, 3),
+                       "inliers": int(x.vo.inliers)}
     return extra
 
 
