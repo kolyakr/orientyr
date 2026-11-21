@@ -72,3 +72,7 @@ and 5.01 km) hold 0 UNOSAT labels; the third, **3.84 km centred at 50.501°N 30.
 (WV03, 0.31 m), 2025-04-11 (WV02, 0.5 m) — four sharp, single-sensor-per-date captures, 310 vs.
 369 labels being a minor difference against a meaningfully longer timeline. `west_irpin*.py` and
 `preview.py` build, cut and preview this square.
+
+**M3-02 decision record.** The two sections above are the review M3-02 (#29) asks for: the choice
+(West Irpin, backed by UKR2 as the scan's own top-ranked candidate and backup) and the reasons for
+each (status/feasibility ranking, then the four-epoch timeline trade-off).
