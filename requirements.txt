@@ -16,6 +16,7 @@ imageio-ffmpeg>=0.5,<0.9        # tested: 0.8.1; ffmpeg with x264 for the trajec
 matplotlib>=3.8,<4              # tested: 3.11.2; reliability plot of the per-fix confidence (scripts/confidence_check.py, M4-08); its DejaVu fonts set the HUD video's text
 pymavlink>=2.4.40,<2.5          # tested: 2.4.50; MAVLink GPS_INPUT log / SITL feed (scripts/mavlink_log.py, M9-01), a stub
 pillow>=10,<14                  # tested: 13.0.0; text of the HUD video (M7-02)
+requests>=2.31,<3               # tested: 2.33.1; Esri Wayback fetch for the showcase maps (experiments/irpin, M3-03)
 # dev
 pytest>=8,<10                   # tested: 9.2.0
 pytest-xdist>=3.5,<4            # tested: 3.8.0; the suite runs in parallel: tools/task.sh test and CI use -n auto (M0-11)
