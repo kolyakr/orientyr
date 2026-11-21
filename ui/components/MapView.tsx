@@ -63,6 +63,8 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
     } else camera = whole;
   }
   const group = camera && layout ? inViewBox(camera, [w, h], layout.cell) : null;
+  // follow mode looks at the map from behind and above: the map leans back around the drone's place on the screen
+  const pivot = layout ? `${tenth(layout.free.x + layout.free.width / 2)}px ${tenth(layout.free.y + layout.free.height / 2)}px` : undefined;
   // one "screen unit" in map px: markers and text keep their size on screen at any zoom, a little larger on a big stage
   const u = camera && layout
     ? Math.min(1.3, Math.max(0.85, Math.min(layout.cell.width, layout.cell.height) / 720)) / camera.scale
@@ -118,7 +120,8 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
 
   return (
     <svg data-part="map" className="map" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet"
-         role="img" aria-label="Map with the drone's route" data-ready={measured || undefined} style={{ ["--step" as string]: `${Math.round(stepMs)}ms` }}>
+         role="img" aria-label="Map with the drone's route" data-ready={measured || undefined} data-tilt={(follow && measured) || undefined}
+         style={{ ["--step" as string]: `${Math.round(stepMs)}ms`, transformOrigin: pivot }}>
       <defs>
         <clipPath id="map-clip"><rect width={w} height={h} rx={12 * u} /></clipPath>
       </defs>

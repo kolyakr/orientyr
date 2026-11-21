@@ -82,6 +82,12 @@ button:disabled { cursor: default; }
 /* hidden until the stage is measured and the camera is in place, then it comes in once */
 .map { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; opacity: 0; }
 .map[data-ready] { opacity: 1; animation: map-in 1.1s var(--out) backwards; }
+/* follow mode: the map leans back, as seen from a chase camera behind the drone; far ground fades into the scene */
+.map { transition: transform 1.1s var(--out); }
+.map[data-tilt] { transform: perspective(1200px) rotateX(54deg) scale(1.35); }
+.stage:has(.map[data-tilt])::after { content: ""; position: absolute; inset: -40px -40px auto; height: 38%; pointer-events: none;
+  background: linear-gradient(var(--scene) 12%, transparent); }
+@media (prefers-reduced-motion: reduce) { .map[data-tilt] { transform: none; } }
 .overlay { grid-area: 1 / 1; position: relative; z-index: 2; min-width: 0; min-height: 0; pointer-events: none; }
 .overlay > .glass { position: absolute; pointer-events: auto; }
 .dock { grid-area: 2 / 1; z-index: 2; }
