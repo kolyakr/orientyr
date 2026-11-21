@@ -84,8 +84,8 @@ export function listRuns(dir: string): string[] {
  * names listRuns found, so nothing outside the runs folder can be reached, however the name is spelled.
  * Without a name: the run of ORIENTYR_RUN, else the run called "fake", else the first one.
  */
-export function resolveRun(name: string | null | undefined, env: Env = process.env): { name: string | null; dir: string } {
-  const root = runsDir(env);
+export function resolveRun(name: string | null | undefined, env: Env = process.env, app: string = process.cwd()): { name: string | null; dir: string } {
+  const root = runsDir(env, app);
   const runs = listRuns(root);
   const have = runs.length ? `the runs there: ${runs.join(", ")}` : "there are no runs there (a run is a folder with a run.json)";
   if (name) {
@@ -120,14 +120,14 @@ export interface OpenRun {
 }
 
 /** Everything the page needs to show a run, or to say why it cannot: this never throws. */
-export function openRun(name: string | null | undefined, env: Env = process.env): OpenRun {
-  const runs = listRuns(runsDir(env));
+export function openRun(name: string | null | undefined, env: Env = process.env, app: string = process.cwd()): OpenRun {
+  const runs = listRuns(runsDir(env, app));
   let at: { name: string | null; dir: string | null } = { name: name || null, dir: null };
   try {
-    at = resolveRun(name, env);
+    at = resolveRun(name, env, app);
     const run = loadRun(at.dir!);
     if (run.records.length === 0) throw new RunFormatError(`run.jsonl in ${at.dir} has no records`);
-    const assets = assetUrls(at.dir!, run.info);
+    const assets = assetUrls(at.dir!, run.info, app);
     // static images are the host's files, not this server's: on a static host they are not on its disk to check
     const mapMissing = assets === null && !isFile(mapPath(at.dir!, run.info));
     return { ...at, runs, run, error: null, mapMissing, assets };
