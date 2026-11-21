@@ -8,8 +8,9 @@
  * keeps the drone in the middle of that free part.
  */
 import { useEffect, useMemo, useState } from "react";
+import type { Layers } from "@/lib/layers";
 import type { Run } from "@/lib/run";
-import { type Camera, type Rect, confidenceColor, courseOf, drawAngle, fitRoute, footprintSize, headingOf, inViewBox, niceStep, routeBox, sigmaEllipse, stateRuns, trail } from "@/lib/view";
+import { type Camera, type Rect, confidenceColor, courseOf, drawAngle, fitRoute, footprintSize, gpsOf, headingOf, inViewBox, niceStep, routeBox, sigmaEllipse, stateRuns, trail, truthOf, windowOf } from "@/lib/view";
 
 /** The stage as Console.tsx measures it, in CSS px counted from the stage cell's top-left corner. */
 export interface StageLayout {
@@ -23,6 +24,7 @@ const STAGE_RATIO = 1.36; // before the stage is measured: it is about this wide
 const INTRO_MS = 1500; // on load the flown route draws itself once, start to drone, in about this long
 const TAIL = 18; // the newest steps of the route are drawn wide and bright, like a comet's tail: the present dominates
 const ROTORS = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; // a quadcopter from above: the four arms of an X
+const NOTE = 14.2; // the size of the notes on the map, in screen units: 12 px on screen where a unit is smallest (0.85 px)
 
 const pts = (points: number[][]) => points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 const tenth = (v: number) => Math.round(v * 10) / 10;
@@ -41,13 +43,15 @@ function cornerTicks(poly: number[][], size: number): string {
   }).join(" ");
 }
 
-export function MapView({ run, frame, follow, playing, stepMs, layout }: {
+export function MapView({ run, frame, follow, playing, stepMs, layout, layers, mapUrl }: {
   run: Run;
   frame: number;
   follow: boolean;
   playing: boolean; // the flight is playing: the drone marker trembles like a hovering airframe
   stepMs: number; // how long one frame stays on screen: the camera and the drone glide for this long
   layout: StageLayout | null; // null until the stage is measured (the server's HTML, the first render)
+  layers: Layers; // what is drawn over the map (lib/layers.ts)
+  mapUrl: string; // the map image of this run
 }) {
   const [w, h] = run.info.map_size;
   const rec = run.records[frame];
@@ -72,14 +76,16 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
     : Math.max(w, h * STAGE_RATIO) / 1000;
   const labelEvery = niceStep(run.records.length, 10); // number about ten points: all of them would cover the route
   const segs = trail(run.records, frame);
-  const flown = run.records.slice(0, frame + 1);
+  // a frame without a position (before the first fix) has no place on the map: the route starts at the first one that has
+  const flown = useMemo(() => run.records.slice(0, frame + 1).filter((r) => r.located), [run, frame]);
   // the marker points the way the drone moved since the last point, so it turns around when the route doubles back;
   // before the first move it shows the camera's heading
   const heading = courseOf(run.records, frame) ?? headingOf(rec);
   const fix = rec.fix;
   const ellipse = sigmaEllipse(rec.cov);
-  const start = run.records[0];
-  const startOnRight = start.x > w * 0.9;
+  const start = flown[0]; // undefined until the drone is found
+  const startOnRight = start ? start.x > w * 0.9 : false;
+  const here = rec.located; // this frame has a position: the drone, its footprint and its uncertainty can be drawn
   const atEnd = frame === run.records.length - 1;
   const lost = rec.state === "LOST";
   // The marker turns along the shortest arc: the drawn angle follows the heading without ever wrapping at 360°.
@@ -97,7 +103,21 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
     return at % (dash[0] + dash[1]);
   });
   // START and FINISH: when the flight ends near its start, one label goes above its point and the other below
-  const startAbove = !atEnd || start.y <= rec.y;
+  const startAbove = !atEnd || !start || start.y <= rec.y;
+  // What the run carries besides the tracker's belief (`extra`): the true position of a synthetic flight, the GPS
+  // receiver's reading with the spoof detector's verdict, the window the next search is limited to.
+  const truth = layers.truth ? truthOf(rec) : null;
+  const truthRoute = useMemo(
+    () => (layers.truth ? run.records.slice(0, frame + 1).map(truthOf).filter((t) => t !== null).map((t) => [t.x, t.y]) : []),
+    [run, frame, layers.truth],
+  );
+  const truthGap = truth && here ? Math.hypot(truth.x - rec.x, truth.y - rec.y) : null;
+  const gps = layers.gps ? gpsOf(rec) : null;
+  const gpsAt = gps && gps.x !== null && gps.y !== null ? { x: gps.x, y: gps.y } : null;
+  // the GPS note stands on the far side of its mark from the drone, and clear of the drone when the two are close
+  const gpsSide = gpsAt && here && gpsAt.x < rec.x ? -1 : 1;
+  const gpsOff = gpsAt && here && Math.hypot(gpsAt.x - rec.x, gpsAt.y - rec.y) < 40 * u ? 30 : 14;
+  const win = layers.window ? windowOf(rec) : null;
   // The frame at which the current state began: a new state replays its one-shot animation (the lock-on ring).
   const runs = useMemo(() => stateRuns(run.records), [run]);
   const since = runs.find((r) => frame >= r.from && frame <= r.to)?.from ?? 0;
@@ -127,10 +147,21 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
         <clipPath id="map-clip"><rect width={w} height={h} rx={12 * u} /></clipPath>
       </defs>
       <g className="map-camera" style={{ transform, transition: glide ? `transform ${Math.round(Math.max(stepMs, 350))}ms cubic-bezier(.22, 1, .36, 1)` : "none" }}>
-        <image href="/api/map" width={w} height={h} preserveAspectRatio="none" clipPath="url(#map-clip)" />
+        <image href={mapUrl} width={w} height={h} preserveAspectRatio="none" clipPath="url(#map-clip)" />
         <rect width={w} height={h} rx={12 * u} className="map-dim" />
         <rect width={w} height={h} rx={12 * u} className="map-rim" strokeWidth={1 * u} />
 
+        {win && (
+          <g data-part="search-window" className="window">
+            <rect x={tenth(win.x)} y={tenth(win.y)} width={tenth(win.width)} height={tenth(win.height)} strokeWidth={1.3 * u}
+                  strokeDasharray={`${2 * u} ${5 * u}`} />
+            <text x={win.x + 6 * u} y={win.y - 7 * u} fontSize={NOTE * u} className="label">search window</text>
+          </g>
+        )}
+
+        {truthRoute.length > 1 && <polyline className="truth-route" points={pts(truthRoute)} strokeWidth={1.4 * u} />}
+
+        {layers.trail && (
         <g data-part="trail">
           {/* a dark casing under the coloured route, as one element: the three colours read on any terrain */}
           {flown.length > 1 && <polyline className="trail-casing" points={pts(flown.map((r) => [r.x, r.y]))} strokeWidth={5 * u} />}
@@ -146,23 +177,30 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
                     style={intro && i < introFrames ? { animationDelay: `${Math.round(500 + (i / introFrames) * INTRO_MS)}ms`, animationDuration: "160ms" } : undefined} />
             );
           })}
+        </g>
+        )}
+
+        {layers.points && (
+        <g data-part="points">
           {/* numbered points: white chips with dark numbers, readable on any terrain. The start and the finish have their own markers, and a chip never
               lies under the drone. */}
-          {flown.map((r, i) => i % labelEvery === 0 && i > 0 && !(atEnd && i === frame) && Math.hypot(r.x - rec.x, r.y - rec.y) > 26 * u && (
+          {flown.map((r) => r.idx % labelEvery === 0 && r !== start && !(atEnd && r === rec) && Math.hypot(r.x - rec.x, r.y - rec.y) > 26 * u && (
             <g key={r.idx} transform={`translate(${r.x} ${r.y})`} className="waypoint">
               <circle r={9.5 * u} className="point" strokeWidth={1.6 * u} />
               <text fontSize={8.6 * u} className="point-num" textAnchor="middle" dominantBaseline="central">{r.idx}</text>
             </g>
           ))}
           {/* the start: a ring. Near the right edge its label goes to the left, so the screen never clips it. */}
-          <g transform={`translate(${start.x} ${start.y})`} className="marker">
-            <circle r={5.4 * u} className="marker-case" strokeWidth={4.6 * u} />
-            <circle r={5.4 * u} className="marker-ring" strokeWidth={2.2 * u} />
-            <text x={(startOnRight ? -13 : 13) * u} y={(startAbove ? -9 : 17) * u} fontSize={10.5 * u}
-                  className="label" textAnchor={startOnRight ? "end" : "start"}>START</text>
-          </g>
+          {start && (
+            <g transform={`translate(${start.x} ${start.y})`} className="marker">
+              <circle r={5.4 * u} className="marker-case" strokeWidth={4.6 * u} />
+              <circle r={5.4 * u} className="marker-ring" strokeWidth={2.2 * u} />
+              <text x={(startOnRight ? -13 : 13) * u} y={(startAbove ? -9 : 17) * u} fontSize={10.5 * u}
+                    className="label" textAnchor={startOnRight ? "end" : "start"}>START</text>
+            </g>
+          )}
           {/* the finish: a double ring, with its label on the far side of the start's */}
-          {atEnd && (
+          {atEnd && here && (
             <g transform={`translate(${rec.x} ${rec.y})`} className="marker finish">
               <circle r={9 * u} className="marker-case" strokeWidth={3.6 * u} />
               <circle r={9 * u} className="marker-ring" strokeWidth={1.5 * u} />
@@ -173,8 +211,9 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
             </g>
           )}
         </g>
+        )}
 
-        {fix && !fix.accepted && (
+        {layers.footprint && fix && !fix.accepted && (
           <g data-part="rejected-fix" className="rejected">
             <polygon points={pts(fix.footprint)} strokeWidth={1.4 * u} strokeDasharray={`${7 * u} ${5 * u}`} />
             <text x={fix.x} y={fix.y} fontSize={10.5 * u} className="label" textAnchor="middle" dominantBaseline="central">
@@ -183,10 +222,41 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
           </g>
         )}
 
+        {/* the true position of a synthetic flight: a cross, and how far the tracker is from it */}
+        {truth && (
+          <g data-part="truth" className="truth" transform={`translate(${tenth(truth.x)} ${tenth(truth.y)})`}>
+            {[4.4, 1.7].map((width, pass) => (
+              <path key={pass} className={pass ? "truth-mark" : "truth-case"} strokeWidth={width * u}
+                    d={`M ${-7 * u} 0 H ${7 * u} M 0 ${-7 * u} V ${7 * u}`} />
+            ))}
+            <text y={42 * u} fontSize={NOTE * u} className="label" textAnchor="middle">
+              {truthGap === null ? "truth" : `truth · ${truthGap < 10 ? truthGap.toFixed(1) : Math.round(truthGap)} px off`}
+            </text>
+          </g>
+        )}
+
+        {/* what the GPS receiver says: a diamond in the colour of the spoof detector's verdict, tied to the camera's position */}
+        {gps && gpsAt && (
+          <g data-part="gps" data-gps={gps.state} className="gps">
+            {here && <line x1={rec.x} y1={rec.y} x2={gpsAt.x} y2={gpsAt.y} strokeWidth={1.3 * u} strokeDasharray={`${3 * u} ${4 * u}`} />}
+            <g transform={`translate(${tenth(gpsAt.x)} ${tenth(gpsAt.y)})`}>
+              {[4.6, 1.9].map((width, pass) => (
+                <path key={pass} className={pass ? "gps-mark" : "gps-case"} strokeWidth={width * u}
+                      d={`M 0 ${-7.5 * u} L ${7.5 * u} 0 L 0 ${7.5 * u} L ${-7.5 * u} 0 Z`} />
+              ))}
+              <text x={gpsSide * gpsOff * u} y={5 * u} fontSize={NOTE * u} className="label" textAnchor={gpsSide > 0 ? "start" : "end"}>
+                GPS {gps.state === "OK" ? "agrees" : gps.state === "SUSPECT" ? "suspect" : gps.state === "SPOOFED" ? "spoofed" : "unchecked"}
+                {gps.gapPx !== null && ` · ${Math.round(gps.gapPx)} px`}
+              </text>
+            </g>
+          </g>
+        )}
+
+        {here && (
         <g data-part="drone" data-state={rec.state} data-flying={playing || undefined} className="drone"
            style={{ ["--u" as string]: `${Math.round(u * 100) / 100}px`, transform: `translate(${tenth(rec.x)}px, ${tenth(rec.y)}px)`, transition: `transform ${Math.round(stepMs)}ms linear` }}>
           {/* what the camera sees: a light patch with viewfinder corners, and faint lines from the drone to them */}
-          {view && (
+          {view && layers.footprint && (
             <g className="view">
               <path className="view-cone" d={view.map(([x, y]) => `M 0 0 L ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ")} strokeWidth={0.9 * u} />
               <polygon data-part="footprint" className="footprint" points={pts(view)} strokeWidth={1.1 * u} />
@@ -194,8 +264,10 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
             </g>
           )}
           {/* 3σ ellipse: where the drone is with ~99 % probability; it swells while the camera is jammed */}
-          <ellipse rx={tenth(Math.max(ellipse.rx, 21 * u))} ry={tenth(Math.max(ellipse.ry, 21 * u))}
-                   transform={`rotate(${drawAngle(ellipse.angle)})`} className="sigma" strokeWidth={1.2 * u} />
+          {layers.sigma && (
+            <ellipse data-part="sigma" rx={tenth(Math.max(ellipse.rx, 21 * u))} ry={tenth(Math.max(ellipse.ry, 21 * u))}
+                     transform={`rotate(${drawAngle(ellipse.angle)})`} className="sigma" strokeWidth={1.2 * u} />
+          )}
           {/* decoration only: a sonar ring while tracking, a turning search ring while relocalizing */}
           <circle r={44 * u} className="sonar" strokeWidth={1.4 * u} />
           <circle r={44 * u} className="sonar late" strokeWidth={1.4 * u} />
@@ -228,6 +300,7 @@ export function MapView({ run, frame, follow, playing, stepMs, layout }: {
             </g>
           </g>
         </g>
+        )}
       </g>
     </svg>
   );

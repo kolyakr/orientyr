@@ -1,21 +1,23 @@
 "use client";
 
 /**
- * Mission control, as a mock-up: a recorded run (run.json + run.jsonl + frames/) replayed on the map.
+ * Mission control, replaying a recorded run (run.json + run.jsonl + frames/) on the map.
  * The map is the scene; everything else lies over it as dark glass panels: the brand and the camera
- * on the left, the timeline dock under the map, and on the right what the tracker knows at this frame.
- * Playback works; the mission controls are drawn but inactive until the live engine exists (M7).
+ * on the left, the run picker and the layers at the top right, the timeline dock under the map, and on the
+ * right what the tracker knows at this frame. Play, pause, scrub, speed and layers work; the mission controls
+ * are drawn but inactive until the live engine exists (M7-04, M7-05).
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { DEFAULT_LAYERS, LAYERS, type LayerId, type Layers, availableLayers, consoleUrl } from "@/lib/layers";
+import { SPEEDS, frameAt, stepMs as frameMs, keyAction, nextSpeed } from "@/lib/playback";
 import type { Run, RunRecord } from "@/lib/run";
-import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, sigmaPx, stateRuns } from "@/lib/view";
+import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
 import { Minimap } from "./Minimap";
 
-const SPEEDS = [1, 2, 4, 8];
 const MAX_DOTS = 40;
 const SPARK = 48; // frames in the matched-pairs strip chart of the HUD
-const frameUrl = (rec: RunRecord) => `/api/frame?src=${encodeURIComponent(rec.source)}`;
+const NO_RUNS: string[] = [];
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
@@ -53,17 +55,38 @@ function Ticker({ value }: { value: string }) {
   );
 }
 
-export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: number }) {
+export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS, initialLayers = DEFAULT_LAYERS, mapMissing = false }: {
+  run: Run;
+  initialFrame?: number;
+  runName?: string | null;  // the run's name in the runs folder: it goes into the map's and the frames' URLs; null = the default run
+  runs?: string[];          // the runs the picker offers
+  initialLayers?: Layers;   // from the URL
+  mapMissing?: boolean;     // the server did not find the map image
+}) {
   const n = run.records.length;
   const last = n - 1;
   const [frame, setFrame] = useState(Math.min(Math.max(initialFrame, 0), last));
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(2);
+  const [speed, setSpeed] = useState<number>(2);
   const [follow, setFollow] = useState(false);
+  const [layers, setLayers] = useState(initialLayers);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
 
   const rec = run.records[frame];
   const fix = rec.fix;
-  const stepMs = 1000 / ((run.info.fps ?? 1) * speed);
+  const stepMs = frameMs(run.info.fps, speed);
+  // the files of this run: the map and the camera frames
+  const runQuery = runName ? `run=${encodeURIComponent(runName)}` : "";
+  const mapUrl = runQuery ? `/api/map?${runQuery}` : "/api/map";
+  const frameUrl = useCallback((r: RunRecord) => `/api/frame?${runQuery && `${runQuery}&`}src=${encodeURIComponent(r.source)}`, [runQuery]);
+  // a layer is drawn when the run has it and it is switched on
+  const offered = useMemo(() => availableLayers(run.records), [run]);
+  const shown = useMemo(
+    () => Object.fromEntries(LAYERS.map((l) => [l.id, offered.includes(l.id) && layers[l.id]])) as Layers,
+    [offered, layers],
+  );
+  const toggleLayer = useCallback((id: LayerId) => setLayers((old) => ({ ...old, [id]: !old[id] })), []);
   const log = useMemo(() => events(run.records), [run]);
   const maxPairs = useMemo(() => Math.max(1, ...run.records.map((r) => r.fix?.inliers ?? 0)), [run]);
   const lastEvent = log.findLast((e) => e.frame <= frame);
@@ -101,19 +124,101 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
   useEffect(() => {
     // fetch the next camera frame ahead, so the inset never flashes empty during playback
-    if (frame < last) new Image().src = frameUrl(run.records[frame + 1]);
-  }, [frame, last, run]);
+    if (frame < last && shown.camera) new Image().src = frameUrl(run.records[frame + 1]);
+  }, [frame, last, run, frameUrl, shown.camera]);
+
+  // A camera frame that cannot be loaded (the file is gone, or `source` is not an image): a placard, not a broken picture.
+  const src = frameUrl(rec);
+  const camera = useRef<HTMLImageElement>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  useEffect(() => {
+    // an image that failed before React attached its handler (the server's HTML) reports nothing: ask it
+    const img = camera.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(src);
+  }, [src, shown.camera]);
+
+  // Scrubbing: press on the timeline and drag. The frame under the pointer shows at once; a flight that was
+  // playing goes on from where the pointer lets go.
+  const chart = useRef<HTMLDivElement>(null);
+  const resume = useRef(false);
+  const scrubTo = (clientX: number) => {
+    const box = chart.current?.getBoundingClientRect();
+    if (box) setFrame(frameAt(clientX, box.left, box.width, n));
+  };
+  const scrubStart = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); // no text selection while dragging
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId); // the drag goes on outside the timeline
+    } catch { /* a pointer that is already gone */ }
+    resume.current = playing;
+    setPlaying(false);
+    setScrubbing(true);
+    scrubTo(e.clientX);
+  };
+  const scrubEnd = () => {
+    if (!scrubbing) return;
+    setScrubbing(false);
+    if (resume.current && frame < last) setPlaying(true);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Space") { e.preventDefault(); toggle(); }
-      else if (e.code === "ArrowRight") step(1);
-      else if (e.code === "ArrowLeft") step(-1);
-      else if (e.code === "KeyF") setFollow((v) => !v);
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      const action = keyAction({
+        code: e.code, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey,
+        tag: el?.tagName, inputType: el instanceof HTMLInputElement ? el.type : undefined,
+      });
+      if (!action || (action.kind === "close" && !layersOpen)) return;
+      e.preventDefault(); // ours: the page does not scroll, the focused slider does not move a second time
+      switch (action.kind) {
+        case "toggle": toggle(); break;
+        case "step": step(action.by); break;
+        case "jump": jump(action.to === "start" ? 0 : last); break;
+        case "speed": setSpeed((s) => nextSpeed(s, action.by)); break;
+        case "follow": setFollow((v) => !v); break;
+        case "layers": setLayersOpen((v) => !v); break;
+        case "close": setLayersOpen(false); break;
+        case "layer": {
+          const layer = LAYERS[action.index];
+          if (layer && offered.includes(layer.id)) toggleLayer(layer.id);
+          break;
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, step]);
+  }, [toggle, step, jump, last, layersOpen, offered, toggleLayer]);
+
+  // the list of layers closes on a press anywhere outside it
+  const layersBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!layersOpen) return;
+    const onDown = (e: globalThis.PointerEvent) => {
+      if (e.target instanceof Node && !layersBox.current?.contains(e.target)) setLayersOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [layersOpen]);
+
+  // The address follows the view: a reload or a shared link opens the same run, frame and layers. Written when the
+  // flight rests, not on every frame of the playback (browsers limit how often the address may change).
+  useEffect(() => {
+    if (playing || scrubbing) return;
+    const id = setTimeout(() => {
+      try {
+        window.history.replaceState(window.history.state, "", consoleUrl({ run: runName, frame, layers }));
+      } catch { /* the address is a convenience: without it the console works as before */ }
+    }, 300);
+    return () => clearTimeout(id);
+  }, [playing, scrubbing, frame, layers, runName]);
+
+  /** Open another run, with the same layers. A full load: the page reads the run on the server. */
+  const openRun = (name: string) => {
+    window.location.assign(consoleUrl({ run: name || null, frame: 0, layers }));
+  };
+  // the picker lists the runs of the runs folder; the open run is in it even if it is not one of them
+  const runOptions = runName === null || !runs.includes(runName) ? [runName ?? "", ...runs] : runs;
 
   const heading = headingOf(rec);
   const trust = Math.round(confidence(rec) * 100);
@@ -138,6 +243,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   const locH = Math.round((mh / mw) * 1000) / 10;
   const locX = Math.round(Math.min(Math.max(rec.x / mw, 0), 1) * 1000) / 10;
   const locY = Math.round(Math.min(Math.max(rec.y / mh, 0), 1) * locH * 10) / 10;
+  const search = searchOf(rec);
   const sigmaWord = sigma <= 3 ? "very precise" : sigma <= 15 ? "precise" : sigma <= 40 ? "drifting" : "wide";
   // before the first step and after the last one nothing is being tracked: the lamp rests and says so
   const idle = playing ? null : frame === 0 ? "Ready" : frame === last ? "Flight complete" : null;
@@ -162,11 +268,11 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
     const PAD = 12;
     const measure = () => {
       const width = cell.offsetWidth, height = cell.offsetHeight;
-      let left = 0, top = 0;   // the left column (brand, camera) and the row of the follow button
+      let left = 0, top = 0;   // the camera inset on the left, and the top row: the brand and the tools
       for (const el of Array.from(cell.children) as HTMLElement[]) {
         if (el.classList.contains("minimap")) continue; // it sits in the bottom right corner, the route may pass under it
-        if (el.classList.contains("follow")) top = el.offsetTop + el.offsetHeight;
-        else left = Math.max(left, el.offsetLeft + el.offsetWidth);
+        if (el.classList.contains("camera")) left = el.offsetLeft + el.offsetWidth;
+        else top = Math.max(top, el.offsetTop + el.offsetHeight);
       }
       if (left > width * 0.4) left = 0; // a very narrow stage: the column would take too much, the route may pass under it
       const x = left + PAD, y = top + PAD;
@@ -183,7 +289,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
     watch.observe(cell);
     for (const el of Array.from(cell.children)) watch.observe(el);
     return () => watch.disconnect();
-  }, []);
+  }, [shown.camera]); // the camera inset comes and goes with its layer: measure again
   /** The light under the pointer: each glass panel gets the pointer's place in its own box, CSS draws the glow. */
   const light = (e: PointerEvent<HTMLElement>) => {
     const glass = (e.target as Element).closest<HTMLElement>(".glass");
@@ -195,9 +301,16 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
   return (
     <main ref={root} className="console" data-state={rec.state} data-follow={follow || undefined} data-playing={playing || undefined}
-          onPointerMove={light}>
+          data-scrubbing={scrubbing || undefined} onPointerMove={light}>
       <div className="stage">
-        <MapView run={run} frame={frame} follow={follow} playing={playing} stepMs={playing ? stepMs : 250} layout={layout} />
+        <MapView run={run} frame={frame} follow={follow} playing={playing} stepMs={playing ? stepMs : scrubbing ? 90 : 250} layout={layout}
+                 layers={shown} mapUrl={mapUrl} />
+        {mapMissing && (
+          <p data-part="map-missing" className="stage-note">
+            <strong>Map image not found</strong>
+            <span>run.json points at <code>{run.info.map}</code>. The route is drawn without it.</span>
+          </p>
+        )}
       </div>
       {/* the red breath of a lost signal, around the map and under the panels */}
       <div className="alarm" aria-hidden="true" />
@@ -219,26 +332,62 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           <h1>Orientyr</h1>
         </header>
 
-        <button type="button" className="follow glass pill press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
-          {follow ? "Show whole map" : "Follow drone"}
-        </button>
+        {/* the tools of the viewer, in one row at the top right: which run, which layers, which view */}
+        <div className="tools">
+          {runs.length > 0 && (
+            <label data-part="run-picker" className="runs glass pill">
+              <span>Run</span>
+              <select value={runName ?? ""} onChange={(e) => openRun(e.target.value)} aria-label="Run to replay">
+                {runOptions.map((name) => <option key={name} value={name}>{name || run.info.generator || "this run"}</option>)}
+              </select>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+            </label>
+          )}
+
+          <div ref={layersBox} data-part="layers" className="layers">
+            <button type="button" className="glass pill press" aria-expanded={layersOpen} aria-controls="layers-list"
+                    onClick={() => setLayersOpen((v) => !v)}>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 2 5.2 8 8.4l6-3.2Z" /><path d="m2 8.2 6 3.2 6-3.2M2 11.2l6 3.2 6-3.2" /></svg>
+              Layers
+            </button>
+            {/* always in the page, shown when open: each row is a switch, and its mark is the legend of that layer */}
+            <ul id="layers-list" className="glass" hidden={!layersOpen}>
+              {LAYERS.map((l, i) => offered.includes(l.id) && (
+                <li key={l.id}>
+                  <button type="button" data-layer={l.id} aria-pressed={layers[l.id]} onClick={() => toggleLayer(l.id)}>
+                    <i className={`mark mark-${l.id}`} aria-hidden="true" />
+                    <span>{l.label}<small>{l.note}</small></span>
+                    <kbd>{i + 1}</kbd>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <button type="button" className="follow glass pill press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
+            {follow ? "Show whole map" : "Follow drone"}
+          </button>
+        </div>
 
         {/* in follow mode the big map shows only the ground near the drone: the minimap keeps the whole route in sight */}
-        {follow && <Minimap run={run} frame={frame} />}
+        {follow && <Minimap run={run} frame={frame} mapUrl={mapUrl} />}
 
-        <section data-part="camera" className="camera glass" data-state={rec.state}>
-          <div className="camera-view" style={{ aspectRatio: `${fw} / ${fh}` }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- a local run file, not a site asset */}
-            <img src={frameUrl(rec)} alt={`Drone camera, frame ${rec.idx}`} />
-            {matchedPoints(rec).map(([x, y], i) => <i key={i} style={{ left: `${x * 100}%`, top: `${y * 100}%` }} />)}
-            <span className="noise" aria-hidden="true" />
-            <span className="corners" aria-hidden="true" />
-            {!fix && <b className="no-signal">No signal</b>}
-          </div>
-          <h2>Camera</h2>
-          <p>{!fix ? "No picture" : fix.accepted ? `${fix.inliers} points matched` : "Match rejected"}</p>
-        </section>
+        {shown.camera && (
+          <section data-part="camera" className="camera glass" data-state={rec.state}>
+            <div className="camera-view" style={{ aspectRatio: `${fw} / ${fh}` }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- a local run file, not a site asset */}
+              <img ref={camera} src={src} alt={`Drone camera, frame ${rec.idx}`} hidden={failed === src}
+                   onError={() => setFailed(src)} />
+              {failed !== src && matchedPoints(rec).map(([x, y], i) => <i key={i} style={{ left: `${x * 100}%`, top: `${y * 100}%` }} />)}
+              <span className="noise" aria-hidden="true" />
+              <span className="corners" aria-hidden="true" />
+              {failed === src ? <b className="no-image">No image for this frame</b> : !fix && <b className="no-signal">No signal</b>}
+            </div>
+            <h2>Camera</h2>
+            <p>{!fix ? "No picture" : fix.accepted ? `${fix.inliers} points matched` : "Match rejected"}</p>
+          </section>
+        )}
       </div>
 
       <section data-part="timeline" className="dock glass">
@@ -261,7 +410,8 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
         {/* one bar per frame: its height is how many point pairs matched, its colour is the trail's */}
         <div className="scrub">
-          <div className="chart">
+          <div ref={chart} className="chart" onPointerDown={scrubStart} onPointerMove={(e) => scrubbing && scrubTo(e.clientX)}
+               onPointerUp={scrubEnd} onPointerCancel={scrubEnd} onLostPointerCapture={scrubEnd}>
             {/* the part not flown yet is the same bars, paler: no dark plate over the chart */}
             <div className="bars" data-dense={n > 120 || undefined} style={{ "--played": `${progress}%` } as CSSProperties} aria-hidden="true">{bars}</div>
             <div className="bands" aria-hidden="true">
@@ -270,7 +420,8 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
               ))}
             </div>
             <span className="now" style={{ transform: `translateX(${progress}%)` }} aria-hidden="true"><i /></span>
-            <input type="range" min={0} max={last} value={frame} aria-label="Frame"
+            {/* the same timeline for the keyboard and for screen readers; the pointer scrubs on the chart itself */}
+            <input type="range" min={0} max={last} value={frame} aria-label="Frame" aria-valuetext={`Frame ${rec.idx}, ${STATE_LABEL[rec.state]}`}
                    onChange={(e) => jump(Number(e.target.value))} />
           </div>
           <div className="axis" aria-hidden="true">
@@ -279,10 +430,10 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           </div>
         </div>
 
-        <div className="speeds" role="group" aria-label="Playback speed" style={{ ["--i" as string]: SPEEDS.indexOf(speed) }}>
+        <div className="speeds" role="group" aria-label="Playback speed" style={{ ["--i" as string]: SPEEDS.indexOf(speed as (typeof SPEEDS)[number]) }}>
           <i className="thumb" aria-hidden="true" />
           {SPEEDS.map((s) => (
-            <button key={s} type="button" aria-pressed={s === speed} onClick={() => setSpeed(s)}>{s}×</button>
+            <button key={s} type="button" aria-pressed={s === speed} onClick={() => setSpeed(s)}>{`${s}×`}</button>
           ))}
         </div>
       </section>
@@ -333,16 +484,18 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
               <svg className="locator" viewBox={`0 0 100 ${locH}`} aria-hidden="true">
                 <rect width="100" height={locH} className="loc-plate" />
                 <path className="loc-grid" d={`M33.3 0V${locH}M66.7 0V${locH}M0 ${locH / 3}H100M0 ${(locH * 2) / 3}H100`} />
-                <g className="loc-at" style={{ transform: `translate(${locX}px, ${locY}px)` }}>
-                  <path className="loc-cross" d="M-15 0h-200M15 0h200M0 -15v-200M0 15v200" />
-                  <circle r="15" className="loc-ping" />
-                  <circle r="8" className="loc-dot" />
-                </g>
+                {rec.located && (
+                  <g className="loc-at" style={{ transform: `translate(${locX}px, ${locY}px)` }}>
+                    <path className="loc-cross" d="M-15 0h-200M15 0h200M0 -15v-200M0 15v200" />
+                    <circle r="15" className="loc-ping" />
+                    <circle r="8" className="loc-dot" />
+                  </g>
+                )}
               </svg>
               <div className="g-pos">
                 <dt>Position</dt>
-                <dd><i>x</i><Ticker value={String(Math.round(rec.x))} /></dd>
-                <dd><i>y</i><Ticker value={String(Math.round(rec.y))} /></dd>
+                <dd><i>x</i><Ticker value={rec.located ? String(Math.round(rec.x)) : "–"} /></dd>
+                <dd><i>y</i><Ticker value={rec.located ? String(Math.round(rec.y)) : "–"} /></dd>
                 <dd className="sub">map px</dd>
               </div>
             </div>
@@ -371,8 +524,8 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <div className="g-row">
               <div>
                 <dt>Uncertainty</dt>
-                <dd><Ticker value={`± ${Math.round(sigma)} px`} /></dd>
-                <dd className="sub"><b>{sigmaWord}</b> · search: {String(rec.extra.search ?? "none")}</dd>
+                <dd><Ticker value={rec.located ? `± ${Math.round(sigma)} px` : "–"} /></dd>
+                <dd className="sub"><b>{rec.located ? sigmaWord : "No position yet"}</b> · search: {search ?? "none"}</dd>
               </div>
               {/* the same blue area as on the map, in a sight: it swells while the camera is jammed */}
               <svg className="sight" viewBox="-28 -28 56 56" aria-hidden="true">
@@ -386,7 +539,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
                 <circle r="9" className="sight-ring" /><circle r="18" className="sight-ring" /><circle r="26.5" className="sight-ring" />
                 <path className="sight-cross" d="M0 -27.5v6M0 21.5v6M-27.5 0h6M21.5 0h6" />
                 {/* the area itself: its edge turns slowly, and a ring runs from the drone out to the edge */}
-                <g className="sight-zone" style={{ transform: `scale(${ringScale})` }}>
+                <g className="sight-zone" style={{ transform: `scale(${rec.located ? ringScale : 1})` }}>
                   <circle r="26" className="sight-area" fill="url(#sight-fill)" />
                   <circle r="26" className="sight-orbit" />
                   <circle r="26" className="sight-probe" />
@@ -427,10 +580,12 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         </section>
 
         <footer className="meta">
-          <p className="run" title={`${run.info.generator ?? "run"} · ${n} frames · map ${mw} × ${mh} px`}>
-            <span>{run.info.generator ?? "run"}</span><span>{n} frames</span>
+          <p className="run" title={`${runName ?? "run"} · ${run.info.generator || "run"} · ${n} frames · map ${mw} × ${mh} px`}>
+            <span>{run.info.generator || "run"}</span><span>{n} frames</span>
           </p>
-          <p className="keys"><span><kbd>Space</kbd>play</span><span><kbd>←</kbd><kbd>→</kbd>step</span><span><kbd>F</kbd>follow</span></p>
+          <p className="keys" title="Shift + arrows: 10 frames · Home / End: first / last frame · , and . : slower / faster · 1 to 8: one layer">
+            <span><kbd>Space</kbd>play</span><span><kbd>←</kbd><kbd>→</kbd>step</span><span><kbd>F</kbd>follow</span><span><kbd>L</kbd>layers</span>
+          </p>
           {/* the legend: what the colours and shapes on the map mean. Here, off the map, it does not compete with the route. */}
           <ul className="legend" aria-label="Map legend">
             <li><i style={{ background: confidenceColor(1) }} />sure</li>

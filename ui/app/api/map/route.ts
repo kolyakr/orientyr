@@ -1,18 +1,19 @@
-/** The map image of the current run, streamed from where run.json says it is. */
+/** The map image of a run, streamed from where its run.json says it is: /api/map?run=<name> (no name: the default run). */
 import { createReadStream, statSync } from "node:fs";
 import { Readable } from "node:stream";
-import { loadRun, mapPath, runDir } from "@/lib/run-server";
+import { loadRunInfo, mapPath, resolveRun } from "@/lib/run-server";
 import { contentType } from "@/lib/files";
 
-export const dynamic = "force-dynamic"; // the run folder is chosen at start-up, not at build time
+export const dynamic = "force-dynamic"; // the run is chosen per request, not at build time
 
-export function GET(): Response {
+export function GET(request: Request): Response {
   try {
-    const dir = runDir();
-    const file = mapPath(dir, loadRun(dir).info);
-    const { size } = statSync(file);
+    const { dir } = resolveRun(new URL(request.url).searchParams.get("run")); // only a listed run: see resolveRun
+    const file = mapPath(dir, loadRunInfo(dir));
+    const stat = statSync(file);
+    if (!stat.isFile()) throw new Error(`${file} is not a file`);
     return new Response(Readable.toWeb(createReadStream(file)) as ReadableStream, {
-      headers: { "content-type": contentType(file), "content-length": String(size), "cache-control": "no-cache" },
+      headers: { "content-type": contentType(file), "content-length": String(stat.size), "cache-control": "no-cache" },
     });
   } catch (e) {
     return new Response(`map not available: ${(e as Error).message}`, { status: 404 });

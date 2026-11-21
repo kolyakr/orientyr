@@ -114,7 +114,7 @@ describe("timeline", () => {
  * a 1512 px wide window, panels on the left and on the right, the dock under the map.
  */
 describe("camera", () => {
-  const at = (x: number, y: number) => ({ x, y, fix: null }) as unknown as RunRecord;
+  const at = (x: number, y: number) => ({ x, y, fix: null, located: true }) as unknown as RunRecord;
   const view: Rect = { x: -12, y: -12, width: 1512, height: 945 };   // the window, seen from the stage's corner
   const free: Rect = { x: 248, y: 50, width: 880, height: 780 };     // the stage without the panels over it
   const EPS = 1e-6; // floating point only: the camera is exact arithmetic

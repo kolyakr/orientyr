@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={geist.variable}>
-      <body>{children}</body>
+      {/* Browser extensions (Grammarly and the like) add attributes to <body> before React starts: not a mismatch of ours. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
