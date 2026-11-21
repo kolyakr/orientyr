@@ -66,7 +66,7 @@ import numpy as np
 from dronenav.camera import Camera
 from dronenav.geometry import GeometryConfig, pose_from_homography
 from dronenav.io import FolderSource, _is_rate, load_map
-from dronenav.matching import RootSiftMatcher, XFeatMatcher
+from dronenav.matching import LightGlueMatcher, RootSiftMatcher, XFeatMatcher
 from dronenav.pose6dof import Pose6DoF, solve_planar_pose
 from dronenav.search import Searcher, SearchMode, prediction_window
 from dronenav.sim.chaos import ChaosSource, Jam
@@ -104,6 +104,9 @@ MATCHERS = {
     "sift": (RootSiftMatcher.backend, lambda map_img, cache_dir, device: RootSiftMatcher(map_img, cache_dir=cache_dir)),
     "xfeat": (XFeatMatcher.backend,
               lambda map_img, cache_dir, device: XFeatMatcher(map_img, cache_dir=cache_dir, device=device)),
+    # LightGlue (M4-02): DISK features, the accurate path for hard frames (an old map, the task's coarse one)
+    "lightglue": (LightGlueMatcher.backend,
+                  lambda map_img, cache_dir, device: LightGlueMatcher(map_img, cache_dir=cache_dir, device=device)),
 }
 TRACKERS = ("kalman", "none")    # --tracker: the M5 tracker, or M1's interim states
 VIDEO_RATE = 3.0                 # frames/s taken from a video by default (the spec asks for 2-5)
