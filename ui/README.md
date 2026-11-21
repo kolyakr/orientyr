@@ -73,6 +73,7 @@ first record the page says it is waiting and asks again by itself.
 - **Live** (next to the time): lit while the view follows the flight. Stepping, scrubbing or `Space` holds a frame
   to look back while the flight goes on; press Live to return. A replay that catches up with the flight goes on
   with it. When the flight ends the page becomes an ordinary replay.
+- **Camera size**: drag the corner of the camera panel to make it bigger (double-click: the default size). Kept per browser; works on a replay too.
 - **Jam camera** (Mission controls): the frames reach the engine as noise until "Stop jamming". The press is written
   to the run's `control.json`, which the engine reads before every frame.
 - **Spoof GPS**: the simulated GPS receiver starts to walk away from the truth. The **GPS check** panel (under the
