@@ -33,7 +33,8 @@ FRAME = (480, 360)
 def _fix(x, y, footprint=SQUARE, idx=0, accepted=True) -> Fix:
     fp = np.asarray(footprint, float) + (x, y)
     return Fix(idx=idx, H=np.eye(3), x=x, y=y, heading_deg=0.0, scale=1.0, footprint=fp, inliers=100,
-               inlier_ratio=0.5, reproj_px=1.0, accepted=accepted)
+               inlier_ratio=0.5, reproj_px=1.0, accepted=accepted,
+               reject_reason=None if accepted else "too few inliers")
 
 
 # --- the window ------------------------------------------------------------------------------------------------
