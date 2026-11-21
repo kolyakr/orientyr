@@ -7,8 +7,9 @@ and localizes the 50 task frames and the mild 2025 Irpin keyframes."
 So:
 - the shared contract: tests/test_matcher_contract.py runs the "lightglue" entry (when the weights are on disk);
 - DISK and LightGlue are not rotation-invariant (a frame turned 180° from the map gets ~15 matches instead of
-  ~400), so the matcher tries the frame at quarter turns and maps the winner's points back: frames localize at
-  any heading. The quarter-turn arithmetic is checked exactly, without weights;
+  ~400), so the matcher tries the frame turned in 45° steps and maps the winner's points back: frames localize
+  at any heading. Quarter turns alone leave a frame up to 45° off, where task crops fail (measured: ~300 inliers
+  aligned, often under 10 at 45°). The turn arithmetic is checked exactly, without weights;
 - the device: picked like every torch model here (dronenav.device), or forced;
 - the keypoint budget bounds the frame's keypoints (and so the matches);
 - map features: extracted once, cached under a content key, and read from a pack folder when one holds them
@@ -23,6 +24,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 from tests.synth import make_h, make_map, render_frame
@@ -32,6 +34,8 @@ from dronenav.matching.lightglue import (
     LightGlueConfig,
     LightGlueMatcher,
     quarter_turn_back,
+    turn_back,
+    turn_image,
     weights_available,
 )
 from dronenav.search import Searcher
@@ -60,6 +64,32 @@ def test_quarter_turn_back_undoes_np_rot90(q):
     np.testing.assert_array_equal(back, expect)
 
 
+@pytest.mark.parametrize("deg", [45.0, 135.0, -45.0, 30.0])
+def test_turn_back_undoes_any_turn(deg):
+    """turn_image turns a picture by any angle onto a canvas that holds all of it; turn_back sends points of the
+    turned picture to the original. A point and its turned image must show the same pixel."""
+    rng = np.random.default_rng(0)
+    img = cv2.GaussianBlur(rng.integers(0, 255, (60, 90), dtype=np.uint8), (0, 0), 3)
+    turned, A = turn_image(img, deg)
+    pts = np.array([[45.0, 30.0], [20.0, 10.0], [70.0, 50.0]])
+    there = (A[:, :2] @ pts.T).T + A[:, 2]                         # original -> turned
+    assert (there >= 0).all() and (there[:, 0] < turned.shape[1]).all() and (there[:, 1] < turned.shape[0]).all()
+    np.testing.assert_allclose(turn_back(there, A), pts, atol=1e-9)
+    # the same content: bilinear values at the turned points match the original pixels to a few gray levels
+    vals = [cv2.getRectSubPix(turned, (1, 1), tuple(p))[0, 0] for p in there.astype(np.float32)]
+    np.testing.assert_allclose(vals, [img[int(y), int(x)] for x, y in pts], atol=6)
+
+
+def test_quarter_turns_are_exact():
+    """Multiples of 90° are np.rot90: no resampling, and turn_back agrees with quarter_turn_back."""
+    img = np.arange(35, dtype=np.uint8).reshape(5, 7)
+    for q in range(4):
+        turned, A = turn_image(img, 90.0 * q)
+        np.testing.assert_array_equal(turned, np.rot90(img, q))
+        pts = np.array([[0.0, 0.0], [3.0, 1.0], [turned.shape[1] - 1.0, turned.shape[0] - 1.0]])
+        np.testing.assert_allclose(turn_back(pts, A), quarter_turn_back(pts, q, (7, 5)), atol=1e-12)
+
+
 def test_quarter_turn_back_works_between_pixels():
     """Sub-pixel points move rigidly too: the centre of a 7 x 5 image stays its centre under every turn."""
     for q in range(4):
@@ -72,7 +102,7 @@ def test_quarter_turn_back_works_between_pixels():
 
 @pytest.mark.parametrize("bad", [
     {"features": "orb"}, {"max_keypoints": 0}, {"map_keypoints": 0}, {"tile_px": 16},
-    {"turns": 0}, {"turns": 5}, {"window_keypoints": 0},
+    {"turns": 0}, {"turns": 3}, {"turns": 5}, {"turns": 16}, {"window_keypoints": 0},
 ])
 def test_config_is_checked(bad):
     with pytest.raises(ValueError):
@@ -93,7 +123,8 @@ def test_the_device_is_picked_and_can_be_forced():
 
 
 @needs_weights
-@pytest.mark.parametrize("heading", [0.0, 90.0, 150.0, 200.0, 290.0])
+# 45°, 135° and 315° lie halfway between quarter turns: the hardest headings for quarter turns alone
+@pytest.mark.parametrize("heading", [0.0, 45.0, 90.0, 135.0, 150.0, 200.0, 290.0, 315.0])
 def test_a_frame_localizes_at_any_heading(heading, tmp_path):
     """Without the quarter turns, a frame turned 150° or 200° from the map finds next to nothing."""
     cx, cy = 600.0, 430.0
@@ -207,3 +238,10 @@ def test_the_pipeline_offers_it():
     from dronenav.pipeline import MATCHERS
 
     assert MATCHERS["lightglue"][0] == LightGlueMatcher.backend == "lightglue"
+
+
+def test_the_pipeline_hands_it_the_device():
+    """`run.py --device cpu` reaches the matcher (constructing it loads no weights: no network needed)."""
+    from dronenav.pipeline import MATCHERS
+
+    assert MATCHERS["lightglue"][1](MAP, None, "cpu").device == "cpu"
