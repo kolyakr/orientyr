@@ -422,3 +422,43 @@ sent over UDP to a SITL simulator (`--udp 127.0.0.1:14550`). See [mavlink.py](sr
   right position, accuracy and time ([tests/test_mavlink.py](tests/test_mavlink.py)).
 - **What isn't:** no autopilot, simulated or real, has flown on these messages. The log opens with a STATUSTEXT
   saying so: "orientyr GPS_INPUT stub, not flight-tested".
+
+### HUD video (M7-02)
+
+`scripts/render_video.py` turns a run folder into the video a judge watches once: no narration is needed to follow
+it. The screen has three parts, the same as the web console.
+
+- **Stage**: the map under a camera that follows the drone. Its path is smoothed with a 1.6 s bell-shaped window,
+  so a relocalisation is a glide and not a cut, and it is clamped to the map: the stage never shows anything but
+  map. On it are the trail (green: sure fix, yellow: weak fix, red dashes: no fix, dead reckoning), the footprint of
+  the accepted fix, the 3-sigma ellipse of the filter's covariance, and a caption for every state change
+  ("Signal lost / frame 4560 · camera jammed · dead reckoning"). While the tracker is LOST the edges of the stage
+  turn red and the drone becomes a hollow outline; amber while it is RELOCALIZING.
+- **Side panel**: the frame the drone saw, tied to its footprint by the two outer lines of their common convex
+  hull. Hull edges cannot cross and never cut through the footprint, whatever the heading. Below it are the state
+  lamp, confidence, matched points, the 1-sigma uncertainty in px with a word, the heading with a compass, and the
+  place on the whole map.
+- **Dock**: flight time and a timeline of the run (matched points per frame, coloured by confidence, over the
+  tracker states), bright up to now.
+
+**Match lines are real or absent.** `scripts/run.py` now stores a sample of 24 inlier pairs per fix in the record
+(`extra["matches"] = {"frame": [...], "map": [...]}`, frame px and map px), spread evenly over the inliers. The
+video draws exactly these, from their place in the camera picture to their place on the map. A run folder without
+them (an older run, `fake_run.py`) gets the projection only.
+
+**The jam is real too.** `run.py --jam START:LENGTH` replaces the frames of that stretch of the flight with noise
+before they reach the engine and saves what the engine saw in `frames/`. Nothing in the telemetry is edited: the
+tracker loses the fix, dead-reckons, and relocalizes on its own.
+
+```bash
+python scripts/run.py --map data/irpin/maps/irpin_2022.png --frames data/irpin/flights/mild/2022/frames \
+    --out outputs/jam --jam 150:30
+python scripts/render_video.py --run outputs/jam --out outputs/demo --speed 6 --size 1920x1080
+```
+
+On the Irpin "mild 2022" flight (442 frames) with a 30 s jam, 412 frames are localized; the tracker coasts for 2
+frames, is LOST for 28 and relocalizes about 460 px from its dead-reckoned position on the first clean frame.
+
+Limits: the filter's uncertainty grows so fast in a jam that the ellipse leaves the stage in under a second of
+video (the number in the panel and the locator plate keep showing it); `run.py` itself still writes the plain M1
+video as `trajectory.mp4`, the HUD video is a second step.

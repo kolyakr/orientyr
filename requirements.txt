@@ -7,8 +7,9 @@ torch>=2.2          # uses MPS on Apple Silicon, falls back to CPU
 kornia>=0.7         # also the XFeat network (M4-03; tested with 0.9.2); its weights are fetched at run time
 lightglue @ git+https://github.com/cvg/LightGlue.git   # not on PyPI
 imageio-ffmpeg>=0.5  # ffmpeg with x264 for the trajectory video (M1-08), on every OS
-matplotlib>=3.8     # reliability plot of the per-fix confidence (scripts/confidence_check.py, M4-08)
+matplotlib>=3.8     # reliability plot of the per-fix confidence (scripts/confidence_check.py, M4-08); its DejaVu fonts set the HUD video's text
 pymavlink>=2.4.40  # MAVLink GPS_INPUT log / SITL feed (scripts/mavlink_log.py, M9-01), a stub
+pillow>=10          # text of the HUD video (M7-02)
 # dev
 pytest>=8
 pytest-xdist>=3.5   # the suite runs in parallel: tools/task.sh test and CI use -n auto (M0-11)

@@ -38,7 +38,7 @@ from dronenav.viz.draw import FIXED, FONT, FOOTPRINT, MISSED, OUTLINE, SHIFT, ST
 from dronenav.viz.mp4 import faststart
 from dronenav.viz.trajectory_image import _bgr, with_position
 
-__all__ = ["FrameInfo", "FrameRenderer", "VideoFrame", "VideoPlan", "plan_video", "write_video"]
+__all__ = ["FrameInfo", "FrameRenderer", "VideoFrame", "VideoPlan", "encode_video", "plan_video", "write_video"]
 
 VIEW_FOOTPRINTS = 6.0       # the view spans this many median footprint diagonals
 HOLD_S = 1.0                # seconds the last frame is held
@@ -90,8 +90,10 @@ class FrameInfo:
 # --- planning --------------------------------------------------------------------------------------------------
 
 def plan_video(records: list[Record], info: RunInfo, *, fps: float = 30.0, speed: float = 1.0,
-               size: tuple[int, int] = (1280, 720), hold_s: float = HOLD_S) -> VideoPlan:
-    """One pose per video frame; see the module docstring.
+               size: tuple[int, int] = (1280, 720), hold_s: float = HOLD_S,
+               view_footprints: float = VIEW_FOOTPRINTS) -> VideoPlan:
+    """One pose per video frame; see the module docstring. ``view_footprints``: the zoom, as the number of median
+    footprint diagonals across the video's width (the HUD video, M7-02, looks closer).
 
     Records without a position (before the first fix) are skipped: the video starts at the first fix. A frame's
     ``rec`` still indexes ``records`` as given.
@@ -105,7 +107,7 @@ def plan_video(records: list[Record], info: RunInfo, *, fps: float = 30.0, speed
     tang = _tangents(t, p)
     heads = _record_headings(records, tang)
     map_w, map_h = info.map_size
-    view_w = _view_width(records, map_w, map_h, size)
+    view_w = _view_width(records, map_w, map_h, size, view_footprints)
     half_w, half_h = view_w / 2, view_w * size[1] / size[0] / 2
 
     n = math.floor((t[-1] - t[0]) * fps / speed + 1e-9) + 1
@@ -200,11 +202,11 @@ def _footprint(records, t, i, tk) -> np.ndarray | None:
     return (1 - u) * a + u * records[j].track.fix.footprint
 
 
-def _view_width(records, map_w, map_h, size) -> float:
-    """Map px across the video: VIEW_FOOTPRINTS median footprint diagonals (a third of the map without fixes),
+def _view_width(records, map_w, map_h, size, view_footprints: float = VIEW_FOOTPRINTS) -> float:
+    """Map px across the video: ``view_footprints`` median footprint diagonals (a third of the map without fixes),
     no more than the map."""
     diags = [math.hypot(*(r.track.fix.footprint[2] - r.track.fix.footprint[0])) for r in records if _measured(r)]
-    w = VIEW_FOOTPRINTS * float(np.median(diags)) if diags else map_w / 3
+    w = view_footprints * float(np.median(diags)) if diags else map_w / 3
     return min(w, map_w, map_h * size[0] / size[1])
 
 
@@ -387,14 +389,22 @@ def write_video(run_dir: str | Path, out_dir: str | Path | None = None, *, fps: 
     records = with_position(read_run(run_dir / "run.jsonl"))
     plan = plan_video(records, info, fps=fps, speed=speed, size=size)
     renderer = FrameRenderer(run_dir, records, info, plan, map_img)
-    out_dir = Path(out_dir) if out_dir is not None else run_dir
-    out_dir.mkdir(parents=True, exist_ok=True)          # only once the run and map are known to be good
+    # only once the run and map are known to be good is the output folder made
+    return encode_video(out_dir if out_dir is not None else run_dir, fps, size,
+                        (renderer.draw(k)[0] for k in range(len(plan.frames))))
+
+
+def encode_video(out_dir: str | Path, fps: float, size: tuple[int, int], frames) -> Path:
+    """Write the BGR ``frames`` (an iterable, drawn as it is consumed) to ``<out_dir>/trajectory.mp4``; returns the
+    path. An error or Ctrl-C part-way leaves a video that was already there as it was."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "trajectory.mp4"
     part = out_dir / ".trajectory.partial.mp4"            # replaces the video only when complete
     try:
         with _encoder(part, fps, size) as encode:
-            for k in range(len(plan.frames)):
-                encode(renderer.draw(k)[0])
+            for frame in frames:
+                encode(frame)
         part.replace(path)
     except BaseException:                                  # also Ctrl-C: the previous video stays as it was
         part.unlink(missing_ok=True)
