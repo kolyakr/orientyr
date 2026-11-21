@@ -923,6 +923,23 @@ python scripts/live.py --flight data/irpin/flights/mild/2022 --map data/irpin/ma
 - **Chaos, switched on live.** `{"jam": true}` in the run's `control.json` (the console's "Jam camera" button writes
   it) turns every following frame into noise until it is switched off; the engine reads the file before each frame.
   `--jam START:LENGTH` schedules one. The tracker loses the fix and relocalizes on its own, as in `run.py --jam`.
+- **Judge controls (M7-05).** Four buttons in the console's "Mission controls" reach the simulator and the engine
+  through the same `control.json`, one order per key, read before every frame:
+  - **Jam camera** `{"jam": true}`: as above.
+  - **Spoof GPS** `{"spoof": true}`: live mode simulates a GPS receiver next to the camera. Honest, it reads the true
+    position plus a few pixels of noise. Spoofed, its reading walks away from the truth at `--spoof-speed` map px per
+    second (default 8), from zero, with no jump. The spoof detector compares each reading with the visual fix and
+    puts its verdict into the record (`extra["gps"]`); the console's "GPS check" panel shows it: agrees, suspect,
+    **spoofed** (red, with the gap in px). Switched off, the receiver is honest again and the alarm clears.
+  - **Map** `{"map": "2017"}`: the engine goes on, on the map of another year (`--maps`, default: the files next to
+    `--map` with the same prefix, `irpin_2017.png`, `irpin_2022.png`, `irpin_2025.png`). The maps are loaded once at
+    the start, so the switch costs nothing; the track is kept, only the map it is matched against changes.
+  - **New flight** `{"flight": {"name": "mild/2022", "speed": 2, "id": 1}}`: the current flight stops and the chosen
+    one (`--flights`, default: every flight of the pack) starts from its first frame at that speed, in the same run
+    folder; the console reloads itself. An order is flown once per `id`.
+
+  `live.json` reports what is on and what is offered (`jam`, `spoof`, `map`, `maps`, `flight`, `flights`, `speed`,
+  `flight_no`). On a replay the controls are drawn but disabled.
 - **Smooth between fixes.** A fix is a point once or twice a second. The console moves the drone to each new fix in
   a straight line, for a little longer than the fixes are apart (their measured pace + one poll), so the marker is
   still moving when its next target arrives.
@@ -931,6 +948,15 @@ Measured on the Irpin "mild 2022" flight, seconds 30 to 120, with an 8 s jam in 
 121 accepted fixes on 137 frames in 91.9 s, **1.40 fixes per second** (counted between the first and the last fix,
 the jam included); 44 of 181 frames were skipped because a search took longer than the 0.5 s between frames.
 
+Checked by hand on the same flight with the 2022 map: the jam shows noise frames and rejected fixes at once and
+the fix returns within 5 s of "Stop jamming"; the spoof alarm comes 4 to 5 s after the press (suspect, then
+spoofed); the map changes on the next frame; a new flight starts within a few seconds. Matching a 2022 flight against the
+map of another year is the engine's weak spot (see the cross-year notes above): on 2025 it holds with 17 to 32
+matched pairs instead of about 1000, on 2017 the fixes are rejected and the uncertainty grows until the map is
+switched back. That is what the button is for: the judge sees it.
+
 Limits: the viewer is started separately (`npm run dev`); the console polls, so a fix is seen up to 0.4 s after it
 is made; a frame before the first fix has no position (live there is no later fix to borrow one from, the console
-places it at the first fix once that arrives).
+places it at the first fix once that arrives). The controls work while a
+flight is in the air: when the last flight ends, start `live.py` again. The simulated GPS has no longitude and
+latitude, only map pixels; a spoof is shown in the GPS panel and on the map, not as a mission log event.

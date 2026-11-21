@@ -7,8 +7,8 @@ pairs and uncertainty. The mission log is a timeline that follows the current ev
 the whole route. It replays a **run folder**
 (`run.json` + `run.jsonl` + `frames/`, the format in `src/dronenav/telemetry.py`): the fake run (M0-04), a real
 run of `scripts/run.py`, a benchmark run. Play, pause, scrub, speed and layers work. A run that `scripts/live.py`
-is writing right now is followed as it grows (see "Live mode"); there the jam switch works, the other mission
-controls are drawn but inactive until M7-05.
+is writing right now is followed as it grows (see "Live mode"); there the mission controls work (jam camera, spoof GPS,
+map year, new flight); on a replay they are drawn but disabled.
 
 ```bash
 # from the repo root: make a run to show
@@ -75,6 +75,16 @@ first record the page says it is waiting and asks again by itself.
   with it. When the flight ends the page becomes an ordinary replay.
 - **Jam camera** (Mission controls): the frames reach the engine as noise until "Stop jamming". The press is written
   to the run's `control.json`, which the engine reads before every frame.
+- **Spoof GPS**: the simulated GPS receiver starts to walk away from the truth. The **GPS check** panel (under the
+  HUD, shown when the run has GPS verdicts) goes from "GPS agrees with the camera" to "suspect" and then to a red
+  "GPS spoofed" with the gap in px, a few seconds after the press. "Stop spoofing" clears it.
+- **Map** 2017 / 2022 / 2025: the engine matches against the map of that year from the next frame on, and the map
+  on screen changes with it. The lit button is the map the engine uses now.
+- **New flight**: pick a flight and a speed (0.5× to 8×), press the button; the current flight stops, the new one
+  starts from its first frame in the same run folder and the page reloads itself.
+- Each press is one `POST /api/live` with one order (`{jam}`, `{spoof}`, `{map}` or `{flight, speed}`). A wrong shape
+  is a 400, a run that is not live a 409, a map or flight the engine does not offer a 400. `GET /api/live` returns
+  the switches and the choices with the new records.
 - The engine says it is alive by rewriting `live.json` after every record; silent for 30 s, the run is shown as a
   replay of what was written.
 
@@ -106,7 +116,7 @@ and the mission log are always shown.
 | `components/Console.tsx` | the page: panels, run picker, layers, playback, scrubbing, keyboard |
 | `app/page.tsx` | opens the run the address names, or says why it cannot |
 | `app/api/map`, `app/api/frame` | serve the map and the frames of a run (`?run=<name>`) |
-| `app/api/live` | live mode: the records appended since byte `from` (GET), the jam switch (POST) |
+| `app/api/live` | live mode: the records appended since byte `from` and the switches (GET), one order of the judge controls (POST) |
 | `lib/live.ts` | live mode: the engine's status, the pace of the fixes, how long the drone glides |
 | `tests/fixtures/runs/` | hand-made hard runs: gaps, missing files, an empty and a broken `run.jsonl` |
 | `public/runs/` | packed runs for hosting (gitignored), see "Hosting" |
