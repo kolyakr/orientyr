@@ -51,8 +51,8 @@ The steps, with the file that does each one:
    position). With no fix yet, three sizes are tried and the one with the most inliers wins.
 3. **Match** ([src/dronenav/matching/rootsift.py](src/dronenav/matching/rootsift.py)). SIFT keypoints with
    RootSIFT descriptors, FLANN nearest neighbours, Lowe's ratio test (0.8). The map's features are computed once
-   and saved to disk. A second matcher, XFeat (a small neural network), is behind the same interface:
-   `--matcher xfeat`.
+   and saved to disk. Two neural matchers are behind the same interface: XFeat (small and fast,
+   `--matcher xfeat`) and DISK + LightGlue (slower, finds more on hard maps, `--matcher lightglue`).
 4. **Search** ([src/dronenav/search.py](src/dronenav/search.py)). The first frame is matched to the whole map.
    After that, a frame is matched only to a window around the position the tracker predicts. The window is wide
    when the tracker is unsure and narrow when it is sure. If the window fails, the whole map is tried again in the
@@ -85,7 +85,7 @@ The steps, with the file that does each one:
 | Offline smoother and gap interpolation ([src/dronenav/tracking/smoother.py](src/dronenav/tracking/smoother.py), [src/dronenav/smoothing.py](src/dronenav/smoothing.py)) | built and tested, not used by `scripts/run.py` yet |
 | GPS spoof detector | built as a separate script, `scripts/spoof_check.py`, see [Notes](#notes) |
 | MAVLink `GPS_INPUT` output | a stub, not flight-tested: `scripts/mavlink_log.py`, see [Notes](#notes) |
-| SuperPoint + LightGlue matcher | **planned**. The `lightglue` package is installed for this step |
+| LightGlue matcher ([src/dronenav/matching/lightglue.py](src/dronenav/matching/lightglue.py)) | built, `scripts/run.py --matcher lightglue` (DISK features). RootSIFT stays the default |
 | Our own phone video filmed over the map (advanced level) | `scripts/run.py --video` is built. The take itself is **planned**: it is not filmed yet |
 
 ## Install
@@ -202,6 +202,8 @@ python scripts/run.py --help
 - `--jam 150:30` is a stress test: from second 150 of the flight the camera is jammed for 30 seconds (the engine
   gets noise). The run shows the track lost and found again.
 - `--matcher xfeat` uses the XFeat matcher. It downloads its weights (about 6 MB) on the first run.
+- `--matcher lightglue` uses DISK + LightGlue: slower, but it finds frames on old or coarse maps that SIFT misses.
+  It downloads its weights on the first run.
 - `--tracker none` turns the Kalman tracker off and keeps the raw fixes.
 - `--fps` says how the numbers in the frame names become seconds (time = number / fps). The default comes from
   `meta.json` next to the frames, else 1.
@@ -330,7 +332,7 @@ src/dronenav/        the package
   io.py, video.py      frames from a folder or a video, the map
   camera.py            lens undistortion
   scale.py             how much to shrink a frame
-  matching/            RootSIFT and XFeat matchers
+  matching/            RootSIFT, XFeat and LightGlue matchers
   search.py            window or whole map
   geometry.py          homography, checks, pose
   confidence.py        how sure a fix is
@@ -788,6 +790,33 @@ What the numbers say:
   outside the matcher was tuned for it.
 - LighterGlue (kornia has its XFeat weights) was not evaluated: the mutual nearest neighbour already localises
   every frame here, and LighterGlue is not rotation-invariant either.
+
+### LightGlue backend (M4-02)
+
+[src/dronenav/matching/lightglue.py](src/dronenav/matching/lightglue.py) is a third `Matcher`, `LightGlueMatcher`:
+DISK keypoints (or SuperPoint, `LightGlueConfig(features=...)`) matched by LightGlue, on `--device` `mps`, `cuda`
+or `cpu`. Weights come from the `lightglue` package on the first run and never live in the repo. What it adds
+around the networks:
+- **Heading.** DISK and LightGlue are not rotation-invariant, so the frame is tried in 45-degree turns, like XFeat.
+- **Small maps are enlarged 2x.** On the task map (1845 x 3645, coarse) DISK found too few keypoints in some
+  crops: frames 21 and 35 got about 12 inliers. Extracting at 2x (map and frame alike) gave them 150 to 240. The
+  2x is chosen automatically when the enlarged map stays under 32 megapixels (`upsample_budget_mp`); the Irpin
+  maps (3936 x 3936) already match at 1x and would cost 4x the time. Points are mapped back to the input pixels.
+- **Padded sizes.** On MPS torch builds a new compute graph for every input shape (about 1 s, against 0.25 s when
+  a graph is reused). Images are padded with black to multiples of 128 px, so a few shapes repeat; keypoints in the
+  padding are dropped.
+- **Map features once**, cached under a key of the settings that change them, or read from a map pack (M4-06).
+
+Where it earns its place: a flight matched against a map from another year. Irpin `mild/2025` keyframes (every
+keyframe of the flight), whole-map search, the same pipeline and tracker, only the matcher changed:
+
+| map | frames | RootSIFT localised | LightGlue localised | LightGlue wrong | LightGlue s/frame |
+|---|---|---|---|---|---|
+| 2022 (three years older) | 111 | 52 | 76 | 1 | 1.79 |
+| 2017 (eight years older) | 20 (first 20) | 0 | 7 | 0 | 3.76 |
+
+LightGlue is several times slower per frame than RootSIFT, so RootSIFT stays the default; LightGlue is the matcher
+for an old map. Timings are from an Apple M5 busy with other work.
 
 ### MAVLink `GPS_INPUT` (M9-01, a stub, not flight-tested)
 
