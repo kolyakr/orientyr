@@ -565,6 +565,15 @@ button:disabled { cursor: default; }
 .gpscheck span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 @keyframes gps-alarm { from { opacity: 1; } to { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .gpscheck .lamp { animation: none; } }
+/* a short window (a laptop): the column must still end with its footer, so the GPS check takes one line,
+   the log gives up a row and the line of key hints goes */
+@media (max-height: 900px) {
+  .gpscheck { padding-block: 10px; }
+  .gpscheck p { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  .gpscheck p > span { overflow: hidden; text-overflow: ellipsis; }
+  .log { min-height: 72px; }
+  .meta .keys { display: none; }
+}
 
 /* the footer of the column: three tidy lines (legend, run, keys), no panel of its own */
 .meta { display: grid; gap: 6px; padding: 2px 6px 0; font-size: 12.5px; line-height: 1.3; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
