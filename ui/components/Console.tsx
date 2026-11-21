@@ -9,20 +9,28 @@
  * Live mode (M7-04): a run the engine is writing right now (scripts/live.py) is followed as it grows. The console
  * asks /api/live for the new records every POLL_MS and stays on the newest one ("Live"); the drone glides from fix to
  * fix (lib/live.ts). Stepping, scrubbing or pausing leaves the newest record to look back, the Live button returns
- * to it. Of the mission controls the jam switch works on a live run; the others wait for M7-05.
+ * to it.
+ *
+ * Judge controls (M7-05): on a live run the mission controls give the flight its orders through /api/live: jam the
+ * camera, spoof the GPS receiver, search the map of another year, land and start another flight. Each is shown
+ * pressed at once and reaches the engine before its next frame. The "GPS check" panel is the lie detector: what the
+ * spoof detector says about the receiver at the frame shown (extra.gps), on a live run and on a replay alike.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { DEFAULT_LAYERS, LAYERS, type LayerId, type Layers, availableLayers, consoleUrl } from "@/lib/layers";
-import { POLL_MS, glideMs, nextPace } from "@/lib/live";
+import { FLIGHT_SPEEDS, POLL_MS, glideMs, nextPace } from "@/lib/live";
 import { SPEEDS, frameAt, stepMs as frameMs, keyAction, nextSpeed } from "@/lib/playback";
 import { type Run, type RunRecord, appendRunJsonl } from "@/lib/run";
-import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
+import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, gpsOf, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
 import { Minimap } from "./Minimap";
 
 const MAX_DOTS = 40;
 const SPARK = 48; // frames in the matched-pairs strip chart of the HUD
 const NO_RUNS: string[] = [];
+// the GPS check: the verdict, and what the gap to the camera's position means
+const GPS_TITLE = { OK: "GPS agrees with the camera", SUSPECT: "GPS suspect", SPOOFED: "GPS spoofed", NO_DATA: "GPS not checked" } as const;
+const GPS_NOTE = { OK: "apart", SUSPECT: "apart, more than the noise", SPOOFED: "from the camera position", NO_DATA: "apart" } as const;
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
@@ -68,7 +76,9 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
   initialLayers?: Layers;   // from the URL
   mapMissing?: boolean;     // the server did not find the map image
   assets?: { map: string; frames: string } | null;  // static URLs of the run's images (a packed run); null = the API routes
-  live?: { next: number; jam: boolean } | null; // the engine is writing this run: the byte of run.jsonl to read on from, the jam switch
+  // the engine is writing this run: the byte of run.jsonl to read on from, and the judge controls (lib/run-server.ts)
+  live?: { next: number; jam: boolean; spoof?: boolean; map?: string | null; mapShown?: string | null; maps?: string[];
+           flight?: string | null; flights?: string[]; speed?: number | null; flightNo?: number } | null;
 }) {
   const [records, setRecords] = useState(opened.records);
   const run = useMemo(() => (records === opened.records ? opened : { ...opened, records }), [opened, records]);
@@ -80,6 +90,14 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
   const [flying, setFlying] = useState(live !== null); // the engine is still writing
   const tail = flying && at === "live";                // ...and the view follows it
   const [jam, setJam] = useState(live?.jam ?? false);
+  const [spoof, setSpoof] = useState(live?.spoof ?? false);
+  const [map, setMap] = useState(live?.map ?? null);                              // the map ordered: the pressed button
+  const [mapShown, setMapShown] = useState(live?.mapShown ?? live?.map ?? null);  // the map the engine searches: the picture
+  const [maps, setMaps] = useState(live?.maps ?? NO_RUNS);
+  const [flights, setFlights] = useState(live?.flights ?? NO_RUNS);
+  const [pickFlight, setPickFlight] = useState(live?.flight ?? null);             // the choice of the "New flight" control
+  const [pickSpeed, setPickSpeed] = useState(live?.speed ?? 1);
+  const [starting, setStarting] = useState(false);                                // a new flight is ordered: the page reloads with it
   const [pace, setPace] = useState<number | null>(null); // ms between two records, measured as they arrive
   const [rate, setRate] = useState<number | null>(null); // the engine's own count: accepted fixes per second
   const [playing, setPlaying] = useState(false);
@@ -90,13 +108,18 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
   const [scrubbing, setScrubbing] = useState(false);
 
   const rec = run.records[frame];
+  const gps = gpsOf(rec);
+  // the speeds on offer, and the speed of the flight in the air when it is none of them
+  const flightSpeeds = useMemo(() => [...new Set<number>([...FLIGHT_SPEEDS, live?.speed ?? 1])].sort((a, b) => a - b), [live?.speed]);
   const fix = rec.fix;
   const stepMs = frameMs(run.info.fps, speed);
   // live, the drone glides to a fix for as long as the next one takes; until two have arrived, the run's own rate
   const glide = glideMs(pace ?? (run.info.fps ? 1000 / run.info.fps : null));
   // the files of this run: the map and the camera frames
   const runQuery = runName ? `run=${encodeURIComponent(runName)}` : "";
-  const mapUrl = assets ? assets.map : runQuery ? `/api/map?${runQuery}` : "/api/map";
+  // the map's name is in the URL, so the picture is asked for again when the engine switches to another year
+  const mapQuery = [runQuery, mapShown ? `v=${encodeURIComponent(mapShown)}` : ""].filter(Boolean).join("&");
+  const mapUrl = assets ? assets.map : mapQuery ? `/api/map?${mapQuery}` : "/api/map";
   const framesUrl = assets?.frames;
   const frameUrl = useCallback((r: RunRecord) => framesUrl !== undefined
     ? `${framesUrl}/${r.source.split("/").map(encodeURIComponent).join("/")}`
@@ -154,7 +177,8 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
   const cursor = useRef(live?.next ?? 0);        // the byte of run.jsonl to read on from
   const have = useRef(opened.records);           // the records so far, for the next answer to add to
   const seenAt = useRef<number | null>(null);    // when the last new record was seen
-  const ordering = useRef(false);                // a jam order is on its way: the answers do not overrule it
+  const ordering = useRef(0);                    // orders on their way: the answers do not overrule what was pressed
+  const flightNo = useRef(live?.flightNo ?? 0);  // the flight these records belong to
   const liveUrl = `/api/live?${runName ? `run=${encodeURIComponent(runName)}` : ""}`;
   useEffect(() => {
     if (!flying) return;
@@ -165,9 +189,11 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
       try {
         const res = await fetch(`${liveUrl}&from=${cursor.current}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`/api/live: ${res.status}`);
-        const d: { live: boolean; jam: boolean; reset: boolean; text: string; next: number; fixesPerS: number | null } = await res.json();
+        const d: { live: boolean; jam: boolean; spoof?: boolean; map?: string | null; mapShown?: string | null; maps?: string[];
+                   flights?: string[]; flightNo?: number; reset: boolean; text: string; next: number; fixesPerS: number | null } = await res.json();
         if (over) return;
-        if (d.reset) return window.location.reload(); // the run was started again in this folder: read it afresh
+        // a new flight in this folder (ordered here or started again by hand): other records, read them afresh
+        if (d.reset || (d.live && (d.flightNo ?? 0) !== flightNo.current)) return window.location.reload();
         const next = appendRunJsonl(have.current, d.text);
         if (next !== have.current) {
           const now = performance.now(), added = next.length - have.current.length;
@@ -178,7 +204,14 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
           setRecords(next);
         }
         cursor.current = d.next;
-        if (!ordering.current) setJam(d.jam);
+        if (!ordering.current) {
+          setJam(d.jam);
+          setSpoof(d.spoof ?? false);
+          setMap(d.map ?? null);
+        }
+        setMapShown((old) => d.mapShown ?? old);
+        setMaps((old) => (d.maps && d.maps.join("\n") !== old.join("\n") ? d.maps : old));
+        setFlights((old) => (d.flights && d.flights.join("\n") !== old.join("\n") ? d.flights : old));
         setRate(d.fixesPerS);
         landed = !d.live;
       } catch { /* the server is restarting, or a line is not whole yet: the next question asks again */ }
@@ -193,18 +226,37 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
     };
   }, [flying, liveUrl]);
 
-  /** The jam switch: shown pressed at once, then ordered through control.json (the engine reads it before every frame). */
-  const orderJam = async (on: boolean) => {
-    ordering.current = true;
-    setJam(on);
+  /** Send one order (/api/live writes it to control.json, which the engine reads before every frame). False: nothing was ordered. */
+  const order = async (body: object): Promise<boolean> => {
+    ordering.current += 1;
     try {
-      const res = await fetch(liveUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jam: on }) });
-      if (!res.ok) setJam(!on); // the flight is over: nothing was ordered
+      const res = await fetch(liveUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      return res.ok; // not ok: the flight is over, or the engine does not offer this
     } catch {
-      setJam(!on);
+      return false;
     } finally {
-      ordering.current = false;
+      ordering.current -= 1;
     }
+  };
+  // Each control is shown pressed at once and put back if the order did not go through.
+  const orderJam = async (on: boolean) => {
+    setJam(on);
+    if (!(await order({ jam: on }))) setJam(!on);
+  };
+  const orderSpoof = async (on: boolean) => {
+    setSpoof(on);
+    if (!(await order({ spoof: on }))) setSpoof(!on);
+  };
+  const orderMap = async (name: string) => {
+    const old = map;
+    setMap(name);
+    if (!(await order({ map: name }))) setMap(old);
+  };
+  /** Land and start the chosen flight: the engine starts the run again in this folder, and the page reloads with it. */
+  const orderFlight = async () => {
+    if (!pickFlight) return;
+    setStarting(true);
+    if (!(await order({ flight: pickFlight, speed: pickSpeed }))) setStarting(false);
   };
 
   useEffect(() => {
@@ -644,6 +696,17 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
           </dl>
         </section>
 
+        {/* the lie detector: the receiver's reading against the camera's position, as the spoof detector judged it */}
+        {gps && (
+          <section data-part="gps-check" data-gps={gps.state} className="gpscheck glass" role={gps.state === "SPOOFED" ? "alert" : undefined}>
+            <i className="lamp" aria-hidden="true" />
+            <p>
+              <strong>{GPS_TITLE[gps.state]}</strong>
+              <span>{gps.gapPx == null ? "no camera position to compare with" : <><Ticker value={`${Math.round(gps.gapPx)} px`} /> {GPS_NOTE[gps.state]}</>}</span>
+            </p>
+          </section>
+        )}
+
         <section data-part="events" className="log glass">
           <h2>Mission log <span>{log.filter((e) => e.frame <= frame).length} of {log.length}</span></h2>
           {/* a timeline: one node per event on a rail, the event itself as a title and a note */}
@@ -665,13 +728,34 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
         </section>
 
         <section data-part="controls" className="controls glass">
-          <h2>Mission controls <span>{flying ? (rate ? `live · ${rate.toFixed(1)} fixes/s` : "live") : "come with the live engine"}</span></h2>
+          <h2>Mission controls <span>{flying ? (rate ? `live · ${rate.toFixed(1)} fixes/s` : "live") : "work on a live flight"}</span></h2>
           <div>
-            <button type="button" disabled>Start mission</button>
-            {/* on a live run the camera can be jammed: the frames reach the engine as noise until it is switched off */}
+            {/* the frames reach the engine as noise until it is switched off */}
             <button type="button" data-part="jam" disabled={!flying} aria-pressed={flying ? jam : undefined}
                     onClick={() => orderJam(!jam)}>{flying && jam ? "Stop jamming" : "Jam camera"}</button>
-            <button type="button" disabled>Change matcher</button>
+            {/* the simulated GPS receiver walks away from the truth; the GPS check above raises the alarm */}
+            <button type="button" data-part="spoof" disabled={!flying} aria-pressed={flying ? spoof : undefined}
+                    onClick={() => orderSpoof(!spoof)}>{flying && spoof ? "Stop spoofing" : "Spoof GPS"}</button>
+          </div>
+          {maps.length > 0 && (
+            <div className="pick" role="group" aria-label="Map">
+              <span>Map</span>
+              {maps.map((m) => (
+                <button key={m} type="button" data-map={m} disabled={!flying} aria-pressed={m === map} onClick={() => orderMap(m)}>{m}</button>
+              ))}
+            </div>
+          )}
+          <div className="flight">
+            <select data-part="flight" aria-label="Flight" disabled={!flying || flights.length === 0} value={pickFlight ?? ""}
+                    onChange={(e) => setPickFlight(e.target.value)}>
+              {flights.length === 0 && <option value="">No other flight</option>}
+              {flights.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select data-part="flight-speed" aria-label="Flight speed" disabled={!flying || flights.length === 0} value={pickSpeed}
+                    onChange={(e) => setPickSpeed(Number(e.target.value))}>
+              {flightSpeeds.map((v) => <option key={v} value={v}>{`${v}×`}</option>)}
+            </select>
+            <button type="button" data-part="new-flight" disabled={!flying || !pickFlight || starting} onClick={orderFlight}>New flight</button>
           </div>
         </section>
 

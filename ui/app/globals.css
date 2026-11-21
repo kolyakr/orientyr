@@ -538,6 +538,33 @@ button:disabled { cursor: default; }
 .controls button:enabled { border: 0; color: var(--ink); background: var(--well); box-shadow: var(--well-edge); transition: background-color .2s ease, color .2s ease; }
 .controls button:enabled:hover { background: rgb(255 255 255 / .12); }
 .controls button[aria-pressed="true"] { color: var(--bad); background: color-mix(in srgb, var(--bad) 16%, transparent); box-shadow: none; }
+/* the map of another year: a choice, not an alarm, so the one in use is lit and not red */
+.controls .pick { align-items: center; }
+.controls .pick span { flex: 0 0 auto; min-width: 38px; font-size: 13px; color: var(--muted); }
+.controls .pick button[aria-pressed="true"] { color: #fff; font-weight: 600; background: rgb(255 255 255 / .16); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22); }
+/* a new flight: which one, how fast, go */
+.controls .flight { flex-wrap: nowrap; }
+.controls select { min-width: 0; padding: 8px 8px; border: 0; border-radius: 9px; font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--well); box-shadow: var(--well-edge); color-scheme: dark; cursor: pointer; }
+.controls select[data-part="flight"] { flex: 1 1 0; text-overflow: ellipsis; }
+.controls select:disabled { color: var(--muted); cursor: default; box-shadow: none; outline: 1px dashed rgb(255 255 255 / .24); outline-offset: -1px; }
+.controls .flight button { flex: 0 0 auto; padding-inline: 12px; }
+.controls button:disabled { cursor: default; }
+
+/* the GPS check: a lamp and a sentence, as the state badge. The lamp and the title take the detector's verdict. */
+.gpscheck { --n: 2; --verdict: var(--muted); display: flex; align-items: center; gap: 13px; padding: 12px 16px 12px 19px; }
+.gpscheck[data-gps="OK"] { --verdict: var(--ok); }
+.gpscheck[data-gps="SUSPECT"] { --verdict: var(--warn); }
+.gpscheck[data-gps="SPOOFED"] { --verdict: var(--bad); --glass-base: color-mix(in srgb, var(--bad) 14%, rgb(13 15 19 / .7)); }
+.gpscheck .lamp { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--verdict);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--verdict) 70%, transparent); transition: background-color .3s ease; }
+.gpscheck[data-gps="SPOOFED"] .lamp { animation: gps-alarm .7s steps(2, jump-none) infinite; }
+.gpscheck p { display: grid; gap: 1px; min-width: 0; }
+.gpscheck strong { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.gpscheck[data-gps="SPOOFED"] strong { color: var(--bad); }
+.gpscheck span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@keyframes gps-alarm { from { opacity: 1; } to { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .gpscheck .lamp { animation: none; } }
 
 /* the footer of the column: three tidy lines (legend, run, keys), no panel of its own */
 .meta { display: grid; gap: 6px; padding: 2px 6px 0; font-size: 12.5px; line-height: 1.3; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
