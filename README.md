@@ -83,7 +83,8 @@ The steps, with the file that does each one:
 | Console in the browser ([ui/](ui)) | built, replays a run folder, see [Console](#console) |
 | Frame preprocessing, CLAHE ([src/dronenav/preprocess.py](src/dronenav/preprocess.py)) | built and measured, not used by `scripts/run.py` yet |
 | Offline smoother and gap interpolation ([src/dronenav/tracking/smoother.py](src/dronenav/tracking/smoother.py), [src/dronenav/smoothing.py](src/dronenav/smoothing.py)) | built and tested, not used by `scripts/run.py` yet |
-| GPS spoof detector, MAVLink output | built as separate scripts (`scripts/spoof_check.py`, `scripts/mavlink_log.py`), see [Notes](#notes) |
+| GPS spoof detector | built as a separate script, `scripts/spoof_check.py`, see [Notes](#notes) |
+| MAVLink `GPS_INPUT` output | a stub, not flight-tested: `scripts/mavlink_log.py`, see [Notes](#notes) |
 | SuperPoint + LightGlue matcher | **planned**. The `lightglue` package is installed for this step |
 | Our own phone video filmed over the map (advanced level) | `scripts/run.py --video` is built. The take itself is **planned**: it is not filmed yet |
 
