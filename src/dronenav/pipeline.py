@@ -78,6 +78,7 @@ from dronenav.vo import VisualOdometry, VoVelocity
 
 __all__ = [
     "COAST_MAX_S",
+    "FRAMES_DIR",
     "JAMMED",
     "LOST_SIGMA_GROWTH_PX_PER_S",
     "MATCHERS",
@@ -85,12 +86,14 @@ __all__ = [
     "OUTPUTS",
     "TRACKERS",
     "VIDEO_RATE",
+    "Engine",
     "NothingLocalized",
     "RunSummary",
     "localize_run",
     "match_sample",
     "parse_frame_set",
     "run",
+    "tracked_record",
 ]
 
 # --matcher name -> (backend, factory(map image, cache dir, device)); the learned matchers (M4) join here.
@@ -243,9 +246,10 @@ def _frame_source(frames_dir, video, fps, every):
     return VideoSource(video, fps=min(VIDEO_RATE, take.fps))
 
 
-def _keep(f, keep_dir: Path | None, jammed: bool = False) -> Path:
-    """The frame's path for the record: its file, or (a video frame, a jammed frame) a JPEG saved into keep_dir."""
-    if keep_dir is None or (Path(f.source).is_file() and not jammed):
+def _keep(f, keep_dir: Path | None, save: bool = False) -> Path:
+    """The frame's path for the record: its file, or (a video frame, or ``save``: a jammed frame, a live run's
+    frame) a JPEG saved into keep_dir."""
+    if keep_dir is None or (Path(f.source).is_file() and not save):
         return Path(f.source)
     keep_dir.mkdir(parents=True, exist_ok=True)
     path = keep_dir / f"frame_{f.idx:06d}.jpg"
@@ -254,26 +258,40 @@ def _keep(f, keep_dir: Path | None, jammed: bool = False) -> Path:
     return path
 
 
-def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", vo: bool = False,
-              jam_match=(), *, video=None, every=None, keep_dir: Path | None = None, device: str | None = None,
-              jam=None):
-    """Check the inputs and find every frame; nothing is written but a video's sampled frames and a jam's noise
-    frames (into keep_dir). Returns (map image, frames source, found)."""
-    _check_options(matcher, tracker, vo)
-    jammer = _jam(jam)
-    jam_match = frozenset(int(i) for i in jam_match)
-    frames = _frame_source(frames_dir, video, fps, every)
-    stream = frames if jammer is None else ChaosSource(frames, [jammer])
-    the_map = load_map(map_path)
-    track = Tracker() if tracker == "kalman" else None
-    odo = VisualOdometry() if vo else None
-    try:
-        searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir, device), the_map.image)
-        found = []
-        for f in stream:
-            window = sigma = tracked = motion = None
-            jammed = jammer is not None and jammer.covers(f.t)     # the camera jammed: the frame is noise
-            blind = f.idx in jam_match            # the map matcher jammed: no search, no fix (the camera still works)
+class Engine:
+    """The engine, one frame at a time: the search (in the tracker's window, or M1's rule), visual odometry when
+    asked for, and the tracker's update.
+
+    ``run.py`` feeds it a whole flight and writes the run afterwards; live mode (``dronenav.live``, M7-04) feeds it
+    each frame as the simulator releases it and writes the record at once. Both get the same :class:`_Found`.
+    """
+
+    def __init__(self, map_path, matcher: str = "sift", cache_dir=None, tracker: str = "kalman",
+                 device: str | None = None, vo: bool = False):
+        _check_options(matcher, tracker, vo)
+        self.map_path = map_path
+        self.map = load_map(map_path).image
+        self.backend = MATCHERS[matcher][0]
+        self.track = Tracker() if tracker == "kalman" else None
+        self.odo = VisualOdometry() if vo else None
+        try:
+            self.searcher = Searcher(MATCHERS[matcher][1](self.map, cache_dir, device), self.map)
+        except cv2.error as e:
+            raise self._no_features(e) from None
+
+    def _no_features(self, e: cv2.error) -> ValueError:
+        # FLANN refuses an empty index: a blank or flat map
+        return ValueError(f"matching on {self.map_path} failed: the map has no usable features (blank or flat "
+                          f"image?) [{e.err}]")
+
+    def locate(self, f, keep_dir: Path | None = None, jammed: bool = False, save: bool = False,
+               blind: bool = False) -> _Found:
+        """Find one frame. ``jammed``: the frame is a jam's noise (recorded, and saved into ``keep_dir``);
+        ``save``: keep the frame in ``keep_dir`` even when it is a file somewhere else; ``blind``: the map matcher
+        is jammed, so no search and no fix (the camera still works)."""
+        searcher, track, odo = self.searcher, self.track, self.odo
+        window = sigma = tracked = motion = None
+        try:
             if track is None:
                 loc = None if jammed else searcher.locate(f.idx, f.image)    # M1's window rule
             else:
@@ -288,22 +306,35 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
                 fix = None if loc is None else loc.fix
                 motion = odo.step(f.t, f.image, fix) if odo is not None else None
                 tracked = track.update(f.idx, f.t, fix, vo=motion)
-            size = (f.image.shape[1], f.image.shape[0])
-            path = _keep(f, keep_dir, jammed)
-            if loc is None:
-                found.append(_Found(f.idx, f.t, path, size, None, JAMMED, None, 1.0, 0.0, tracked,
-                                    window, sigma, None, jammed, motion, odo is not None))
-            else:
-                found.append(_Found(f.idx, f.t, path, size, loc.fix, loc.mode.value, loc.window,
-                                    float(loc.factor), float(loc.ms), tracked, window, sigma,
-                                    match_sample(loc.matches, loc.fix), jammed, motion, odo is not None))
-    except cv2.error as e:                # FLANN refuses an empty index: a blank or flat map
-        raise ValueError(f"matching on {map_path} failed: the map has no usable features (blank or flat image?) "
-                         f"[{e.err}]") from None
+        except cv2.error as e:
+            raise self._no_features(e) from None
+        size = (f.image.shape[1], f.image.shape[0])
+        path = _keep(f, keep_dir, jammed or save)
+        if loc is None:
+            return _Found(f.idx, f.t, path, size, None, JAMMED, None, 1.0, 0.0, tracked,
+                          window, sigma, None, jammed, motion, odo is not None)
+        return _Found(f.idx, f.t, path, size, loc.fix, loc.mode.value, loc.window, float(loc.factor), float(loc.ms),
+                      tracked, window, sigma, match_sample(loc.matches, loc.fix), jammed, motion, odo is not None)
+
+
+def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", vo: bool = False,
+              jam_match=(), *, video=None, every=None, keep_dir: Path | None = None, device: str | None = None,
+              jam=None):
+    """Check the inputs and find every frame; nothing is written but a video's sampled frames and a jam's noise
+    frames (into keep_dir). Returns (map image, frames source, found)."""
+    _check_options(matcher, tracker, vo)
+    jammer = _jam(jam)
+    jam_match = frozenset(int(i) for i in jam_match)
+    frames = _frame_source(frames_dir, video, fps, every)
+    stream = frames if jammer is None else ChaosSource(frames, [jammer])
+    engine = Engine(map_path, matcher, cache_dir, tracker, device, vo)
+    # jammed: the camera is jammed, the frame is noise; blind: the map matcher is jammed (the camera still works)
+    found = [engine.locate(f, keep_dir, jammer is not None and jammer.covers(f.t), blind=f.idx in jam_match)
+             for f in stream]
     if not any(x.accepted for x in found):
         raise NothingLocalized(f"no frame of {frames_dir if video is None else video} could be localized on {map_path} "
                                f"({len(found)} frames tried): is it the right map?")
-    return the_map.image, frames, found
+    return engine.map, frames, found
 
 
 def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource | VideoSource, found, backend: str) -> None:
@@ -418,16 +449,24 @@ def _tracked_records(found: list[_Found], out_dir: Path, backend: str):
     """Records from the tracker's results (tracker="kalman")."""
     anchor = next(x.fix for x in found if x.accepted)    # frames before the first fix: LOST at its position
     for x in found:
-        up = x.tracked
-        track = up.track
-        if track is None:
-            track = TrackState(idx=x.idx, state=up.mode, x=anchor.x, y=anchor.y, vx=0.0, vy=0.0,
-                               cov=np.eye(2) * 1e6, fix=x.fix)
-        yield Record(idx=x.idx, t=x.t, source=_source(x, out_dir), track=track, backend=backend,
-                     ms=round(x.ms, 2) if math.isfinite(x.ms) else None,
-                     extra=_extra(x) | {"step": up.step.kind.value,
-                                        "predicted_window": None if x.predicted is None else list(x.predicted),
-                                        "window_sigma_px": None if x.sigma is None else round(x.sigma, 2)})
+        yield tracked_record(x, out_dir, backend, anchor)
+
+
+def tracked_record(x: _Found, out_dir: Path, backend: str, anchor: Fix | None = None) -> Record:
+    """The Record of one frame the tracker has seen. A frame before the first fix is put at ``anchor`` (the first
+    fix of a finished run); without one (a live run: that fix is still in the future) it has no position."""
+    up = x.tracked
+    track = up.track
+    if track is None and anchor is not None:
+        track = TrackState(idx=x.idx, state=up.mode, x=anchor.x, y=anchor.y, vx=0.0, vy=0.0,
+                           cov=np.eye(2) * 1e6, fix=x.fix)
+    elif track is None:
+        track = TrackState(idx=x.idx, state=up.mode, x=None, y=None, vx=None, vy=None, cov=None, fix=x.fix)
+    return Record(idx=x.idx, t=x.t, source=_source(x, out_dir), track=track, backend=backend,
+                  ms=round(x.ms, 2) if math.isfinite(x.ms) else None,
+                  extra=_extra(x) | {"step": up.step.kind.value,
+                                     "predicted_window": None if x.predicted is None else list(x.predicted),
+                                     "window_sigma_px": None if x.sigma is None else round(x.sigma, 2)})
 
 
 def _source(x: _Found, out_dir: Path) -> str:

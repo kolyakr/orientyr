@@ -4,13 +4,18 @@
  * Mission control, replaying a recorded run (run.json + run.jsonl + frames/) on the map.
  * The map is the scene; everything else lies over it as dark glass panels: the brand and the camera
  * on the left, the run picker and the layers at the top right, the timeline dock under the map, and on the
- * right what the tracker knows at this frame. Play, pause, scrub, speed and layers work; the mission controls
- * are drawn but inactive until the live engine exists (M7-04, M7-05).
+ * right what the tracker knows at this frame. Play, pause, scrub, speed and layers work.
+ *
+ * Live mode (M7-04): a run the engine is writing right now (scripts/live.py) is followed as it grows. The console
+ * asks /api/live for the new records every POLL_MS and stays on the newest one ("Live"); the drone glides from fix to
+ * fix (lib/live.ts). Stepping, scrubbing or pausing leaves the newest record to look back, the Live button returns
+ * to it. Of the mission controls the jam switch works on a live run; the others wait for M7-05.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { DEFAULT_LAYERS, LAYERS, type LayerId, type Layers, availableLayers, consoleUrl } from "@/lib/layers";
+import { POLL_MS, glideMs, nextPace } from "@/lib/live";
 import { SPEEDS, frameAt, stepMs as frameMs, keyAction, nextSpeed } from "@/lib/playback";
-import type { Run, RunRecord } from "@/lib/run";
+import { type Run, type RunRecord, appendRunJsonl } from "@/lib/run";
 import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
 import { Minimap } from "./Minimap";
@@ -55,18 +60,28 @@ function Ticker({ value }: { value: string }) {
   );
 }
 
-export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS, initialLayers = DEFAULT_LAYERS, mapMissing = false, assets = null }: {
-  run: Run;
+export function Console({ run: opened, initialFrame = 0, runName = null, runs = NO_RUNS, initialLayers = DEFAULT_LAYERS, mapMissing = false, assets = null, live = null }: {
+  run: Run;                 // the run as the server read it; live, its records grow from here
   initialFrame?: number;
   runName?: string | null;  // the run's name in the runs folder: it goes into the map's and the frames' URLs; null = the default run
   runs?: string[];          // the runs the picker offers
   initialLayers?: Layers;   // from the URL
   mapMissing?: boolean;     // the server did not find the map image
   assets?: { map: string; frames: string } | null;  // static URLs of the run's images (a packed run); null = the API routes
+  live?: { next: number; jam: boolean } | null; // the engine is writing this run: the byte of run.jsonl to read on from, the jam switch
 }) {
+  const [records, setRecords] = useState(opened.records);
+  const run = useMemo(() => (records === opened.records ? opened : { ...opened, records }), [opened, records]);
   const n = run.records.length;
   const last = n - 1;
-  const [frame, setFrame] = useState(Math.min(Math.max(initialFrame, 0), last));
+  // Where the view is: a frame, or "live", the newest record, whichever that is when the next one arrives.
+  const [at, setAt] = useState<number | "live">(live ? "live" : Math.min(Math.max(initialFrame, 0), last));
+  const frame = at === "live" ? last : Math.min(at, last);
+  const [flying, setFlying] = useState(live !== null); // the engine is still writing
+  const tail = flying && at === "live";                // ...and the view follows it
+  const [jam, setJam] = useState(live?.jam ?? false);
+  const [pace, setPace] = useState<number | null>(null); // ms between two records, measured as they arrive
+  const [rate, setRate] = useState<number | null>(null); // the engine's own count: accepted fixes per second
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(2);
   const [follow, setFollow] = useState(false);
@@ -77,6 +92,8 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   const rec = run.records[frame];
   const fix = rec.fix;
   const stepMs = frameMs(run.info.fps, speed);
+  // live, the drone glides to a fix for as long as the next one takes; until two have arrived, the run's own rate
+  const glide = glideMs(pace ?? (run.info.fps ? 1000 / run.info.fps : null));
   // the files of this run: the map and the camera frames
   const runQuery = runName ? `run=${encodeURIComponent(runName)}` : "";
   const mapUrl = assets ? assets.map : runQuery ? `/api/map?${runQuery}` : "/api/map";
@@ -104,27 +121,91 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
     list.scrollTo({ top: li.offsetTop - (list.clientHeight - li.offsetHeight) / 2, behavior: "smooth" });
   }, [lastEventFrame]);
 
+  // Any of these on a live run leaves the newest record: the view stays on a frame while the flight goes on.
   const jump = useCallback((f: number) => {
     setPlaying(false);
-    setFrame(Math.min(Math.max(f, 0), last));
+    setAt(Math.min(Math.max(f, 0), last));
   }, [last]);
   const step = useCallback((d: number) => {
     setPlaying(false);
-    setFrame((f) => Math.min(Math.max(f + d, 0), last));
-  }, [last]);
-  const toggle = useCallback(() => {
-    if (frame === last) setFrame(0); // play again from the start
-    setPlaying((p) => !p);
+    setAt(Math.min(Math.max(frame + d, 0), last));
   }, [frame, last]);
+  const toggle = useCallback(() => {
+    if (tail) return setAt(last);         // pause a live view: hold this frame
+    if (frame === last) setAt(0);         // play again from the start
+    setPlaying((p) => !p);
+  }, [tail, frame, last]);
+  const goLive = useCallback(() => {
+    setPlaying(false);
+    setAt("live");
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
     const id = setTimeout(() => {
-      if (frame >= last) setPlaying(false);
-      else setFrame(frame + 1);
+      if (frame < last) return setAt(frame + 1);
+      setPlaying(false);
+      if (flying) setAt("live");          // a replay that caught up with the flight goes on with it
     }, frame >= last ? 0 : stepMs);
     return () => clearTimeout(id);
-  }, [playing, frame, last, stepMs]);
+  }, [playing, frame, last, stepMs, flying]);
+
+  // Live: ask for the records made since the last answer, for as long as the engine flies.
+  const cursor = useRef(live?.next ?? 0);        // the byte of run.jsonl to read on from
+  const have = useRef(opened.records);           // the records so far, for the next answer to add to
+  const seenAt = useRef<number | null>(null);    // when the last new record was seen
+  const ordering = useRef(false);                // a jam order is on its way: the answers do not overrule it
+  const liveUrl = `/api/live?${runName ? `run=${encodeURIComponent(runName)}` : ""}`;
+  useEffect(() => {
+    if (!flying) return;
+    let over = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const ask = async () => {
+      let landed = false;
+      try {
+        const res = await fetch(`${liveUrl}&from=${cursor.current}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`/api/live: ${res.status}`);
+        const d: { live: boolean; jam: boolean; reset: boolean; text: string; next: number; fixesPerS: number | null } = await res.json();
+        if (over) return;
+        if (d.reset) return window.location.reload(); // the run was started again in this folder: read it afresh
+        const next = appendRunJsonl(have.current, d.text);
+        if (next !== have.current) {
+          const now = performance.now(), added = next.length - have.current.length;
+          const since = seenAt.current;
+          if (since !== null) setPace((p) => nextPace(p, (now - since) / added));
+          seenAt.current = now;
+          have.current = next;
+          setRecords(next);
+        }
+        cursor.current = d.next;
+        if (!ordering.current) setJam(d.jam);
+        setRate(d.fixesPerS);
+        landed = !d.live;
+      } catch { /* the server is restarting, or a line is not whole yet: the next question asks again */ }
+      if (over) return;
+      if (landed) setFlying(false);
+      else timer = setTimeout(ask, POLL_MS);
+    };
+    timer = setTimeout(ask, POLL_MS);
+    return () => {
+      over = true;
+      clearTimeout(timer);
+    };
+  }, [flying, liveUrl]);
+
+  /** The jam switch: shown pressed at once, then ordered through control.json (the engine reads it before every frame). */
+  const orderJam = async (on: boolean) => {
+    ordering.current = true;
+    setJam(on);
+    try {
+      const res = await fetch(liveUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jam: on }) });
+      if (!res.ok) setJam(!on); // the flight is over: nothing was ordered
+    } catch {
+      setJam(!on);
+    } finally {
+      ordering.current = false;
+    }
+  };
 
   useEffect(() => {
     // fetch the next camera frame ahead, so the inset never flashes empty during playback
@@ -147,7 +228,7 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   const resume = useRef(false);
   const scrubTo = (clientX: number) => {
     const box = chart.current?.getBoundingClientRect();
-    if (box) setFrame(frameAt(clientX, box.left, box.width, n));
+    if (box) setAt(frameAt(clientX, box.left, box.width, n));
   };
   const scrubStart = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -208,14 +289,14 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   // The address follows the view: a reload or a shared link opens the same run, frame and layers. Written when the
   // flight rests, not on every frame of the playback (browsers limit how often the address may change).
   useEffect(() => {
-    if (playing || scrubbing) return;
+    if (playing || scrubbing || tail) return; // live, the frame changes all the time, and a live run opens at its newest record anyway
     const id = setTimeout(() => {
       try {
         window.history.replaceState(window.history.state, "", consoleUrl({ run: runName, frame, layers }));
       } catch { /* the address is a convenience: without it the console works as before */ }
     }, 300);
     return () => clearTimeout(id);
-  }, [playing, scrubbing, frame, layers, runName]);
+  }, [playing, scrubbing, tail, frame, layers, runName]);
 
   /** Open another run, with the same layers. A full load: the page reads the run on the server. */
   const openRun = (name: string) => {
@@ -250,7 +331,8 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   const search = searchOf(rec);
   const sigmaWord = sigma <= 3 ? "very precise" : sigma <= 15 ? "precise" : sigma <= 40 ? "drifting" : "wide";
   // before the first step and after the last one nothing is being tracked: the lamp rests and says so
-  const idle = playing ? null : frame === 0 ? "Ready" : frame === last ? "Flight complete" : null;
+  // (the newest record of a flight that is still flying is neither)
+  const idle = playing || flying ? null : frame === 0 ? "Ready" : frame === last ? "Flight complete" : null;
   // an event reads "what happened: what the tracker does now"; the HUD sets the two parts as a title and a note
   const [eventTitle, eventNote = ""] = sentence(lastEvent ? lastEvent.text : "mission start: tracking").split(/:\s*/, 2);
 
@@ -304,10 +386,11 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   };
 
   return (
-    <main ref={root} className="console" data-state={rec.state} data-follow={follow || undefined} data-playing={playing || undefined}
-          data-scrubbing={scrubbing || undefined} onPointerMove={light}>
+    <main ref={root} className="console" data-state={rec.state} data-follow={follow || undefined} data-playing={playing || tail || undefined}
+          data-scrubbing={scrubbing || undefined} data-live={flying || undefined} onPointerMove={light}>
       <div className="stage">
-        <MapView run={run} frame={frame} follow={follow} playing={playing} stepMs={playing ? stepMs : scrubbing ? 90 : 250} layout={layout}
+        <MapView run={run} frame={frame} follow={follow} playing={playing || tail}
+                 stepMs={tail ? glide : playing ? stepMs : scrubbing ? 90 : 250} layout={layout}
                  layers={shown} mapUrl={mapUrl} />
         {mapMissing && (
           <p data-part="map-missing" className="stage-note">
@@ -404,12 +487,19 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
               <path className="glyph-play" d="M5 2.8v10.4L13.5 8Z" />
               <path className="glyph-pause" d="M4.5 3v10M11.5 3v10" />
             </svg>
-            {playing ? "Pause" : frame === last ? "Replay" : "Play"}
+            {playing || tail ? "Pause" : frame === last && !flying ? "Replay" : "Play"}
           </button>
           <button type="button" className="icon press" onClick={() => step(1)} aria-label="Next frame">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg>
           </button>
           <p className="time"><b><Ticker value={clock(rec.t)} /></b> / {clock(run.records[last].t)}</p>
+          {/* only while the engine flies: lit when the view follows the newest record, a press returns to it */}
+          {flying && (
+            <button type="button" data-part="live" className="live press" aria-pressed={tail} onClick={goLive}
+                    title={tail ? "Following the flight as it happens" : "Back to the newest record"}>
+              <i aria-hidden="true" />Live
+            </button>
+          )}
         </div>
 
         {/* one bar per frame: its height is how many point pairs matched, its colour is the trail's */}
@@ -575,10 +665,12 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
         </section>
 
         <section data-part="controls" className="controls glass">
-          <h2>Mission controls <span>come with the live engine</span></h2>
+          <h2>Mission controls <span>{flying ? (rate ? `live · ${rate.toFixed(1)} fixes/s` : "live") : "come with the live engine"}</span></h2>
           <div>
             <button type="button" disabled>Start mission</button>
-            <button type="button" disabled>Jam camera</button>
+            {/* on a live run the camera can be jammed: the frames reach the engine as noise until it is switched off */}
+            <button type="button" data-part="jam" disabled={!flying} aria-pressed={flying ? jam : undefined}
+                    onClick={() => orderJam(!jam)}>{flying && jam ? "Stop jamming" : "Jam camera"}</button>
             <button type="button" disabled>Change matcher</button>
           </div>
         </section>

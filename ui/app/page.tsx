@@ -8,7 +8,8 @@ type Query = { [key: string]: string | string[] | undefined };
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 /**
- * The replay viewer. The address says what is shown, so a link points a teammate at a moment:
+ * The viewer: a replay of a recorded run, or a run that is being flown right now (live mode: `opened.live`).
+ * The address says what is shown, so a link points a teammate at a moment:
  * `/?run=irpin&frame=22&off=points&on=truth`: the run (a folder name in the runs folder; without it the default
  * run), the frame, and the layers that differ from the defaults.
  */
@@ -16,6 +17,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Que
   const query = await searchParams;
   const frame = Number(one(query.frame) ?? 0);
   const opened = openRun(one(query.run));
+  if (opened.waiting) {
+    // A live run (scripts/live.py) before its first record: the engine is starting. Ask again, no reload by hand.
+    return (
+      <main className="empty" data-part="run-waiting">
+        <meta httpEquiv="refresh" content="2" />
+        <h1>Waiting for the first frame</h1>
+        <p className="reason">{opened.error}</p>
+        <p>The flight opens here as soon as the engine has localized its first frame.</p>
+      </main>
+    );
+  }
   if (!opened.run) {
     return (
       <main className="empty" data-part="run-error">
@@ -43,6 +55,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Que
   return (
     <Console key={opened.dir} run={opened.run} initialFrame={Number.isInteger(frame) ? frame : 0}
              runName={opened.name} runs={opened.runs} mapMissing={opened.mapMissing} assets={opened.assets}
-             initialLayers={parseLayers(one(query.off), one(query.on))} />
+             initialLayers={parseLayers(one(query.off), one(query.on))} live={opened.live} />
   );
 }
