@@ -224,7 +224,9 @@ button:disabled { cursor: default; }
   font: inherit; text-overflow: ellipsis; cursor: pointer; outline: none; }
 .runs select option { color: #0c0f14; background: #fff; }
 .runs svg { margin-left: -24px; pointer-events: none; color: var(--muted); }
-.runs:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* one focus ring, on the whole pill and for the keyboard only: the list inside draws none of its own */
+.runs select:focus-visible { outline: none; }
+.runs:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* the layers: a pill that opens a short list. A row is a switch; its mark is drawn like the layer on the map. */
 .layers { position: relative; }
