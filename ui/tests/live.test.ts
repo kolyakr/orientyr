@@ -118,7 +118,7 @@ describe("liveStatus", () => {
   it("parses live.json, and nothing else", () => {
     // these fields, whatever else the status carries (M7-05 adds the judge controls: tests/judge-controls.test.tsx)
     expect(parseLiveStatus(JSON.stringify(STATUS))).toMatchObject({ state: "running", frames: 2, fixes: 2, skipped: 0, fixesPerS: 2, jam: false });
-    expect(parseLiveStatus(JSON.stringify({ state: "done" }))).toEqual({ state: "done", frames: 0, fixes: 0, skipped: 0, fixesPerS: null, jam: false });
+    expect(parseLiveStatus(JSON.stringify({ state: "done" }))).toMatchObject({ state: "done", frames: 0, fixes: 0, skipped: 0, fixesPerS: null, jam: false });
     for (const bad of ["", "{", "[]", "null", JSON.stringify({ state: "flying" })]) expect(parseLiveStatus(bad)).toBeNull();
   });
 
