@@ -125,6 +125,10 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   const sigma = sigmaPx(rec.cov);
   // the uncertainty ring grows with the logarithm of sigma: 1 px and 100 px both stay readable in one small dial
   const ringScale = Math.round(Math.min(1, 0.3 + 0.36 * Math.log10(1 + sigma)) * 100) / 100;
+  // the drone on the locator plate of the HUD: the map is 100 units wide there
+  const locH = Math.round((mh / mw) * 1000) / 10;
+  const locX = Math.round(Math.min(Math.max(rec.x / mw, 0), 1) * 1000) / 10;
+  const locY = Math.round(Math.min(Math.max(rec.y / mh, 0), 1) * locH * 10) / 10;
   const sigmaWord = sigma <= 3 ? "very precise" : sigma <= 15 ? "precise" : sigma <= 40 ? "drifting" : "wide";
   // before the first step and after the last one nothing is being tracked: the lamp rests and says so
   const idle = playing ? null : frame === 0 ? "Ready" : frame === last ? "Flight complete" : null;
@@ -316,6 +320,16 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
                 <dd><Ticker value={heading == null ? "–" : `${Math.round(heading)}°`} /></dd>
                 <dd className="sub">{heading == null ? "not known yet" : `${compass(heading)}${fix?.accepted ? "" : ", from motion"}`}</dd>
               </div>
+              {/* the whole map as a small plate: the dot is where the drone is on it */}
+              <svg className="locator" viewBox={`0 0 100 ${locH}`} aria-hidden="true">
+                <rect width="100" height={locH} className="loc-plate" />
+                <path className="loc-grid" d={`M33.3 0V${locH}M66.7 0V${locH}M0 ${locH / 3}H100M0 ${(locH * 2) / 3}H100`} />
+                <g className="loc-at" style={{ transform: `translate(${locX}px, ${locY}px)` }}>
+                  <path className="loc-cross" d="M-15 0h-200M15 0h200M0 -15v-200M0 15v200" />
+                  <circle r="15" className="loc-ping" />
+                  <circle r="8" className="loc-dot" />
+                </g>
+              </svg>
               <div className="g-pos">
                 <dt>Position</dt>
                 <dd><i>x</i><Ticker value={String(Math.round(rec.x))} /></dd>

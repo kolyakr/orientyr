@@ -43,7 +43,7 @@
   --spring: cubic-bezier(.34, 1.45, .64, 1);
   --sans: var(--font-geist), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --r: 16px;
-  --side-w: 340px;
+  --side-w: 364px;
   --gap: 12px;
   color-scheme: dark;
 }
@@ -361,10 +361,19 @@ button:disabled { cursor: default; }
 /* heading and position: a compass, then the two readouts */
 .g-nav > div { min-width: 0; }
 .g-nav > div:nth-of-type(1) { flex: 1; }
+/* the map as a plate with the drone's place on it, between the heading and the numbers it stands for */
+.locator { flex: none; height: 56px; max-width: 68px; overflow: hidden; border-radius: 7px; box-shadow: 0 0 0 1px rgb(255 255 255 / .42); }
+.loc-plate { fill: rgb(6 8 11 / .6); }
+.loc-grid { fill: none; stroke: rgb(255 255 255 / .14); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.loc-at { transition: transform .5s var(--out); }
+.loc-cross { fill: none; stroke: color-mix(in srgb, var(--state) 60%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.loc-dot { fill: var(--state); transition: fill .6s ease; }
+.loc-ping { fill: none; stroke: var(--state); stroke-width: 1.4; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; animation: probe 2s var(--out) infinite; }
+.g-nav { gap: 11px !important; }
 .g-pos dd { font-size: 19px; margin-top: 3px; }
 .g-pos dt + dd { margin-top: 5px; }
 .g-pos i { width: 10px; font-style: normal; font-size: 13px; font-weight: 500; color: var(--faint); }
-.compass { flex: none; width: 80px; height: 80px; overflow: visible; }
+.compass { flex: none; width: 72px; height: 72px; overflow: visible; }
 .compass .bezel { fill: none; stroke: rgb(255 255 255 / .2); stroke-width: 1; }
 .compass .dial { fill: rgb(6 8 11 / .6); stroke: rgb(255 255 255 / .5); stroke-width: 1.2; }
 .compass line { stroke: rgb(255 255 255 / .32); stroke-width: .8; }
@@ -467,14 +476,14 @@ kbd + kbd { margin-left: 0; }
 @keyframes badge-lost { 0% { transform: translateX(0); } 20% { transform: translateX(-5px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } 100% { transform: none; } }
 
 /* ---- smaller screens ------------------------------------------------------------------------------------------- */
-@media (max-width: 1400px) { :root { --side-w: 316px; } }
+@media (max-width: 1400px) { :root { --side-w: 340px; } }
 @media (max-width: 1340px) {
   .dock { flex-wrap: wrap; row-gap: 10px; }
   .scrub { order: 3; flex-basis: 100%; }
   .speeds { margin-left: auto; }
 }
 @media (max-width: 1100px) {
-  :root { --side-w: 292px; }
+  :root { --side-w: 316px; }
   .minimap { width: 140px; }
   .gauges dd { font-size: 19px; }
   .g-pos dd { font-size: 15px; }
