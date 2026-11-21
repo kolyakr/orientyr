@@ -59,6 +59,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import cv2
 import numpy as np
@@ -89,6 +90,7 @@ __all__ = [
     "TRACKERS",
     "VIDEO_RATE",
     "Engine",
+    "MapPack",
     "NothingLocalized",
     "RunSummary",
     "localize_run",
@@ -281,6 +283,14 @@ def _resolve_m_per_px(camera: Camera | None, m_per_px: float | None, map_path, t
     return float(sidecar)
 
 
+class MapPack(NamedTuple):
+    """A map made ready for :class:`Engine`: its path, its image, and a searcher on its features."""
+
+    path: object
+    image: np.ndarray
+    searcher: Searcher
+
+
 class Engine:
     """The engine, one frame at a time: the search (in the tracker's window, or M1's rule), visual odometry when
     asked for, and the tracker's update.
@@ -297,18 +307,54 @@ class Engine:
                  device: str | None = None, vo: bool = False, *,
                  camera: Camera | None = None, m_per_px: float | None = None):
         _check_options(matcher, tracker, vo)
-        self.map_path = map_path
-        the_map = load_map(map_path)
-        self.map = the_map.image
+        self._matcher, self._cache_dir, self._device, self._tracker = matcher, cache_dir, device, tracker
         self.camera = camera
-        self.m_per_px = _resolve_m_per_px(camera, m_per_px, map_path, the_map)
+        # the scale is asked for before the map's features are built: a missing one fails at once
+        self.m_per_px = (None if camera is None else
+                         _resolve_m_per_px(camera, m_per_px, map_path, None if m_per_px is not None else load_map(map_path)))
         self.backend = MATCHERS[matcher][0]
         self.track = Tracker() if tracker == "kalman" else None
         self.odo = VisualOdometry() if vo else None
+        self.map_path = map_path
+        self.map, self.searcher = self._load(map_path)
+
+    def _load(self, map_path):
+        """A map and a searcher on it (the map's features come from the cache, or are computed now)."""
+        self.map_path, old = map_path, self.map_path            # for the message of a map with no features
         try:
-            self.searcher = Searcher(MATCHERS[matcher][1](self.map, cache_dir, device), self.map)
+            img = load_map(map_path).image
+            return img, Searcher(MATCHERS[self._matcher][1](img, self._cache_dir, self._device), img)
         except cv2.error as e:
             raise self._no_features(e) from None
+        finally:
+            self.map_path = old
+
+    def load_map(self, map_path) -> MapPack:
+        """Another map of the same place, made ready to search: :meth:`use_map` switches to it at no cost. It must
+        have the size of the engine's map (the track is kept in map px across the switch), else ValueError."""
+        img, searcher = self._load(map_path)
+        if img.shape[:2] != self.map.shape[:2]:
+            raise ValueError(f"{map_path} is {img.shape[1]} x {img.shape[0]} px, the map {self.map_path} is "
+                             f"{self.map.shape[1]} x {self.map.shape[0]} px: maps to switch between must have one size")
+        return MapPack(map_path, img, searcher)
+
+    def pack(self) -> MapPack:
+        """The map in use, as :meth:`use_map` takes it back."""
+        return MapPack(self.map_path, self.map, self.searcher)
+
+    def use_map(self, pack: MapPack) -> None:
+        """Search ``pack``'s map from the next frame on (M7-05: the map-year switch). The tracker keeps its track:
+        the maps share their pixel grid, so its prediction is where to look on the new one. The searcher starts
+        afresh (it probes the scale again): what it learned was learned on another picture."""
+        if pack.searcher is not self.searcher:
+            pack.searcher.reset()
+        self.map_path, self.map, self.searcher = pack.path, pack.image, pack.searcher
+
+    def restart(self) -> None:
+        """Forget the flight: a new track, a searcher that looks at the whole map again (M7-05: a new flight)."""
+        self.track = Tracker() if self._tracker == "kalman" else None
+        self.odo = VisualOdometry() if self.odo is not None else None
+        self.searcher.reset()
 
     def _no_features(self, e: cv2.error) -> ValueError:
         # FLANN refuses an empty index: a blank or flat map
