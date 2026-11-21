@@ -40,12 +40,11 @@ describe("Console on a live run", () => {
     expect(replay()).not.toContain('data-part="live"');
   });
 
-  it("makes the jam switch work, and only it: the other controls come later (M7-05)", () => {
-    const buttons = section(live(), "controls").match(/<button[^>]*>[^<]*/g) ?? [];
-    const jam = buttons.find((b) => b.includes("Jam camera"))!;
+  it("makes the jam switch work (the other controls: tests/judge-controls.test.tsx)", () => {
+    const jam = /<button[^>]*data-part="jam"[^>]*>[^<]*/.exec(section(live(), "controls"))![0];
     expect(jam).not.toContain("disabled");
     expect(jam).toContain('aria-pressed="false"');
-    for (const b of buttons) if (b !== jam) expect(b).toContain("disabled");
+    expect(jam).toContain("Jam camera");
     const jammed = section(live(true), "controls");
     expect(jammed).toMatch(/aria-pressed="true"[^>]*>Stop jamming/);
   });
