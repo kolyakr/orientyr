@@ -110,11 +110,36 @@ export interface RunEvent {
   text: string;
 }
 
-/** The captions the engine attaches to state changes (`extra.event`): the mission log. */
+/**
+ * The mission log. The engine may attach captions to state changes (`extra.event`); a run that has them is shown
+ * as written. The real tracker and the live mode do not write captions, so for those runs the log is read from
+ * the records themselves: every change of tracking state, and every change of the GPS check's verdict.
+ */
 export function events(records: RunRecord[]): RunEvent[] {
-  return records.flatMap((r, frame) =>
+  const written = records.flatMap((r, frame) =>
     typeof r.extra.event === "string" ? [{ frame, t: r.t, state: r.state, text: r.extra.event }] : [],
   );
+  if (written.length) return written;
+  const log: RunEvent[] = [];
+  let tracked = false; // the first TRACKING is "found", later ones are "found again"
+  records.forEach((r, frame) => {
+    const prev = records[frame - 1];
+    const add = (text: string) => log.push({ frame, t: r.t, state: r.state, text });
+    if (prev && r.state !== prev.state) {
+      if (r.state === "LOST") add(r.extra.jammed === true ? "camera jammed: holding the last position" : "signal lost: holding the last position");
+      else if (r.state === "RELOCALIZING") add("camera back: searching the whole map");
+      else add(tracked ? "relocalized: tracking again" : "position found: tracking");
+    }
+    if (r.state === "TRACKING") tracked = true;
+    const gps = gpsOf(r)?.state;
+    const before = prev ? gpsOf(prev)?.state : undefined;
+    if (gps && before && gps !== before) {
+      if (gps === "SUSPECT") add("GPS drifts away from the camera position");
+      else if (gps === "SPOOFED") add("GPS spoofed: alarm raised");
+      else if (gps === "OK" && before !== "NO_DATA") add("GPS agrees with the camera again");
+    }
+  });
+  return log;
 }
 
 /** The trail's three colours, as the legend says: green = sure, yellow = less sure, red = guessing (no fix). */

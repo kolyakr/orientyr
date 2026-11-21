@@ -293,3 +293,40 @@ describe("the camera panel's size (resizable, M7-05)", () => {
     expect(cameraDrag(300, -50, -10, 4 / 3)).toBe(250);
   });
 });
+
+describe("mission log without engine captions", () => {
+  // The real tracker and the live mode write no `extra.event`: the log must then come from the records.
+  const base = recs[0];
+  const rec = (i: number, state: RunRecord["state"], extra: Record<string, unknown> = {}): RunRecord =>
+    ({ ...base, idx: i, t: i / 2, state, extra });
+  const gps = (state: string) => ({ gps: { state, x: 1, y: 1, alarm: state === "SPOOFED", gap_px: 5 } });
+
+  it("logs every change of tracking state, and names a jam", () => {
+    const log = events([
+      rec(0, "RELOCALIZING"), rec(1, "TRACKING"), rec(2, "TRACKING"), rec(3, "LOST", { jammed: true }),
+      rec(4, "LOST", { jammed: true }), rec(5, "RELOCALIZING"), rec(6, "TRACKING"), rec(7, "LOST"),
+    ]);
+    expect(log.map((e) => e.frame)).toEqual([1, 3, 5, 6, 7]);
+    expect(log[0].text).toMatch(/found/);
+    expect(log[1].text).toMatch(/jammed/);
+    expect(log[3].text).toMatch(/again/);
+    expect(log[4].text).toMatch(/signal lost/);
+    expect(log[1]).toMatchObject({ t: 1.5, state: "LOST" });
+  });
+
+  it("logs the GPS check's verdict when it changes", () => {
+    const log = events([
+      rec(0, "TRACKING", gps("NO_DATA")), rec(1, "TRACKING", gps("OK")), rec(2, "TRACKING", gps("SUSPECT")),
+      rec(3, "TRACKING", gps("SPOOFED")), rec(4, "TRACKING", gps("SPOOFED")), rec(5, "TRACKING", gps("OK")),
+    ]);
+    expect(log.map((e) => [e.frame, e.text])).toEqual([
+      [2, "GPS drifts away from the camera position"], [3, "GPS spoofed: alarm raised"], [5, "GPS agrees with the camera again"],
+    ]);
+  });
+
+  it("is empty for a flight where nothing changes, and keeps the engine's captions when there are any", () => {
+    expect(events([rec(0, "TRACKING"), rec(1, "TRACKING")])).toEqual([]);
+    const log = events([rec(0, "TRACKING"), rec(1, "LOST", { event: "written by the engine" })]);
+    expect(log).toEqual([{ frame: 1, t: 0.5, state: "LOST", text: "written by the engine" }]);
+  });
+});
