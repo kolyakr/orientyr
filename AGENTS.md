@@ -255,7 +255,7 @@ tools/task.sh test                                       # the test suite (pytes
 ruff check .                                             # lint, as CI does (experiments/ excluded)
 python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
-(cd ui && npm install && npm run dev)                    # the console on outputs/fake: http://localhost:3000 (ORIENTYR_RUN=<run dir> for another run)
+(cd ui && npm install && npm run dev)                    # the console: http://localhost:3000 replays any run folder in outputs/ (/?run=<name>, or the Run list); ORIENTYR_RUNS=<dir of runs> or ORIENTYR_RUN=<run dir> for others
 (cd ui && npm test)                                      # the console's own tests (vitest); pytest also runs them on a fresh fake run
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
 python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)

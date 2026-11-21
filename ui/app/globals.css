@@ -239,10 +239,8 @@ button:disabled { cursor: default; }
 .layers li small { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layers li kbd { color: var(--muted); }
 /* a layer that is off: its row dims and its mark empties, the text stays readable */
-.layers li button[aria-pressed="false"] { color: var(--muted); }
+.layers li button[aria-pressed="false"] { color: var(--faint); }
 .layers li button[aria-pressed="false"] .mark { opacity: .28; filter: grayscale(1); }
-.layers li button[aria-pressed="false"] span { text-decoration: line-through; text-decoration-color: rgb(226 232 245 / .4); }
-.layers li button[aria-pressed="false"] small { text-decoration: none; }
 .mark { justify-self: center; width: 18px; height: 12px; transition: opacity .2s ease; }
 .mark-trail { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--bad), var(--warn), var(--ok)); }
 .mark-points { width: 13px; height: 13px; border-radius: 50%; background: #f4f1ea; box-shadow: 0 0 0 1.5px rgb(4 6 10 / .85); }
@@ -256,8 +254,8 @@ button:disabled { cursor: default; }
 @keyframes drop { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
 
 /* the map image is missing: said once, over the stage, in plain words */
-.stage-note { position: absolute; left: 50%; top: 50%; z-index: 1; transform: translate(-50%, -50%); display: grid; gap: 4px; max-width: min(420px, 80%);
-  text-align: center; font-size: 13px; line-height: 1.4; color: var(--muted); text-shadow: 0 1px 4px #000; pointer-events: none; }
+.stage-note { position: absolute; right: 4px; top: 54px; z-index: 1; display: grid; gap: 2px; max-width: min(420px, 80%);
+  text-align: right; font-size: 13px; line-height: 1.4; color: var(--muted); text-shadow: 0 1px 4px #000; pointer-events: none; }
 .stage-note strong { font-size: 15px; font-weight: 600; color: var(--ink); }
 .stage-note code { font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; overflow-wrap: anywhere; }
 

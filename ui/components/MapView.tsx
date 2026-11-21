@@ -24,7 +24,7 @@ const STAGE_RATIO = 1.36; // before the stage is measured: it is about this wide
 const INTRO_MS = 1500; // on load the flown route draws itself once, start to drone, in about this long
 const TAIL = 18; // the newest steps of the route are drawn wide and bright, like a comet's tail: the present dominates
 const ROTORS = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; // a quadcopter from above: the four arms of an X
-const NOTE = 12.4; // the smallest text on the map, in screen units: never under 12 px on screen (a unit is 1 px or more)
+const NOTE = 14.2; // the size of the notes on the map, in screen units: 12 px on screen where a unit is smallest (0.85 px)
 
 const pts = (points: number[][]) => points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 const tenth = (v: number) => Math.round(v * 10) / 10;
@@ -114,6 +114,9 @@ export function MapView({ run, frame, follow, playing, stepMs, layout, layers, m
   const truthGap = truth && here ? Math.hypot(truth.x - rec.x, truth.y - rec.y) : null;
   const gps = layers.gps ? gpsOf(rec) : null;
   const gpsAt = gps && gps.x !== null && gps.y !== null ? { x: gps.x, y: gps.y } : null;
+  // the GPS note stands on the far side of its mark from the drone, and clear of the drone when the two are close
+  const gpsSide = gpsAt && here && gpsAt.x < rec.x ? -1 : 1;
+  const gpsOff = gpsAt && here && Math.hypot(gpsAt.x - rec.x, gpsAt.y - rec.y) < 40 * u ? 30 : 14;
   const win = layers.window ? windowOf(rec) : null;
   // The frame at which the current state began: a new state replays its one-shot animation (the lock-on ring).
   const runs = useMemo(() => stateRuns(run.records), [run]);
@@ -226,7 +229,7 @@ export function MapView({ run, frame, follow, playing, stepMs, layout, layers, m
               <path key={pass} className={pass ? "truth-mark" : "truth-case"} strokeWidth={width * u}
                     d={`M ${-7 * u} 0 H ${7 * u} M 0 ${-7 * u} V ${7 * u}`} />
             ))}
-            <text x={11 * u} y={16 * u} fontSize={NOTE * u} className="label">
+            <text y={42 * u} fontSize={NOTE * u} className="label" textAnchor="middle">
               {truthGap === null ? "truth" : `truth · ${truthGap < 10 ? truthGap.toFixed(1) : Math.round(truthGap)} px off`}
             </text>
           </g>
@@ -241,7 +244,7 @@ export function MapView({ run, frame, follow, playing, stepMs, layout, layers, m
                 <path key={pass} className={pass ? "gps-mark" : "gps-case"} strokeWidth={width * u}
                       d={`M 0 ${-7.5 * u} L ${7.5 * u} 0 L 0 ${7.5 * u} L ${-7.5 * u} 0 Z`} />
               ))}
-              <text x={12 * u} y={-9 * u} fontSize={NOTE * u} className="label">
+              <text x={gpsSide * gpsOff * u} y={5 * u} fontSize={NOTE * u} className="label" textAnchor={gpsSide > 0 ? "start" : "end"}>
                 GPS {gps.state === "OK" ? "agrees" : gps.state === "SUSPECT" ? "suspect" : gps.state === "SPOOFED" ? "spoofed" : "unchecked"}
                 {gps.gapPx !== null && ` · ${Math.round(gps.gapPx)} px`}
               </text>

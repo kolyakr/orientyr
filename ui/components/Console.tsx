@@ -268,13 +268,11 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
     const PAD = 12;
     const measure = () => {
       const width = cell.offsetWidth, height = cell.offsetHeight;
-      let left = 0, top = 0;   // the left column (brand, camera) and the row of the tools
-      const children = Array.from(cell.children) as HTMLElement[];
-      const column = children.some((el) => el.classList.contains("camera")); // without the camera inset the brand is a row too
-      for (const el of children) {
+      let left = 0, top = 0;   // the camera inset on the left, and the top row: the brand and the tools
+      for (const el of Array.from(cell.children) as HTMLElement[]) {
         if (el.classList.contains("minimap")) continue; // it sits in the bottom right corner, the route may pass under it
-        if (el.classList.contains("tools") || !column) top = Math.max(top, el.offsetTop + el.offsetHeight);
-        else left = Math.max(left, el.offsetLeft + el.offsetWidth);
+        if (el.classList.contains("camera")) left = el.offsetLeft + el.offsetWidth;
+        else top = Math.max(top, el.offsetTop + el.offsetHeight);
       }
       if (left > width * 0.4) left = 0; // a very narrow stage: the column would take too much, the route may pass under it
       const x = left + PAD, y = top + PAD;
