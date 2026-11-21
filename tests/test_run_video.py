@@ -14,10 +14,10 @@ from pathlib import Path
 
 import cv2
 import pytest
+from tests.test_run import OUTPUTS, _city, _cli
 
 from dronenav.sim import CutoutSource, cutout_route
 from dronenav.telemetry import read_run, read_run_info
-from tests.test_run import OUTPUTS, _city, _cli
 
 ROOT = Path(__file__).resolve().parents[1]
 FPS = 6.0          # a slow take: at the default ~3 frames/s it is sampled every 2nd frame

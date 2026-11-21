@@ -1,8 +1,15 @@
-"""The pipeline (M1-09): a map and a folder of frames in, a run folder with the trajectory image and video out.
+"""The pipeline (M1-09): a map and a folder of frames (or a video, M2-09) in, a run folder with the trajectory
+image and video out.
 
-    frames (io.FolderSource) ─► Searcher.locate per frame ─► tracker ─► records ─► run.json + run.jsonl ─► viz
-                                (matcher, scale, geometry,     (states,              (telemetry)
+    frames (io.FolderSource,   ─► Searcher.locate per frame ─► tracker ─► records ─► run.json + run.jsonl ─► viz
+     or video.VideoSource)      (matcher, scale, geometry,     (states,              (telemetry)
                                  window or whole map)           Kalman)
+
+A video (M2-09) is sampled every N-th frame (``every``; by default N is chosen from the take's fps so that about
+VIDEO_RATE frames per second are processed: a phone's 30 fps would otherwise be ten times the work for frames a
+third of a metre apart). Records keep the video's frame index and time. Each sampled frame is saved as
+``frames/frame_<index>.jpg`` in the run folder and is the record's source, so the renderers' inset (and anything
+else that reads ``source``) sees an ordinary image, and the run folder stays whole when it is moved.
 
 The engine (matcher, scale rule, geometry checks, search strategy) is M1-02 to M1-05; this module wires it to the
 run folder the renderers read (M0-03, M0-04 convention) and gives every frame a state.
@@ -47,6 +54,7 @@ from dronenav.search import Located, Searcher, SearchMode, prediction_window
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
 from dronenav.tracking.states import Tracker, TrackerUpdate
 from dronenav.types import Fix, TrackMode, TrackState
+from dronenav.video import VideoSource
 from dronenav.viz.trajectory_image import write_trajectory
 from dronenav.viz.trajectory_video import write_video
 
@@ -56,6 +64,7 @@ __all__ = [
     "MATCHERS",
     "OUTPUTS",
     "TRACKERS",
+    "VIDEO_RATE",
     "NothingLocalized",
     "RunSummary",
     "localize_run",
@@ -65,6 +74,8 @@ __all__ = [
 # --matcher name -> (backend, factory); the learned matchers (M4) join here
 MATCHERS = {"sift": (RootSiftMatcher.backend, lambda map_img, cache_dir: RootSiftMatcher(map_img, cache_dir=cache_dir))}
 TRACKERS = ("kalman", "none")    # --tracker: the M5 tracker, or M1's interim states
+VIDEO_RATE = 3.0                 # frames/s taken from a video by default (the spec asks for 2-5)
+FRAMES_DIR = "frames"            # a video's sampled frames, in the run folder
 OUTPUTS = ("run.json", "run.jsonl", "trajectory.png", "trajectory_preview.jpg", "trajectory.mp4")
 
 COAST_MAX_S = 5                  # seconds a lost track coasts on its last velocity before it holds
@@ -119,11 +130,41 @@ def _check_options(matcher: str, tracker: str) -> None:
         raise ValueError(f"unknown tracker {tracker!r} (available: {', '.join(TRACKERS)})")
 
 
-def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman"):
-    """Check the inputs and find every frame; nothing is written. Returns (map image, frames source, found)."""
+def _frame_source(frames_dir, video, fps, every):
+    """The frames: a folder (FolderSource) or a video (VideoSource, every N-th frame; see the module docstring)."""
+    if (frames_dir is None) == (video is None):
+        raise ValueError("give a folder of frames or a video, not both and not neither")
+    if video is None:
+        if every is not None:
+            raise ValueError("every (each N-th frame) is for a video, not a folder of frames")
+        return FolderSource(frames_dir, fps=fps)
+    if fps is not None:
+        raise ValueError("fps (the rate of the numbers in frame names) is for a folder of frames; a video has its "
+                         "own: sample it with every")
+    if every is not None:
+        return VideoSource(video, every=every)
+    take = VideoSource(video)
+    return VideoSource(video, fps=min(VIDEO_RATE, take.fps))
+
+
+def _keep(f, keep_dir: Path | None) -> Path:
+    """The frame's path for the record: its file, or (a video frame) a JPEG saved into keep_dir."""
+    if keep_dir is None or Path(f.source).is_file():
+        return Path(f.source)
+    keep_dir.mkdir(parents=True, exist_ok=True)
+    path = keep_dir / f"frame_{f.idx:06d}.jpg"
+    if not cv2.imwrite(str(path), f.image, [cv2.IMWRITE_JPEG_QUALITY, 90]):
+        raise OSError(f"cannot write {path}")
+    return path
+
+
+def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", *, video=None,
+              every=None, keep_dir: Path | None = None):
+    """Check the inputs and find every frame; nothing is written but a video's sampled frames (into keep_dir).
+    Returns (map image, frames source, found)."""
     _check_options(matcher, tracker)
+    frames = _frame_source(frames_dir, video, fps, every)
     the_map = load_map(map_path)
-    frames = FolderSource(frames_dir, fps=fps)
     track = Tracker() if tracker == "kalman" else None
     try:
         searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir), the_map.image)
@@ -142,19 +183,19 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
                                                searcher.cfg)
                 loc = searcher.locate_in(f.idx, f.image, window)
                 tracked = track.update(f.idx, f.t, loc.fix)
-            found.append(_Found(f.idx, f.t, Path(f.source), (f.image.shape[1], f.image.shape[0]), loc.fix,
+            found.append(_Found(f.idx, f.t, _keep(f, keep_dir), (f.image.shape[1], f.image.shape[0]), loc.fix,
                                 loc.mode.value, loc.window, float(loc.factor), float(loc.ms), tracked, window,
                                 sigma))
     except cv2.error as e:                # FLANN refuses an empty index: a blank or flat map
         raise ValueError(f"matching on {map_path} failed: the map has no usable features (blank or flat image?) "
                          f"[{e.err}]") from None
     if not any(x.accepted for x in found):
-        raise NothingLocalized(f"no frame of {frames_dir} could be localized on {map_path} "
+        raise NothingLocalized(f"no frame of {frames_dir if video is None else video} could be localized on {map_path} "
                                f"({len(found)} frames tried): is it the right map?")
     return the_map.image, frames, found
 
 
-def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource, found, backend: str) -> None:
+def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource | VideoSource, found, backend: str) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     h, w = map_img.shape[:2]
     sizes = {x.size for x in found}
@@ -165,41 +206,49 @@ def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource, found, ba
             writer.write(rec)
 
 
-def localize_run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, matcher: str = "sift",
+def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
                  fps: float | None = None, cache_dir: str | Path | None = "outputs/cache",
-                 tracker: str = "kalman") -> RunSummary:
-    """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no images)."""
+                 tracker: str = "kalman", video: str | Path | None = None, every: int | None = None) -> RunSummary:
+    """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no trajectory
+    image or video; a video's sampled frames go to ``out_dir/frames``)."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     _check_out(out_dir)
-    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker)
+    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
+                                       every=every, keep_dir=None if video is None else out_dir / FRAMES_DIR)
     _write_run(out_dir, map_path, map_img, frames, found, MATCHERS[matcher][0])
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
                       seconds=time.perf_counter() - t0)
 
 
-def run(map_path: str | Path, frames_dir: str | Path, out_dir: str | Path, *, matcher: str = "sift",
+def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
         fps: float | None = None, speed: float = 1.0,
-        cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman") -> RunSummary:
+        cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman",
+        video: str | Path | None = None, every: int | None = None) -> RunSummary:
     """The whole deliverable: localize, then the trajectory image (M1-07) and the video (M1-08), all into
-    ``out_dir`` at once (see the module docstring)."""
+    ``out_dir`` at once (see the module docstring). Frames come from ``frames_dir`` or, instead, ``video``
+    (every ``every``-th frame; by default about VIDEO_RATE per second)."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     if not _is_rate(speed):
         raise ValueError(f"speed must be a positive number, got {speed!r}")
     _check_out(out_dir)
     _check_options(matcher, tracker)
-    map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker)
     # a sibling folder: the same depth, so every relative path written into it holds in out_dir too
     part = out_dir.parent / f".{out_dir.name}.partial"
     shutil.rmtree(part, ignore_errors=True)
     try:
+        map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
+                                           every=every, keep_dir=None if video is None else part / FRAMES_DIR)
         _write_run(part, map_path, map_img, frames, found, MATCHERS[matcher][0])
         write_trajectory(part, map_img=map_img)
         write_video(part, map_img=map_img, speed=speed)
         out_dir.mkdir(parents=True, exist_ok=True)
         for name in OUTPUTS:                               # all five exist: now they replace the old ones
             os.replace(part / name, out_dir / name)
+        if (part / FRAMES_DIR).is_dir():                   # a video's frames: the old run's go with its records
+            shutil.rmtree(out_dir / FRAMES_DIR, ignore_errors=True)
+            os.replace(part / FRAMES_DIR, out_dir / FRAMES_DIR)
     finally:
         shutil.rmtree(part, ignore_errors=True)
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
