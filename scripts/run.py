@@ -49,14 +49,14 @@ def main(argv: list[str] | None = None) -> int:
     add_shared_args(ap)
     a = ap.parse_args(argv)
     # Picked and logged like in every matching script; the SIFT matcher runs on the CPU, a torch matcher takes this device.
-    init_cli(a)
+    device = init_cli(a)
     if a.every is not None and a.video is None:
         ap.error("--every samples a --video; a folder of frames is taken whole")
     if a.fps is not None and a.video is not None:
         ap.error("--fps is the rate of a folder's frame numbers; a --video has its own (sample it with --every)")
     try:
         s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache,
-                tracker=a.tracker, video=a.video, every=a.every)
+                tracker=a.tracker, video=a.video, every=a.every, device=device)
     except NothingLocalized as e:
         print(f"run: error: {e}", file=sys.stderr)
         return 1

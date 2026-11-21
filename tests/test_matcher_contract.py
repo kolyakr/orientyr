@@ -1,6 +1,7 @@
-"""The shared ``Matcher`` contract: what every backend (RootSIFT now; LightGlue, XFeat later) must do.
+"""The shared ``Matcher`` contract: what every backend (RootSIFT, XFeat; LightGlue later) must do.
 
-A later backend joins by adding a factory to ``MATCHERS``. The contract (dronenav.types.Matcher):
+A later backend joins by adding a factory to ``MATCHERS``. A learned backend needs its weights, which are neither
+committed nor downloaded by tests: it gets a mark in ``MARKS`` and skips where the weights are not cached (CI). The contract (dronenav.types.Matcher):
 - it is a ``Matcher`` and returns ``Matches`` with its backend name and a wall time;
 - ``pts_map`` are in full-map pixels, also when ``map_img`` is a window at ``map_offset``;
 - matches from a window lie inside that window, and ``mask`` keeps them out of masked-off map pixels;
@@ -11,9 +12,10 @@ Ground truth: a synthetic map and a frame rendered from it through a known homog
 import numpy as np
 import pytest
 from tests.synth import apply, make_h, make_map, render_frame
+from tests.weights import needs_xfeat_weights
 
 from dronenav.geometry import localize
-from dronenav.matching import RootSiftMatcher
+from dronenav.matching import RootSiftMatcher, XFeatMatcher
 from dronenav.types import Matcher, Matches
 
 FRAME_SIZE = (480, 360)
@@ -26,10 +28,13 @@ WINDOW = (380, 160, 900, 680)   # x0, y0, x1, y1 of a map window that contains t
 
 MATCHERS = {
     "rootsift": lambda cache_dir: RootSiftMatcher(cache_dir=cache_dir),
+    # CPU and no download: the contract is the same on every device, and a test never reaches for the network
+    "xfeat": lambda cache_dir: XFeatMatcher(cache_dir=cache_dir, device="cpu", download=False),
 }
+MARKS = {"xfeat": needs_xfeat_weights}
 
 
-@pytest.fixture(params=list(MATCHERS))
+@pytest.fixture(params=[pytest.param(name, marks=MARKS.get(name, ())) for name in MATCHERS])
 def matcher(request, tmp_path):
     return MATCHERS[request.param](tmp_path / "cache")
 

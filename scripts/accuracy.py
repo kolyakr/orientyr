@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     if (a.map is None) != (a.frames is None):
         ap.error("--map and --frames go together (to localize first), or neither (to score an existing run)")
-    init_cli(a)               # logging and the device, as in every matching script (M0-07); the device is for --map
+    device = init_cli(a)      # logging and the device, as in every matching script (M0-07); the device is for --map
     try:
         truth = load_truth(a.truth)        # before localizing: a wrong truth path must not cost a whole run
         if a.map is not None:
@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"{a.run} holds a rendered run ({', '.join(stale)}) that localizing would leave "
                                  "stale: score it without --map/--frames, or localize into another folder")
             localize_run(a.map, a.frames, a.run, matcher=a.matcher, fps=a.fps,
-                         cache_dir=None if a.cache.lower() == "none" else a.cache)
+                         cache_dir=None if a.cache.lower() == "none" else a.cache, device=device)
         acc = score(read_run(a.run / "run.jsonl"), truth, within_px=a.within)
     except NothingLocalized as e:
         print(f"accuracy: error: {e}", file=sys.stderr)

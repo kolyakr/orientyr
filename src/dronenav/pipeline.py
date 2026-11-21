@@ -50,7 +50,7 @@ import numpy as np
 
 from dronenav.geometry import pose_from_homography
 from dronenav.io import FolderSource, _is_rate, load_map
-from dronenav.matching import RootSiftMatcher
+from dronenav.matching import RootSiftMatcher, XFeatMatcher
 from dronenav.search import Located, Searcher, SearchMode, prediction_window
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
 from dronenav.tracking.states import Tracker, TrackerUpdate
@@ -72,8 +72,13 @@ __all__ = [
     "run",
 ]
 
-# --matcher name -> (backend, factory); the learned matchers (M4) join here
-MATCHERS = {"sift": (RootSiftMatcher.backend, lambda map_img, cache_dir: RootSiftMatcher(map_img, cache_dir=cache_dir))}
+# --matcher name -> (backend, factory(map image, cache dir, device)); the learned matchers (M4) join here.
+# SIFT runs on the CPU whatever the device; XFeat (M4-03) takes it, and fetches its weights on first use.
+MATCHERS = {
+    "sift": (RootSiftMatcher.backend, lambda map_img, cache_dir, device: RootSiftMatcher(map_img, cache_dir=cache_dir)),
+    "xfeat": (XFeatMatcher.backend,
+              lambda map_img, cache_dir, device: XFeatMatcher(map_img, cache_dir=cache_dir, device=device)),
+}
 TRACKERS = ("kalman", "none")    # --tracker: the M5 tracker, or M1's interim states
 VIDEO_RATE = 3.0                 # frames/s taken from a video by default (the spec asks for 2-5)
 FRAMES_DIR = "frames"            # a video's sampled frames, in the run folder
@@ -160,7 +165,7 @@ def _keep(f, keep_dir: Path | None) -> Path:
 
 
 def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", *, video=None,
-              every=None, keep_dir: Path | None = None):
+              every=None, keep_dir: Path | None = None, device: str | None = None):
     """Check the inputs and find every frame; nothing is written but a video's sampled frames (into keep_dir).
     Returns (map image, frames source, found)."""
     _check_options(matcher, tracker)
@@ -168,7 +173,7 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
     the_map = load_map(map_path)
     track = Tracker() if tracker == "kalman" else None
     try:
-        searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir), the_map.image)
+        searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir, device), the_map.image)
         found = []
         for f in frames:
             window = sigma = tracked = None
@@ -209,14 +214,17 @@ def _write_run(out_dir: Path, map_path, map_img, frames: FolderSource | VideoSou
 
 def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
                  fps: float | None = None, cache_dir: str | Path | None = "outputs/cache",
-                 tracker: str = "kalman", video: str | Path | None = None, every: int | None = None) -> RunSummary:
+                 tracker: str = "kalman", video: str | Path | None = None, every: int | None = None,
+                 device: str | None = None) -> RunSummary:
     """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no trajectory
-    image or video; a video's sampled frames go to ``out_dir/frames``)."""
+    image or video; a video's sampled frames go to ``out_dir/frames``). ``device`` is for a matcher that runs on
+    torch (None: the best available)."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     _check_out(out_dir)
     map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
-                                       every=every, keep_dir=None if video is None else out_dir / FRAMES_DIR)
+                                       every=every, keep_dir=None if video is None else out_dir / FRAMES_DIR,
+                                       device=device)
     _write_run(out_dir, map_path, map_img, frames, found, MATCHERS[matcher][0])
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
                       seconds=time.perf_counter() - t0)
@@ -225,10 +233,11 @@ def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: s
 def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path, *, matcher: str = "sift",
         fps: float | None = None, speed: float = 1.0,
         cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman",
-        video: str | Path | None = None, every: int | None = None) -> RunSummary:
+        video: str | Path | None = None, every: int | None = None, device: str | None = None) -> RunSummary:
     """The whole deliverable: localize, then the trajectory image (M1-07) and the video (M1-08), all into
     ``out_dir`` at once (see the module docstring). Frames come from ``frames_dir`` or, instead, ``video``
-    (every ``every``-th frame; by default about VIDEO_RATE per second)."""
+    (every ``every``-th frame; by default about VIDEO_RATE per second). ``device`` is for a matcher that runs on
+    torch (None: the best available)."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     if not _is_rate(speed):
@@ -240,7 +249,8 @@ def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path
     shutil.rmtree(part, ignore_errors=True)
     try:
         map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, video=video,
-                                           every=every, keep_dir=None if video is None else part / FRAMES_DIR)
+                                           every=every, keep_dir=None if video is None else part / FRAMES_DIR,
+                                           device=device)
         _write_run(part, map_path, map_img, frames, found, MATCHERS[matcher][0])
         write_trajectory(part, map_img=map_img)
         write_video(part, map_img=map_img, speed=speed)
