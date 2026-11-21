@@ -2,15 +2,19 @@
 
     python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run1
     python scripts/run.py --map data/map.png --video data/video/take.mp4 --every 10 --out outputs/phone
+    python scripts/run.py --map data/map.png --frames data/flight --out outputs/jam --jam 150:30
 
 Writes into --out: run.json and run.jsonl (one telemetry record per frame), trajectory.png and
 trajectory_preview.jpg (the route on the map), trajectory.mp4 (a camera following the drone); from a video, also
-frames/ (the sampled frames the records point to). The map's features are cached in --cache, so later runs on the
+frames/ (the sampled frames the records point to). --jam START:LENGTH (seconds of flight) is the stress test of
+the demo: the camera is jammed for that stretch (those frames reach the engine as noise, which is saved in frames/),
+so the run shows the track being lost and found again. The map's features are cached in --cache, so later runs on the
 same map start faster. See dronenav.pipeline for the steps.
 """
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 
 import cv2
@@ -25,6 +29,14 @@ def _count(text: str) -> int:
     if n < 1:
         raise ValueError(text)
     return n
+
+
+def _jam(text: str) -> tuple[float, float]:
+    """--jam START:LENGTH, both in seconds of flight: START >= 0, LENGTH > 0."""
+    start, length = (float(v) for v in text.split(":"))      # not two numbers: ValueError, a usage error
+    if not (math.isfinite(start) and math.isfinite(length) and start >= 0 and length > 0):
+        raise ValueError(text)
+    return start, length
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,6 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tracker", default="kalman",
                     help=f"kalman: the Kalman tracker's states and filtered positions (M5); none: M1's interim "
                          f"states, raw fixes (available: {', '.join(TRACKERS)})")
+    ap.add_argument("--jam", type=_jam, default=None, metavar="START:LENGTH",
+                    help="stress test: jam the camera for LENGTH seconds from START seconds of flight (those "
+                         "frames arrive as noise); the run shows the track lost and found again")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
     add_shared_args(ap)
     a = ap.parse_args(argv)
@@ -56,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--fps is the rate of a folder's frame numbers; a --video has its own (sample it with --every)")
     try:
         s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache,
-                tracker=a.tracker, video=a.video, every=a.every, device=device)
+                tracker=a.tracker, video=a.video, every=a.every, device=device, jam=a.jam)
     except NothingLocalized as e:
         print(f"run: error: {e}", file=sys.stderr)
         return 1

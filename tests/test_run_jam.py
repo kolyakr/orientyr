@@ -14,11 +14,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.test_run import _city, _frames
 
 from dronenav.pipeline import MATCH_SAMPLE, match_sample
 from dronenav.telemetry import read_run
 from dronenav.types import Fix, Matches, TrackMode
-from tests.test_run import _city, _frames
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN = ROOT / "scripts" / "run.py"
