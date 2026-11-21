@@ -26,7 +26,7 @@ from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ("accuracy.py", "chaos_sheet.py", "check_backups.py", "check_data.py", "confidence_check.py", "fake_run.py",
-           "mavlink_log.py",
+           "live.py", "mavlink_log.py",
            "pack_run.py", "preprocess_ablation.py", "render_image.py", "render_video.py", "rotation_check.py", "run.py",
            "scale_table.py", "search_run.py", "spoof_check.py", "xfeat_timing.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
@@ -38,7 +38,7 @@ DEVICE_SCRIPTS = ("scale_table.py", "search_run.py")
 # so only the option itself is checked here; its device line is the same init_cli() call as in the two above.
 # xfeat_timing.py called bare would do its whole measurement (and fetch weights): tests/test_xfeat.py runs it.
 DEVICE_OPTION_SCRIPTS = (*DEVICE_SCRIPTS, "run.py", "confidence_check.py", "accuracy.py", "rotation_check.py",
-                         "preprocess_ablation.py", "xfeat_timing.py")
+                         "preprocess_ablation.py", "xfeat_timing.py", "live.py")
 
 
 def _size(text: str) -> tuple[int, int]:
