@@ -48,6 +48,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dronenav.geometry import pose_from_homography
 from dronenav.io import FolderSource, _is_rate, load_map
 from dronenav.matching import RootSiftMatcher
 from dronenav.search import Located, Searcher, SearchMode, prediction_window
@@ -316,7 +317,12 @@ def _source(x: _Found, out_dir: Path) -> str:
 
 
 def _extra(x: _Found) -> dict:
-    return {"search": x.mode, "factor": x.factor, "window": None if x.window is None else [int(v) for v in x.window]}
+    """The search behind the record and, for an accepted fix, the camera's tilt off nadir read from its homography
+    (M2-04): Fix.x, y is where the image centre lands, which a tilt moves away from the point under the drone."""
+    extra = {"search": x.mode, "factor": x.factor, "window": None if x.window is None else [int(v) for v in x.window]}
+    if x.accepted:
+        extra["tilt_deg"] = pose_from_homography(x.fix.H, x.size).tilt_deg
+    return extra
 
 
 def _velocity(last, prev) -> tuple[float, float]:

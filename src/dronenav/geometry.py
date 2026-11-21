@@ -21,8 +21,19 @@ The checks run in a fixed order and the first failure is reported, so each reaso
 ``mirrored``           the footprint is convex but its corners run the other way round: a reflection.
 ``scale_out_of_range`` map px per frame px at the centre is outside [``min_scale``, ``max_scale``].
 ``aspect``             at the centre one direction is stretched more than ``max_aspect`` times the other.
+``perspective``        H has a perspective (depth changing across the frame) that no centred pinhole camera
+                       produces: more than its tilt explains for a field of view up to ``max_hfov_deg``, or
+                       along another direction than the tilt.
 ``reproj_error``       the inliers' RMS reprojection error is above ``max_reproj_rmse_px``: a sloppy fit.
 =====================  ==========================================================================================
+
+Tilted views (M2-04). A camera tilted by t from straight down sees the ground stretched by exactly 1 / cos(t)
+along the tilt at the image centre (where the principal point is), whatever its focal length: so the tilt is
+read off H without knowing the camera (``Pose.tilt_deg``). The depth then changes across the frame along that
+same direction, by tan(t) / f per frame px: H's projective row gives f (:func:`focal_from_homography`), and with
+f the camera's own position, the point straight under it (:func:`nadir_point`). ``Pose.x, y`` stay where the
+image centre lands; with tilt that is altitude x tan(t) ahead of the drone. The ``perspective`` check uses the
+same relation the other way round: a perspective the tilt can't explain is a bad fit, not a camera.
 """
 from __future__ import annotations
 
@@ -40,13 +51,16 @@ __all__ = [
     "DEGENERATE",
     "MIRRORED",
     "NOT_CONVEX",
+    "PERSPECTIVE",
     "REPROJ_ERROR",
     "SCALE_OUT_OF_RANGE",
     "TOO_FEW_INLIERS",
     "GeometryConfig",
     "Pose",
     "check_homography",
+    "focal_from_homography",
     "localize",
+    "nadir_point",
     "pose_from_homography",
 ]
 
@@ -57,11 +71,16 @@ NOT_CONVEX = "not_convex"
 MIRRORED = "mirrored"
 SCALE_OUT_OF_RANGE = "scale_out_of_range"
 ASPECT = "aspect"
+PERSPECTIVE = "perspective"
 REPROJ_ERROR = "reproj_error"
 
 # Below this turn at every footprint corner (cross product of adjacent edges, map px^2) the frame has collapsed
 # to a line or a point. Any real footprint has turns of thousands of map px^2, so the exact value is not critical.
 _MIN_AREA_PX2 = 1e-6
+
+# Below this tilt the perspective is too weak to read a focal length from (tan 1° = 1.7 % depth change per focal
+# length): the focal is "unknown", and the nadir point is taken as the image centre (off by alt x tan t < 1.7 %).
+_MIN_TILT_FOR_FOCAL_DEG = 1.0
 
 
 @dataclass(frozen=True)
@@ -75,6 +94,12 @@ class GeometryConfig:
     narrows them from the altitude or the previous fix. max_aspect: largest stretch of one direction over
     the other at the centre; a camera tilted by t gives about 1 / cos(t), so 2.0 allows tilts up to 60 deg.
     max_reproj_rmse_px: RMS residual of the inliers above which the fit is too loose to trust.
+    max_hfov_deg / perspective_tol (M2-04): the widest horizontal field of view a camera may have, and the
+    slack for fitting noise, as a fraction of depth change from the frame centre to a corner. A perspective
+    beyond what the tilt explains at that field of view, or across the tilt, by more than the slack, is
+    rejected. 150° covers every phone and drone lens short of a fish-eye. 0.15 is 15 % depth across half the
+    frame: on 80 real Irpin fixes the unmodelled lens distortion of raw frames reaches 0.08 across the tilt
+    (0.005 once undistorted), while broken fits sit at 0.37 and above. None: no check.
     """
 
     ransac_px: float = 5.0
@@ -85,6 +110,8 @@ class GeometryConfig:
     max_scale: float = 100.0
     max_aspect: float = 2.0
     max_reproj_rmse_px: float = 3.0
+    max_hfov_deg: float | None = 150.0
+    perspective_tol: float = 0.15
 
     def __post_init__(self):
         if not (self.ransac_px > 0 and 0 < self.confidence < 1 and self.max_iters > 0):
@@ -97,6 +124,10 @@ class GeometryConfig:
             raise ValueError(f"max_aspect must be >= 1, got {self.max_aspect}")
         if self.max_reproj_rmse_px <= 0:
             raise ValueError(f"max_reproj_rmse_px must be positive, got {self.max_reproj_rmse_px}")
+        if self.max_hfov_deg is not None and not 0 < self.max_hfov_deg < 180:
+            raise ValueError(f"max_hfov_deg must be in (0, 180) or None, got {self.max_hfov_deg}")
+        if not self.perspective_tol >= 0:
+            raise ValueError(f"perspective_tol must be >= 0, got {self.perspective_tol}")
 
 
 class Pose(NamedTuple):
@@ -108,6 +139,7 @@ class Pose(NamedTuple):
     scale: float          # map px per frame px at the centre
     aspect: float         # >= 1: stretch of the most over the least stretched direction at the centre
     footprint: np.ndarray  # 4 x 2 map px: frame corners TL, TR, BR, BL
+    tilt_deg: float       # [0, 90): the camera's tilt from straight down, acos(1 / aspect) (M2-04)
 
 
 def _corners(frame_size: tuple[int, int]) -> np.ndarray:
@@ -155,7 +187,67 @@ def pose_from_homography(H: np.ndarray, frame_size: tuple[int, int]) -> Pose:
     scale = math.sqrt(abs(float(np.linalg.det(J))))
     aspect = float(s[0] / s[1]) if s[1] > 0 else math.inf
     footprint, _ = _project(H, _corners(frame_size))
-    return Pose(float(cx), float(cy), heading, scale, aspect, footprint)
+    return Pose(float(cx), float(cy), heading, scale, aspect, footprint, _tilt_deg(s))
+
+
+def _tilt_deg(s: np.ndarray) -> float:
+    """Tilt from the centre's two stretches (largest first): the ground along the tilt is foreshortened by cos t."""
+    if not (np.isfinite(s).all() and s[0] > 0):
+        return math.nan
+    return math.degrees(math.acos(min(1.0, float(s[1] / s[0]))))
+
+
+def _centre_perspective(H: np.ndarray, frame_size: tuple[int, int]):
+    """(g, v, tilt_deg) at the frame centre: g, the depth gradient (1 / frame px: w changes by w * g . dp);
+    v, the frame direction of the largest stretch (unit); the tilt. None when the centre goes to infinity."""
+    w, h = frame_size
+    centre = np.array([w / 2.0, h / 2.0])
+    wc = float(H[2] @ [centre[0], centre[1], 1.0])
+    if not (math.isfinite(wc) and abs(wc) > 0):
+        return None
+    _, s, vt = np.linalg.svd(_jacobian(H, centre))
+    return H[2, :2] / wc, vt[0], _tilt_deg(s)
+
+
+def focal_from_homography(H: np.ndarray, frame_size: tuple[int, int]) -> float | None:
+    """The camera's focal length in frame px, read off a frame -> map homography (principal point at the frame
+    centre). tan(tilt) / |depth gradient|: exact for a pinhole. None when the tilt is under 1° (no perspective to
+    read it from) or there is no perspective at all (an affine fit)."""
+    cp = _centre_perspective(np.asarray(H, dtype=np.float64), frame_size)
+    if cp is None:
+        return None
+    g, _, tilt = cp
+    n = float(np.linalg.norm(g))
+    if not (tilt >= _MIN_TILT_FOR_FOCAL_DEG and n > 0):
+        return None
+    return math.tan(math.radians(tilt)) / n
+
+
+def nadir_point(H: np.ndarray, frame_size: tuple[int, int], focal: float | None = None) -> tuple[float, float] | None:
+    """The map point straight under the camera, map px. ``focal`` in frame px (from the camera's K); None reads
+    it off H (:func:`focal_from_homography`). Under 1° of tilt with no focal given, the image centre's point
+    (off by altitude x tan(tilt), under 1.7 % of the altitude). None when there is tilt but no focal to be had.
+
+    With K: K^-1 H^-1 = λ [r1 r2 t] (map plane -> camera), and the camera centre is -R^T t; its x, y on the map
+    do not depend on the sign of λ.
+    """
+    H = np.asarray(H, dtype=np.float64)
+    w, h = frame_size
+    if focal is None:
+        focal = focal_from_homography(H, frame_size)
+        if focal is None:
+            cp = _centre_perspective(H, frame_size)
+            if cp is None or not cp[2] < _MIN_TILT_FOR_FOCAL_DEG:
+                return None
+            p = pose_from_homography(H, frame_size)
+            return p.x, p.y
+    K = np.array([[focal, 0, w / 2.0], [0, focal, h / 2.0], [0, 0, 1.0]])
+    M = np.linalg.solve(K, np.linalg.inv(H))
+    lam = math.sqrt(float(np.linalg.norm(M[:, 0]) * np.linalg.norm(M[:, 1])))
+    r1, r2, t = M[:, 0] / lam, M[:, 1] / lam, M[:, 2] / lam
+    R = np.c_[r1, r2, np.cross(r1, r2)]
+    C = -R.T @ t
+    return float(C[0]), float(C[1])
 
 
 def check_homography(H: np.ndarray, frame_size: tuple[int, int], inliers: int, reproj_rmse: float,
@@ -197,9 +289,28 @@ def check_homography(H: np.ndarray, frame_size: tuple[int, int], inliers: int, r
         return SCALE_OUT_OF_RANGE
     if pose.aspect > cfg.max_aspect:
         return ASPECT
+    if cfg.max_hfov_deg is not None and not _perspective_ok(H, frame_size, cfg):
+        return PERSPECTIVE
     if reproj_rmse > cfg.max_reproj_rmse_px:
         return REPROJ_ERROR
     return None
+
+
+def _perspective_ok(H: np.ndarray, frame_size: tuple[int, int], cfg: GeometryConfig) -> bool:
+    """Is H's perspective one a centred pinhole tilted by H's own tilt can have? Its depth gradient must lie along
+    the tilt (the largest stretch) and be at most tan(tilt) / f_min, f_min the focal of a ``max_hfov_deg`` lens,
+    both up to ``perspective_tol`` of depth change from the centre to a corner."""
+    cp = _centre_perspective(H, frame_size)
+    if cp is None:
+        return False
+    g, v, tilt = cp
+    w, h = frame_size
+    reach = 0.5 * math.hypot(w, h)                           # centre to corner, frame px
+    along = abs(float(g @ v)) * reach
+    across = abs(float(g[0] * v[1] - g[1] * v[0])) * reach
+    f_min = (w / 2.0) / math.tan(math.radians(cfg.max_hfov_deg) / 2)
+    allowed = math.tan(math.radians(tilt)) / f_min * reach
+    return across <= cfg.perspective_tol and along <= allowed + cfg.perspective_tol
 
 
 def localize(idx: int, matches: Matches, frame_size: tuple[int, int],

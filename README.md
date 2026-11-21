@@ -103,6 +103,32 @@ same report to show what turning the frame north-up by the compass gives them.
 
 ![Success by heading bin, Irpin mild and harsh 2025](results/m2-05/rotation.png)
 
+### Tilted camera and lens (M2-04)
+
+A real camera is not looking straight down: the Irpin flights pitch 10–15° and roll up to 8°, so a frame lands
+on the map as a trapezoid, not a rectangle. [src/dronenav/geometry.py](src/dronenav/geometry.py) reads the tilt
+off the homography without knowing the camera: at the image centre the two stretches differ by exactly cos(tilt),
+and the projective row then gives the focal length and the point under the drone (`nadir_point`). That point is
+not `Fix.x, y` (where the image centre lands): with tilt they are altitude × tan(tilt) apart, 50–80 m here. Each
+accepted fix reports its tilt as `tilt_deg` in run.jsonl's `extra`.
+
+The check that follows from it: a centred pinhole camera can only make perspective along its tilt, and at most
+as much as tan(tilt) / focal allows for the widest lens we accept (150°). Perspective across the tilt, or more of
+it than the tilt explains, is a broken fit and is rejected with the reason `perspective`. Mirrored, horizon-in-frame
+and over-stretched homographies keep their M1 reasons.
+
+A lens also bends straight lines, and a homography only holds between pinhole images. When the flight's
+meta.json has a `camera` block (K, dist, size), [src/dronenav/camera.py](src/dronenav/camera.py) undistorts each
+frame as it is read. Measured on 80 SIFT fixes of the mild 2025 flight against its truth:
+
+| frames | accepted | perspective across the tilt, max | tilt error, median / max | position error, max |
+|---|---|---|---|---|
+| raw | 80/80 | 0.082 | 1.14° / 3.71° | 1.36 px |
+| undistorted | 80/80 | 0.005 | 0.05° / 0.61° | 0.87 px |
+
+The tolerance (`perspective_tol` = 0.15, as a fraction of depth change from centre to corner) sits above what
+raw lens distortion produces and well below broken fits (0.37 and up).
+
 ### Per-fix confidence (M4-08)
 
 [src/dronenav/confidence.py](src/dronenav/confidence.py) gives every accepted fix two numbers:
