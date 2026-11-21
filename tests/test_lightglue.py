@@ -34,6 +34,7 @@ from dronenav.matching.lightglue import (
     LightGlueConfig,
     LightGlueMatcher,
     auto_upsample,
+    padded_size,
     quarter_turn_back,
     turn_back,
     turn_image,
@@ -117,6 +118,23 @@ def test_upsampling_is_automatic_within_the_pixel_budget(shape, expected):
     # 2x only while the enlarged map stays within the budget (32 MP): the low-resolution task map needs it (frames
     # 21 and 35 go from ~12 inliers to 150+), the Irpin maps already match at 1x and would cost 4x to extract
     assert auto_upsample(shape, 32.0) == expected
+
+
+@pytest.mark.parametrize("hw, expected", [((360, 480), (384, 512)), ((512, 512), (512, 512)), ((1, 1), (128, 128)),
+                                          ((513, 700), (640, 768))])
+def test_images_are_padded_to_a_few_sizes(hw, expected):
+    # torch's MPS backend compiles a graph per input size: DISK takes 0.24 s on a repeated size, 1.12 s on a new
+    # one (M4-02 notes). Padding to multiples of 128 px leaves few sizes, so the compiled graphs are reused.
+    assert padded_size(*hw) == expected
+
+
+@needs_weights
+def test_no_keypoint_lands_in_the_padding():
+    # 300 x 200 pads to 384 x 256: everything past the picture is black, and no keypoint may come from it
+    patch = np.ascontiguousarray(MAP[100:300, 100:400])
+    f = LightGlueMatcher(cache_dir=None, device="cpu", cfg=LightGlueConfig(upsample=1.0))._extract(patch, 2048)
+    assert len(f) > 50
+    assert f.pts[:, 0].max() < 300 and f.pts[:, 1].max() < 200 and f.pts.min() >= 0
 
 
 def test_an_explicit_upsample_wins_over_the_budget():
