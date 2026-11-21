@@ -36,7 +36,7 @@ import numpy as np
 from dronenav.telemetry import Record, RunInfo, read_run, read_run_info
 from dronenav.viz.draw import FIXED, FONT, FOOTPRINT, MISSED, OUTLINE, SHIFT, STATE_COLOURS, TEXT, dashed, is_missed, px
 from dronenav.viz.mp4 import faststart
-from dronenav.viz.trajectory_image import _bgr
+from dronenav.viz.trajectory_image import _bgr, with_position
 
 __all__ = ["FrameInfo", "FrameRenderer", "VideoFrame", "VideoPlan", "plan_video", "write_video"]
 
@@ -91,10 +91,15 @@ class FrameInfo:
 
 def plan_video(records: list[Record], info: RunInfo, *, fps: float = 30.0, speed: float = 1.0,
                size: tuple[int, int] = (1280, 720), hold_s: float = HOLD_S) -> VideoPlan:
-    """One pose per video frame; see the module docstring."""
+    """One pose per video frame; see the module docstring.
+
+    Records without a position (before the first fix) are skipped: the video starts at the first fix. A frame's
+    ``rec`` still indexes ``records`` as given.
+    """
     _check_options(fps, speed, size)
-    if not records:
-        raise ValueError("the run has no records")
+    with_position(records)                              # raises if there is nothing to film
+    kept = [i for i, r in enumerate(records) if r.track.has_position]
+    records = [records[i] for i in kept]
     t = np.array([r.t for r in records])
     p = np.array([[r.track.x, r.track.y] for r in records])
     tang = _tangents(t, p)
@@ -112,7 +117,7 @@ def plan_video(records: list[Record], info: RunInfo, *, fps: float = 30.0, speed
         heading = _heading(heads, t, i, tk)
         cx = map_w / 2 if 2 * half_w >= map_w else min(max(x, half_w), map_w - half_w)
         cy = map_h / 2 if 2 * half_h >= map_h else min(max(y, half_h), map_h - half_h)
-        frames.append(VideoFrame(t=float(tk), x=x, y=y, heading_deg=heading, rec=i,
+        frames.append(VideoFrame(t=float(tk), x=x, y=y, heading_deg=heading, rec=kept[i],
                                  footprint=_footprint(records, t, i, tk), cx=cx, cy=cy))
     return VideoPlan(frames=frames, fps=float(fps), size=tuple(size), view_w=view_w)
 
@@ -378,9 +383,8 @@ def write_video(run_dir: str | Path, out_dir: str | Path | None = None, *, fps: 
     run_dir = Path(run_dir)
     _check_options(fps, speed, size)
     info = read_run_info(run_dir)
-    records = read_run(run_dir / "run.jsonl")
-    if not records:
-        raise ValueError(f"{run_dir / 'run.jsonl'} has no records")
+    # only records with a position: the plan and the renderer then index the same list
+    records = with_position(read_run(run_dir / "run.jsonl"))
     plan = plan_video(records, info, fps=fps, speed=speed, size=size)
     renderer = FrameRenderer(run_dir, records, info, plan, map_img)
     out_dir = Path(out_dir) if out_dir is not None else run_dir

@@ -90,6 +90,17 @@ class Written(NamedTuple):
     layout: Layout
 
 
+def with_position(records: list[Record]) -> list[Record]:
+    """The records there is something to draw for: a run starts without a position until its first fix (M0-12).
+    Raises ValueError if none has one, since an empty map would look like a broken renderer, not a lost drone."""
+    if not records:
+        raise ValueError("the run has no records")
+    kept = [r for r in records if r.track.has_position]
+    if not kept:
+        raise ValueError(f"none of the run's {len(records)} records has a position: the drone was never localized")
+    return kept
+
+
 def render_records(records: list[Record], info: RunInfo, map_img: np.ndarray | None = None, *,
                    label_every: int | None = None, preview_px: int = 1600) -> tuple[np.ndarray, Layout]:
     """Draw records over their map at full size; returns the image (BGR uint8) and the layout.
@@ -103,8 +114,7 @@ def render_records(records: list[Record], info: RunInfo, map_img: np.ndarray | N
         raise ValueError(f"label_every must be at least 1, got {label_every}")
     if preview_px < 1:
         raise ValueError(f"preview_px must be at least 1, got {preview_px}")
-    if not records:
-        raise ValueError("the run has no records")
+    records = with_position(records)                    # frames before the first fix have nothing to draw
     if map_img is None:
         map_img = cv2.imread(str(info.map_path), cv2.IMREAD_COLOR)
         if map_img is None:
