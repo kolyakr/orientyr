@@ -416,8 +416,9 @@ class _encoder:
     """Context manager taking BGR frames: x264 through the bundled ffmpeg, else OpenCV (see the module docstring).
     The file is complete, with its index first, when the block exits without an error."""
 
-    def __init__(self, path: Path, fps: float, size: tuple[int, int]):
-        self.path, self.fps, self.size = path, fps, size
+    def __init__(self, path: Path, fps: float, size: tuple[int, int], crf: int | None = None):
+        # None: the module's CRF, read now (not when this was defined), so it can still be changed at run time
+        self.path, self.fps, self.size, self.crf = path, fps, size, CRF if crf is None else crf
         self.proc = self.writer = self.err = None
 
     def __enter__(self):
@@ -429,7 +430,7 @@ class _encoder:
         w, h = self.size
         if exe:
             cmd = [exe, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{w}x{h}",
-                   "-r", f"{self.fps:g}", "-i", "-", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", str(CRF),
+                   "-r", f"{self.fps:g}", "-i", "-", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", str(self.crf),
                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(self.path)]
             self.err = tempfile.TemporaryFile()        # a file, not a pipe: ffmpeg can never block on it
             self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=self.err)

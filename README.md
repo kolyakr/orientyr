@@ -994,3 +994,68 @@ is made; a frame before the first fix has no position (live there is no later fi
 places it at the first fix once that arrives). The controls work while a
 flight is in the air: when the last flight ends, start `live.py` again. The simulated GPS has no longitude and
 latitude, only map pixels; a spoof is shown in the GPS panel and on the map, not as a mission log event.
+
+### Simulated phone-over-screen video (M2-08)
+
+> **This is a simulation, not a real recording.** At the advanced level, the deliverable is our own phone video
+> of the map on a screen. Those real takes are M2-01. The simulation exists to build and measure the phone-video
+> pipeline against exact truth, which a real take can never give. Every simulated take says so in its
+> `meta.json` (`"simulated": true`).
+
+[src/dronenav/sim/screen.py](src/dronenav/sim/screen.py) films the map shown on a virtual monitor (27-inch,
+2560 × 1440, 100% zoom by default) with a virtual phone (1280 × 720, 69° field of view, 30 fps), held about
+10 cm away.
+
+The output is an Irpin-style flight folder: `flight.mp4`, `truth.jsonl`, `meta.json`, and `frames/` with one
+keyframe a second, decoded from the video. `FlightSource`, `VideoSource`, `FolderSource`, `run.py` and
+`accuracy.py` read it unchanged.
+
+The truth is exact: the camera, the screen and the map are composed as homographies. It registers to the
+rendered frames within 1 px (measured ~0.05 px), and its heading is the engine's heading.
+
+Each effect has a strength from 0 to 1 and a seed. They are modelled physically where that is cheap:
+- **Moiré:** each camera pixel is supersampled over the screen's RGB subpixel stripes, then averaged. The
+  pattern comes from the two pixel grids aliasing, not from a texture painted on.
+- **Glare:** a lamp's mirror image in the screen, so it moves when the phone moves.
+- **Rolling shutter:** each row is rendered at its own moment. The truth is the centre row's.
+- **Also:** hand shake, tilt up to 25°, the view running past the screen onto the bezel and the room, motion
+  blur, auto-exposure, refresh banding, sensor noise, a finger over the lens (`lens_covered` in the truth),
+  and H.264 compression.
+
+The `calm`, `hard` and `jam` presets mirror M2-01's three takes. The truth's pitch, roll and altitude mean what
+they mean in the Irpin flights. A take replaces only an empty folder or an earlier simulated take, never a real
+flight. Supersampling (`--supersample`, default 2) approximates the sensor's averaging: at 2, about 15% of the
+moiré comes from the sampling itself; 3 or 4 is more faithful, and slower.
+
+![Check sheet: each effect at strength 0, 0.5 and 1](results/m2-08/sheet.jpg)
+
+```bash
+python scripts/screen_video.py --map data/hackatons-data/global_map.png --out data/sim_phone/task_calm --preset calm
+python scripts/screen_video.py --map data/hackatons-data/global_map.png --sheet outputs/screen_sheet.png
+python scripts/accuracy.py --map data/hackatons-data/global_map.png --frames data/sim_phone/task_calm/frames \
+    --run outputs/sim_calm --truth data/sim_phone/task_calm
+```
+
+Six 20 s takes (seed 0), each scored on its 20 keyframes with the current pipeline (`accuracy.py`: RootSIFT,
+the scale rule, the window search). Rendering times are for an M-series Mac.
+
+| map | preset | localized | wrong | error px median / p95 / max | render |
+|---|---|---|---|---|---|
+| task | calm | 20/20 | 0 | 0.42 / 1.12 / 1.24 | 40 s |
+| task | hard | 20/20 | 0 | 0.42 / 1.08 / 2.07 | 74 s |
+| task | jam | 18/20 | 0 | 0.44 / 1.14 / 1.24 | 41 s |
+| Irpin 2025 | calm | 20/20 | 0 | 0.41 / 0.98 / 1.15 | 41 s |
+| Irpin 2025 | hard | 20/20 | 0 | 0.48 / 1.22 / 1.82 | 76 s |
+| Irpin 2025 | jam | 18/20 | 0 | 0.43 / 1.00 / 1.15 | 42 s |
+
+What the table shows:
+- **Jam:** the two missed keyframes are exactly the two inside the covered stretch, and no wrong fix is
+  accepted.
+- **Hard:** tilt, the rolling shutter and motion blur raise the worst errors to about 2 px. Even so, no frame is
+  lost or wrong.
+- **What this does not show:** these numbers say the pipeline handles the geometry and the screen artefacts. They
+  do not say a real take will score the same.
+  - The screen here shows the map's own pixels at 100% zoom.
+  - The simulation leaves out a real camera's colour response, the screen's gamma and viewing angle, focus
+    hunting, and the room's reflections.
+  - The real takes (M2-01) are the test of that.
