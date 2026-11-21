@@ -2,8 +2,9 @@
  * The server half of the run reader: where the run folder is and how to read files out of it.
  * Only server code (the page, the API routes, tests) imports this; the browser gets the parsed Run as props.
  */
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { type LiveStatus, parseLiveStatus } from "./live";
 import { type Run, type RunInfo, RunFormatError, parseRunInfo, parseRunJsonl } from "./run";
 
 type Env = Record<string, string | undefined>;
@@ -117,22 +118,113 @@ export interface OpenRun {
   error: string | null; // why there is no run
   mapMissing: boolean;  // the run opens, but its map image is not where run.json says
   assets: Assets | null; // static URLs of the run's images; null = the API routes
+  live: LiveStart | null; // the run is being written right now: where the viewer reads on (see readTail)
+  waiting: boolean;       // a live run with no record yet: not an error, the page asks again
+}
+
+/** What the page hands the console about a live run: the byte of run.jsonl to read on from, and the jam switch. */
+export interface LiveStart {
+  next: number;
+  jam: boolean;
 }
 
 /** Everything the page needs to show a run, or to say why it cannot: this never throws. */
 export function openRun(name: string | null | undefined, env: Env = process.env, app: string = process.cwd()): OpenRun {
   const runs = listRuns(runsDir(env, app));
   let at: { name: string | null; dir: string | null } = { name: name || null, dir: null };
+  const none = { run: null, mapMissing: false, assets: null, live: null, waiting: false };
   try {
     at = resolveRun(name, env, app);
-    const run = loadRun(at.dir!);
-    if (run.records.length === 0) throw new RunFormatError(`run.jsonl in ${at.dir} has no records`);
-    const assets = assetUrls(at.dir!, run.info, app);
+    const dir = at.dir!;
+    const status = liveStatus(dir);
+    if (status?.live) {
+      // The engine may be in the middle of a line: take the whole lines, the console reads on from there.
+      const tail = readTail(dir, 0);
+      const run = { info: loadRunInfo(dir), records: parseRunJsonl(tail.text) };
+      if (run.records.length === 0) {
+        return { ...at, runs, ...none, waiting: true, error: `the live run in ${dir} is waiting for its first frame` };
+      }
+      const assets = assetUrls(dir, run.info, app);
+      return { ...at, runs, run, error: null, mapMissing: assets === null && !isFile(mapPath(dir, run.info)), assets,
+               live: { next: tail.next, jam: jamOrder(dir, status) }, waiting: false };
+    }
+    const run = loadRun(dir);
+    if (run.records.length === 0) throw new RunFormatError(`run.jsonl in ${dir} has no records`);
+    const assets = assetUrls(dir, run.info, app);
     // static images are the host's files, not this server's: on a static host they are not on its disk to check
-    const mapMissing = assets === null && !isFile(mapPath(at.dir!, run.info));
-    return { ...at, runs, run, error: null, mapMissing, assets };
+    const mapMissing = assets === null && !isFile(mapPath(dir, run.info));
+    return { ...at, runs, run, error: null, mapMissing, assets, live: null, waiting: false };
   } catch (e) {
-    return { ...at, runs, run: null, error: (e as Error).message, mapMissing: false, assets: null };
+    return { ...at, runs, ...none, error: (e as Error).message };
+  }
+}
+
+// ---- live mode (M7-04): a run that is still being written; the format is src/dronenav/live.py's ------------------
+
+const STATUS_FILE = "live.json";
+const CONTROL_FILE = "control.json";
+/** live.json is rewritten after every record. Silent for this long, the engine is taken for dead (killed, crashed). */
+const SILENT_MS = 30_000;
+/** Before the first record the engine may be reading a long video's first frame: more patience. */
+const STARTING_MS = 5 * 60_000;
+
+/** The engine's heartbeat, and whether the run is being written right now. Null: the run was never live. */
+export function liveStatus(dir: string, now: number = Date.now()): (LiveStatus & { live: boolean }) | null {
+  const file = path.join(dir, STATUS_FILE);
+  let status: LiveStatus | null, age: number;
+  try {
+    status = parseLiveStatus(readFileSync(file, "utf-8"));
+    age = now - statSync(file).mtimeMs;
+  } catch {
+    return null;
+  }
+  if (!status) return null;
+  const live = status.state === "running" ? age < SILENT_MS : status.state === "starting" ? age < STARTING_MS : false;
+  return { ...status, live };
+}
+
+/**
+ * Is the jam switched on? The operator's order (control.json) when there is one, else what the engine reports: the
+ * switch shows a press at once, before the engine's next frame confirms it.
+ */
+export function jamOrder(dir: string, status: LiveStatus | null): boolean {
+  try {
+    const d: unknown = JSON.parse(readFileSync(path.join(dir, CONTROL_FILE), "utf-8"));
+    if (typeof d === "object" && d !== null && typeof (d as { jam?: unknown }).jam === "boolean") return (d as { jam: boolean }).jam;
+  } catch { /* no order yet, or one being written */ }
+  return status?.jam ?? false;
+}
+
+/** Write the operator's order. In one step (write, then rename): the engine never reads half an order. */
+export function writeJamOrder(dir: string, jam: boolean): void {
+  const part = path.join(dir, `.${CONTROL_FILE}.partial`);
+  writeFileSync(part, JSON.stringify({ jam }));
+  renameSync(part, path.join(dir, CONTROL_FILE));
+}
+
+/**
+ * The lines appended to run.jsonl from byte `from` on: whole lines only (a line the engine is still writing waits
+ * for the next read), and `next`, the byte to ask from next time. A file shorter than `from` is a run that was
+ * started again in the same folder: `reset`, and the read starts from the top.
+ */
+export function readTail(dir: string, from: number): { text: string; next: number; reset: boolean } {
+  let start = Number.isInteger(from) && from > 0 ? from : 0;
+  let fd: number;
+  try {
+    fd = openSync(path.join(dir, "run.jsonl"), "r");
+  } catch {
+    return { text: "", next: 0, reset: false };
+  }
+  try {
+    const size = statSync(path.join(dir, "run.jsonl")).size;
+    const reset = start > size;
+    if (reset) start = 0;
+    const buf = Buffer.alloc(size - start);
+    const got = readSync(fd, buf, 0, buf.length, start);
+    const end = buf.subarray(0, got).lastIndexOf(0x0a) + 1; // bytes, so a cut never lands inside a character
+    return { text: buf.toString("utf-8", 0, end), next: start + end, reset };
+  } finally {
+    closeSync(fd);
   }
 }
 

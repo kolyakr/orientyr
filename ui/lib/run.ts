@@ -125,10 +125,20 @@ function recordFrom(d: unknown): RunRecord {
 
 /** Parse the text of run.jsonl. Blank lines are skipped; records must be in frame order. */
 export function parseRunJsonl(text: string): RunRecord[] {
-  const records: RunRecord[] = [];
+  return appendRunJsonl([], text);
+}
+
+/**
+ * The records of a run that is still being written (live mode): `records` so far, plus the lines of `text` that
+ * were appended to run.jsonl since. The result is what parseRunJsonl gives for the whole file. Nothing given is
+ * changed: a record whose numbers change (see below) is replaced by a copy, every other one is the same object,
+ * and with no new line the same list comes back, so React renders only what is new.
+ */
+export function appendRunJsonl(records: readonly RunRecord[], text: string): RunRecord[] {
+  const all = records.slice();
   text.split("\n").forEach((line, i) => {
     if (!line.trim()) return;
-    const where = `run.jsonl line ${i + 1}`;
+    const where = `run.jsonl line ${records.length + i + 1}`;
     let parsed: unknown;
     try {
       parsed = JSON.parse(line);
@@ -141,20 +151,21 @@ export function parseRunJsonl(text: string): RunRecord[] {
     } catch (e) {
       throw new RunFormatError(`${where}: ${(e as Error).message}`);
     }
-    const prev = records.at(-1);
+    const prev = all.at(-1);
     if (prev && (rec.idx <= prev.idx || rec.t < prev.t)) {
       throw new RunFormatError(`${where}: records must be in frame order (idx ${rec.idx} after idx ${prev.idx})`);
     }
-    records.push(rec);
+    all.push(rec);
   });
+  if (all.length === records.length) return records as RunRecord[];
   // A frame without a position borrows the place of the located frame before it; the frames before the first
-  // located one borrow its place (the first fix).
-  let near = records.find((r) => r.located);
-  for (const r of records) {
+  // located one borrow its place (the first fix). Live, that fix may arrive later than they did.
+  let near = all.find((r) => r.located);
+  all.forEach((r, i) => {
     if (r.located) near = r;
-    else if (near) Object.assign(r, { x: near.x, y: near.y });
-  }
-  return records;
+    else if (near && (r.x !== near.x || r.y !== near.y)) all[i] = { ...r, x: near.x, y: near.y };
+  });
+  return all;
 }
 
 /** Parse the text of run.json. */
