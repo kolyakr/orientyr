@@ -298,7 +298,8 @@ def _pack(tmp_path, world):
     (d / "maps").mkdir(parents=True)
     for name in ("town_2017.png", "town_2022.png"):
         shutil.copy(world[0].parent / name, d / "maps" / name)
-    (d / "maps" / "town_2022.json").write_text("{}")    # a sidecar is not a map
+    # a sidecar is not a map (a whole one: the engine refuses a sidecar that does not describe its map)
+    (d / "maps" / "town_2022.json").write_text(json.dumps({"map": {"file": "maps/town_2022.png", "size_px": [2000, 1500]}}))
     for preset in ("mild", "wild"):
         (d / "flights" / preset).mkdir(parents=True)
         shutil.move(_flight(tmp_path / preset, world, n=4), d / "flights" / preset / "2022")
