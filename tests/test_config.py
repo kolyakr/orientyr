@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ("accuracy.py", "benchmark.py", "calibrate_camera.py", "chaos_sheet.py", "check_backups.py",
            "check_data.py", "confidence_check.py", "fake_run.py", "live.py", "mavlink_log.py",
            "pack_run.py", "preprocess_ablation.py", "render_image.py", "render_video.py", "rotation_check.py", "run.py",
-           "scale_table.py", "search_run.py", "spoof_check.py", "xfeat_timing.py")
+           "scale_table.py", "scenarios.py", "search_run.py", "spoof_check.py", "xfeat_timing.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
 # The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
 DEVICE_SCRIPTS = ("benchmark.py", "scale_table.py", "search_run.py")
