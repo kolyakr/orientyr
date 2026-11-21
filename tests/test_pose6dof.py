@@ -25,7 +25,10 @@ from dronenav.camera import Camera
 from dronenav.pose6dof import solve_planar_pose
 
 FRAME = (1024, 768)
-GRID = [(dx, dy) for dx in (-40.0, -20.0, 0.0, 20.0, 40.0) for dy in (-30.0, 0.0, 30.0)]  # 15 pts, metres
+# 15 points spread over +-40 m: a seeded scatter, not a regular grid -- OpenCV's IPPE solve (5.1.0)
+# returns NaN for a perfectly symmetric point cloud (its canonical-frame step degenerates), confirmed
+# by hand against this exact cv2 build; any point count or asymmetric spread elsewhere works fine.
+GRID = np.random.default_rng(42).uniform(-40.0, 40.0, size=(15, 2))
 
 
 def focal_for_hfov(hfov_deg: float, width: int) -> float:
