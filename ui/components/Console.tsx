@@ -2,7 +2,7 @@
 
 /**
  * Mission control, as a mock-up: a recorded run (run.json + run.jsonl + frames/) replayed on the map.
- * The map is the scene; everything else lies over it as dark glass panels: the brand, the legend and the camera
+ * The map is the scene; everything else lies over it as dark glass panels: the brand and the camera
  * on the left, the timeline dock under the map, and on the right what the tracker knows at this frame.
  * Playback works; the mission controls are drawn but inactive until the live engine exists (M7).
  */
@@ -138,7 +138,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
     const PAD = 12;
     const measure = () => {
       const width = cell.offsetWidth, height = cell.offsetHeight;
-      let left = 0, top = 0;   // the left column (brand, legend, camera) and the row of the follow button
+      let left = 0, top = 0;   // the left column (brand, camera) and the row of the follow button
       for (const el of Array.from(cell.children) as HTMLElement[]) {
         if (el.classList.contains("minimap")) continue; // it sits in the bottom right corner, the route may pass under it
         if (el.classList.contains("follow")) top = el.offsetTop + el.offsetHeight;
@@ -197,14 +197,6 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <h1>Live tracking</h1>
           </div>
         </header>
-
-        <ul className="legend glass pill" aria-label="Map legend">
-          <li><i style={{ background: confidenceColor(1) }} />sure</li>
-          <li><i style={{ background: confidenceColor(0.3) }} />less sure</li>
-          <li><i style={{ background: confidenceColor(0) }} />guessing</li>
-          <li><i className="box" />camera view</li>
-          <li><i className="ring" />where it can be</li>
-        </ul>
 
         <button type="button" className="follow glass pill press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
@@ -327,6 +319,14 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         </section>
 
         <footer className="meta">
+          {/* the legend: what the colours and shapes on the map mean. Here, off the map, it does not compete with the route. */}
+          <ul className="legend" aria-label="Map legend">
+            <li><i style={{ background: confidenceColor(1) }} />sure</li>
+            <li><i style={{ background: confidenceColor(0.3) }} />less sure</li>
+            <li><i style={{ background: confidenceColor(0) }} />guessing</li>
+            <li><i className="box" />camera view</li>
+            <li><i className="ring" />where it can be</li>
+          </ul>
           <p>{run.info.generator ?? "run"} · {n} frames · map {mw} × {mh} px</p>
           <p className="keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> step <kbd>F</kbd> follow</p>
         </footer>
