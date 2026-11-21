@@ -488,6 +488,23 @@ frame as it is read. Measured on 80 SIFT fixes of the mild 2025 flight against i
 The tolerance (`perspective_tol` = 0.15, as a fraction of depth change from centre to corner) sits above what
 raw lens distortion produces and well below broken fits (0.37 and up).
 
+### 6DoF pose for the phone video (M9-03, stretch)
+
+The tilt above is a single combined number (`acos(1/aspect)`): enough to reject a bad fit, not
+enough to say whether the phone is pitched or rolled, or how high it is. With the phone's camera
+calibrated once from a few checkerboard photos (`python scripts/calibrate_camera.py --images
+"photos/*.jpg" --cols 9 --rows 6 --out outputs/camera.json` — [src/dronenav/calibration.py](src/dronenav/calibration.py),
+`cv2.calibrateCamera`), [src/dronenav/pose6dof.py](src/dronenav/pose6dof.py) solves the planar pose from the same
+inlier correspondences a fix already has (`cv2.solvePnP`, `SOLVEPNP_IPPE`), splitting the tilt into
+separate **roll** and **pitch**, and giving a metric **altitude**. Yaw isn't duplicated: it is already
+`Fix.heading_deg`.
+
+`python scripts/run.py --map ... --frames ... --camera outputs/camera.json --m-per-px 0.1 --out
+outputs/pose6dof` adds `altitude_m`, `roll_deg` and `pitch_deg` to every accepted fix's `extra` in
+run.jsonl. `--m-per-px` is the map's real-world scale (metres per map px); without it, a map with no
+georef sidecar (the task's crops, our own `global_map.png`) has nothing to make the altitude metric
+from, so `--camera` without either is a clear error rather than a silently wrong number.
+
 ### Per-fix confidence (M4-08)
 
 [src/dronenav/confidence.py](src/dronenav/confidence.py) gives every accepted fix two numbers:

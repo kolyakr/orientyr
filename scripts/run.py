@@ -19,6 +19,7 @@ import sys
 
 import cv2
 
+from dronenav.camera import Camera
 from dronenav.config import add_shared_args, init_cli
 from dronenav.pipeline import MATCHERS, TRACKERS, VIDEO_RATE, NothingLocalized, parse_frame_set, run
 
@@ -74,6 +75,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="simulate a jammed map matcher on these frames, e.g. 8-19 or 3,5-7: they get no fix, "
                          "the camera (and --vo) still works")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
+    ap.add_argument("--camera", default=None,
+                    help="a calibrated camera (scripts/calibrate_camera.py's camera.json, or a meta.json with a "
+                         "camera block): adds altitude_m/roll_deg/pitch_deg to each accepted fix (M9-03)")
+    ap.add_argument("--m-per-px", type=float, default=None, dest="m_per_px",
+                    help="the map's real-world scale, metres per map px; needed for --camera's altitude unless "
+                         "the map has its own georef sidecar")
     add_shared_args(ap)
     a = ap.parse_args(argv)
     # Picked and logged like in every matching script; the SIFT matcher runs on the CPU, a torch matcher takes this device.
@@ -82,10 +89,17 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--every samples a --video; a folder of frames is taken whole")
     if a.fps is not None and a.video is not None:
         ap.error("--fps is the rate of a folder's frame numbers; a --video has its own (sample it with --every)")
+    if a.m_per_px is not None and a.camera is None:
+        ap.error("--m-per-px is only meaningful with --camera")
     try:
+        camera = None
+        if a.camera is not None:
+            camera = Camera.from_meta(a.camera)
+            if camera is None:
+                raise ValueError(f"{a.camera} has no 'camera' block (K, dist, size)")
         s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache,
                 tracker=a.tracker, video=a.video, every=a.every, device=device, jam=a.jam, vo=a.vo,
-                jam_match=a.jam_match)
+                jam_match=a.jam_match, camera=camera, m_per_px=a.m_per_px)
     except NothingLocalized as e:
         print(f"run: error: {e}", file=sys.stderr)
         return 1

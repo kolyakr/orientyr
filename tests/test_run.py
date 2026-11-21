@@ -124,6 +124,51 @@ def test_accepted_fixes_report_their_tilt(tmp_path, world):
             assert "tilt_deg" not in r.extra
 
 
+CAMERA_JSON = {"camera": {"K": [[300.0, 0, 160.0], [0, 300.0, 120.0], [0, 0, 1.0]],
+                          "dist": [0, 0, 0, 0, 0], "size": [320, 240]}}
+
+
+def test_accepted_fixes_report_6dof_pose_when_a_camera_is_given(tmp_path, world):
+    # M9-03: altitude/roll/pitch come from solve_planar_pose when --camera and --m-per-px are given;
+    # the wiring's own contract (presence, not accuracy -- that is tests/test_pose6dof.py's job)
+    frames, _ = _frames(tmp_path, world, n=6)
+    camera_path = tmp_path / "camera.json"
+    camera_path.write_text(json.dumps(CAMERA_JSON))
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache",
+              "--camera", camera_path, "--m-per-px", 0.1)
+    assert res.returncode == 0, res.stderr
+    seen_accepted = False
+    for r in read_run(tmp_path / "out" / "run.jsonl"):
+        if r.track.fix is not None and r.track.fix.accepted:
+            seen_accepted = True
+            assert {"altitude_m", "roll_deg", "pitch_deg"} <= r.extra.keys()
+        else:
+            assert "altitude_m" not in r.extra
+    assert seen_accepted
+
+
+def test_without_a_camera_there_is_no_6dof_pose(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=4)
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    for r in read_run(tmp_path / "out" / "run.jsonl"):
+        assert "altitude_m" not in r.extra and "roll_deg" not in r.extra and "pitch_deg" not in r.extra
+
+
+def test_a_camera_without_m_per_px_or_a_georef_sidecar_is_a_clear_error(tmp_path, world):
+    # world's map is a plain _city() render with no .json sidecar next to it: --m-per-px has nowhere
+    # else to come from, so this must fail clearly instead of silently skipping the 6DoF pose
+    frames, _ = _frames(tmp_path, world, n=2)
+    camera_path = tmp_path / "camera.json"
+    camera_path.write_text(json.dumps(CAMERA_JSON))
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache",
+              "--camera", camera_path)
+    assert res.returncode == 2
+    assert "unrecognized arguments" not in res.stderr      # a real error, not an argparse one
+    assert "sidecar" in res.stderr.lower()
+    assert not (tmp_path / "out").exists()
+
+
 def test_frames_carry_their_time(tmp_path, world):
     frames, _ = _frames(tmp_path, world, n=4)
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--fps", 5,

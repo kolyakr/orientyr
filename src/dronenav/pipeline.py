@@ -63,9 +63,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dronenav.camera import Camera
 from dronenav.geometry import GeometryConfig, pose_from_homography
 from dronenav.io import FolderSource, _is_rate, load_map
 from dronenav.matching import RootSiftMatcher, XFeatMatcher
+from dronenav.pose6dof import Pose6DoF, solve_planar_pose
 from dronenav.search import Searcher, SearchMode, prediction_window
 from dronenav.sim.chaos import ChaosSource, Jam
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
@@ -161,6 +163,7 @@ class _Found:
     predicted: tuple[int, int, int, int] | None = None   # the window from the prediction (tracker="kalman")
     sigma: float | None = None                # the prediction's larger axis σ, px (tracker="kalman")
     sample: dict | None = None                # match_sample of the fix
+    pose6dof: Pose6DoF | None = None          # solve_planar_pose of the fix's inliers (M9-03, --camera given)
     jammed: bool = False                      # the frame reached the engine as noise (jam)
     vo: VoVelocity | None = None              # the visual odometry velocity into this frame (vo=True)
     vo_on: bool = False                       # whether VO ran at all: extra["vo"] is then written, None or not
@@ -184,24 +187,30 @@ def _check_options(matcher: str, tracker: str, vo: bool = False) -> None:
         raise ValueError("visual odometry (--vo) feeds the Kalman tracker: it needs --tracker kalman")
 
 
-def match_sample(matches: Matches, fix: Fix | None, cap: int = MATCH_SAMPLE) -> dict | None:
-    """A few of the point pairs behind an accepted fix, for drawing: ``{"frame": [[x, y], ...], "map": [...]}``
-    (frame px, map px, rounded to 0.1 px), or None when there is no accepted fix or no pair agrees with it.
-
-    Only pairs within the RANSAC threshold of the fix's homography are taken (the matcher's raw pairs include the
-    wrong ones the geometry step threw out). At most ``cap`` are kept, chosen by farthest-point sampling in the
-    frame, so the lines cover the frame instead of bunching on its most textured corner. Deterministic.
-    """
+def _ransac_inliers(matches: Matches, fix: Fix | None) -> tuple[np.ndarray, np.ndarray]:
+    """(pts_frame, pts_map) of the pairs within GeometryConfig().ransac_px of an accepted fix's homography
+    (the matcher's raw pairs include the wrong ones the geometry step threw out); empty arrays otherwise."""
     if fix is None or not fix.accepted or len(matches.pts_frame) == 0:
-        return None
+        return np.zeros((0, 2)), np.zeros((0, 2))
     pf, pm = np.asarray(matches.pts_frame, float), np.asarray(matches.pts_map, float)
     proj = np.hstack([pf, np.ones((len(pf), 1))]) @ np.asarray(fix.H, float).T
     with np.errstate(divide="ignore", invalid="ignore"):
         err = np.linalg.norm(proj[:, :2] / proj[:, 2:] - pm, axis=1)
     keep = np.flatnonzero(np.nan_to_num(err, nan=np.inf) <= GeometryConfig().ransac_px)
-    if len(keep) == 0:
+    return pf[keep], pm[keep]
+
+
+def match_sample(matches: Matches, fix: Fix | None, cap: int = MATCH_SAMPLE) -> dict | None:
+    """A few of the point pairs behind an accepted fix, for drawing: ``{"frame": [[x, y], ...], "map": [...]}``
+    (frame px, map px, rounded to 0.1 px), or None when there is no accepted fix or no pair agrees with it.
+
+    Only pairs within the RANSAC threshold of the fix's homography are taken (:func:`_ransac_inliers`). At most
+    ``cap`` are kept, chosen by farthest-point sampling in the frame, so the lines cover the frame instead of
+    bunching on its most textured corner. Deterministic.
+    """
+    pf, pm = _ransac_inliers(matches, fix)
+    if len(pf) == 0:
         return None
-    pf, pm = pf[keep], pm[keep]
     if len(pf) > cap:
         # farthest-point sampling: start from the point furthest from the centroid, then always the point
         # furthest from everything already chosen
@@ -258,19 +267,41 @@ def _keep(f, keep_dir: Path | None, save: bool = False) -> Path:
     return path
 
 
+def _resolve_m_per_px(camera: Camera | None, m_per_px: float | None, map_path, the_map) -> float | None:
+    """--m-per-px as given, or the map's own georef sidecar (dronenav.io.load_map's ``level``) when there is
+    one; None when there is no camera (nothing to resolve). Raises ValueError when a camera is given but
+    neither tells the real-world scale -- a silent skip of the 6DoF pose would be more confusing, not less."""
+    if camera is None:
+        return None
+    if m_per_px is not None:
+        return m_per_px
+    sidecar = (the_map.level or {}).get("m_per_px") if the_map.level else None
+    if sidecar is None:
+        raise ValueError(f"--camera needs --m-per-px: {map_path} has no georef sidecar to take it from")
+    return float(sidecar)
+
+
 class Engine:
     """The engine, one frame at a time: the search (in the tracker's window, or M1's rule), visual odometry when
     asked for, and the tracker's update.
 
     ``run.py`` feeds it a whole flight and writes the run afterwards; live mode (``dronenav.live``, M7-04) feeds it
     each frame as the simulator releases it and writes the record at once. Both get the same :class:`_Found`.
+
+    ``camera`` + ``m_per_px`` (M9-03): a calibrated camera and the map's real-world scale add a
+    :class:`~dronenav.pose6dof.Pose6DoF` to each accepted fix (:func:`solve_planar_pose` on its inliers);
+    ``m_per_px`` defaults to the map's own georef sidecar when there is one (:func:`_resolve_m_per_px`).
     """
 
     def __init__(self, map_path, matcher: str = "sift", cache_dir=None, tracker: str = "kalman",
-                 device: str | None = None, vo: bool = False):
+                 device: str | None = None, vo: bool = False, *,
+                 camera: Camera | None = None, m_per_px: float | None = None):
         _check_options(matcher, tracker, vo)
         self.map_path = map_path
-        self.map = load_map(map_path).image
+        the_map = load_map(map_path)
+        self.map = the_map.image
+        self.camera = camera
+        self.m_per_px = _resolve_m_per_px(camera, m_per_px, map_path, the_map)
         self.backend = MATCHERS[matcher][0]
         self.track = Tracker() if tracker == "kalman" else None
         self.odo = VisualOdometry() if vo else None
@@ -310,16 +341,22 @@ class Engine:
             raise self._no_features(e) from None
         size = (f.image.shape[1], f.image.shape[0])
         path = _keep(f, keep_dir, jammed or save)
+        pose6dof = None
+        if self.camera is not None and loc is not None and loc.fix is not None and loc.fix.accepted:
+            pf, pm = _ransac_inliers(loc.matches, loc.fix)
+            pose6dof = solve_planar_pose(pf, pm, self.camera, self.m_per_px)
         if loc is None:
-            return _Found(f.idx, f.t, path, size, None, JAMMED, None, 1.0, 0.0, tracked,
-                          window, sigma, None, jammed, motion, odo is not None)
+            return _Found(f.idx, f.t, path, size, None, JAMMED, None, 1.0, 0.0,
+                          tracked=tracked, predicted=window, sigma=sigma, sample=None,
+                          pose6dof=pose6dof, jammed=jammed, vo=motion, vo_on=odo is not None)
         return _Found(f.idx, f.t, path, size, loc.fix, loc.mode.value, loc.window, float(loc.factor), float(loc.ms),
-                      tracked, window, sigma, match_sample(loc.matches, loc.fix), jammed, motion, odo is not None)
+                      tracked=tracked, predicted=window, sigma=sigma, sample=match_sample(loc.matches, loc.fix),
+                      pose6dof=pose6dof, jammed=jammed, vo=motion, vo_on=odo is not None)
 
 
 def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str = "kalman", vo: bool = False,
               jam_match=(), *, video=None, every=None, keep_dir: Path | None = None, device: str | None = None,
-              jam=None):
+              jam=None, camera: Camera | None = None, m_per_px: float | None = None):
     """Check the inputs and find every frame; nothing is written but a video's sampled frames and a jam's noise
     frames (into keep_dir). Returns (map image, frames source, found)."""
     _check_options(matcher, tracker, vo)
@@ -327,7 +364,7 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
     jam_match = frozenset(int(i) for i in jam_match)
     frames = _frame_source(frames_dir, video, fps, every)
     stream = frames if jammer is None else ChaosSource(frames, [jammer])
-    engine = Engine(map_path, matcher, cache_dir, tracker, device, vo)
+    engine = Engine(map_path, matcher, cache_dir, tracker, device, vo, camera=camera, m_per_px=m_per_px)
     # jammed: the camera is jammed, the frame is noise; blind: the map matcher is jammed (the camera still works)
     found = [engine.locate(f, keep_dir, jammer is not None and jammer.covers(f.t), blind=f.idx in jam_match)
              for f in stream]
@@ -352,16 +389,20 @@ def localize_run(map_path: str | Path, frames_dir: str | Path | None, out_dir: s
                  fps: float | None = None, cache_dir: str | Path | None = "outputs/cache",
                  tracker: str = "kalman", vo: bool = False, jam_match=(),
                  video: str | Path | None = None, every: int | None = None,
-                 device: str | None = None, jam: tuple[float, float] | None = None) -> RunSummary:
+                 device: str | None = None, jam: tuple[float, float] | None = None,
+                 camera: Camera | None = None, m_per_px: float | None = None) -> RunSummary:
     """Find every frame on the map and write ``run.json`` and ``run.jsonl`` into ``out_dir`` (no trajectory
     image or video; a video's sampled frames and a jam's noise frames go to ``out_dir/frames``). ``device`` is
-    for a matcher that runs on torch (None: the best available)."""
+    for a matcher that runs on torch (None: the best available). ``camera`` + ``m_per_px`` (M9-03): a calibrated
+    camera and the map's real-world scale add altitude_m/roll_deg/pitch_deg to each accepted fix's ``extra``
+    (:func:`solve_planar_pose`); ``m_per_px`` defaults to the map's own georef sidecar when there is one."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     _check_out(out_dir)
     map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, vo, jam_match,
                                        video=video, every=every, device=device, jam=jam,
-                                       keep_dir=None if video is None and jam is None else out_dir / FRAMES_DIR)
+                                       keep_dir=None if video is None and jam is None else out_dir / FRAMES_DIR,
+                                       camera=camera, m_per_px=m_per_px)
     _write_run(out_dir, map_path, map_img, frames, found, MATCHERS[matcher][0])
     return RunSummary(out_dir=out_dir, frames=len(found), localized=sum(x.accepted for x in found),
                       seconds=time.perf_counter() - t0)
@@ -371,12 +412,13 @@ def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path
         fps: float | None = None, speed: float = 1.0,
         cache_dir: str | Path | None = "outputs/cache", tracker: str = "kalman", vo: bool = False,
         jam_match=(), video: str | Path | None = None, every: int | None = None, device: str | None = None,
-        jam: tuple[float, float] | None = None) -> RunSummary:
+        jam: tuple[float, float] | None = None,
+        camera: Camera | None = None, m_per_px: float | None = None) -> RunSummary:
     """The whole deliverable: localize, then the trajectory image (M1-07) and the video (M1-08), all into
     ``out_dir`` at once (see the module docstring). Frames come from ``frames_dir`` or, instead, ``video``
     (every ``every``-th frame; by default about VIDEO_RATE per second). ``device`` is for a matcher that runs on
     torch (None: the best available). ``jam=(start_s, length_s)`` jams the camera for that stretch of the flight
-    (see the module docstring)."""
+    (see the module docstring). ``camera``/``m_per_px``: see :func:`localize_run`."""
     t0 = time.perf_counter()
     out_dir = Path(out_dir)
     if not _is_rate(speed):
@@ -389,7 +431,8 @@ def run(map_path: str | Path, frames_dir: str | Path | None, out_dir: str | Path
     try:
         map_img, frames, found = _localize(map_path, frames_dir, matcher, fps, cache_dir, tracker, vo, jam_match,
                                            video=video, every=every, device=device, jam=jam,
-                                           keep_dir=None if video is None and jam is None else part / FRAMES_DIR)
+                                           keep_dir=None if video is None and jam is None else part / FRAMES_DIR,
+                                           camera=camera, m_per_px=m_per_px)
         _write_run(part, map_path, map_img, frames, found, MATCHERS[matcher][0])
         write_trajectory(part, map_img=map_img)
         write_video(part, map_img=map_img, speed=speed)
@@ -475,11 +518,17 @@ def _source(x: _Found, out_dir: Path) -> str:
 
 def _extra(x: _Found) -> dict:
     """The search behind the record; for an accepted fix, the camera's tilt off nadir read from its homography
-    (M2-04): Fix.x, y is where the image centre lands, which a tilt moves away from the point under the drone; with
-    visual odometry on (M9-02), the frame's VO velocity ("vo": None when VO found no motion)."""
+    (M2-04): Fix.x, y is where the image centre lands, which a tilt moves away from the point under the drone.
+    altitude_m/roll_deg/pitch_deg (M9-03, only with --camera): the same fix's metric planar pose. yaw is not
+    repeated here -- it is already heading_deg, so a second, possibly slightly-disagreeing yaw would only confuse.
+    With visual odometry on (M9-02), the frame's VO velocity ("vo": None when VO found no motion)."""
     extra = {"search": x.mode, "factor": x.factor, "window": None if x.window is None else [int(v) for v in x.window]}
     if x.accepted:
         extra["tilt_deg"] = pose_from_homography(x.fix.H, x.size).tilt_deg
+        if x.pose6dof is not None:
+            extra["altitude_m"] = x.pose6dof.altitude_m
+            extra["roll_deg"] = x.pose6dof.roll_deg
+            extra["pitch_deg"] = x.pose6dof.pitch_deg
     if x.sample is not None:
         extra["matches"] = x.sample
     if x.jammed:
