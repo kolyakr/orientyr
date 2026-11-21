@@ -140,7 +140,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
       const width = cell.offsetWidth, height = cell.offsetHeight;
       let left = 0, top = 0;   // the left column (brand, legend, camera) and the row of the follow button
       for (const el of Array.from(cell.children) as HTMLElement[]) {
-        if (el.classList.contains("minimap")) continue; // it hangs under the follow button, over the far ground
+        if (el.classList.contains("minimap")) continue; // it sits in the bottom right corner, the route may pass under it
         if (el.classList.contains("follow")) top = el.offsetTop + el.offsetHeight;
         else left = Math.max(left, el.offsetLeft + el.offsetWidth);
       }

@@ -32,9 +32,9 @@
   /* glass tokens */
   --glass-base: rgb(20 23 28 / .5);
   --frost: blur(26px) saturate(1.7) brightness(.8);
-  --sheen: linear-gradient(180deg, rgb(255 255 255 / .1), rgb(255 255 255 / .025) 34%, transparent 62%);
-  --rim: linear-gradient(180deg, rgb(255 255 255 / .46), rgb(255 255 255 / .1) 30%, rgb(255 255 255 / .06) 70%, rgb(255 255 255 / .2));
-  --depth: inset 0 1px 0 rgb(255 255 255 / .14), 0 1px 2px rgb(0 0 0 / .35), 0 18px 36px -18px rgb(0 0 0 / .7);
+  --sheen: linear-gradient(180deg, rgb(255 255 255 / .035), rgb(255 255 255 / .01) 34%, transparent 62%);
+  --rim: linear-gradient(180deg, rgb(255 255 255 / .26), rgb(255 255 255 / .09) 30%, rgb(255 255 255 / .06) 70%, rgb(255 255 255 / .14));
+  --depth: inset 0 1px 0 rgb(255 255 255 / .06), 0 1px 2px rgb(0 0 0 / .35), 0 18px 36px -18px rgb(0 0 0 / .7);
   --well: rgb(255 255 255 / .05);           /* an area inside a panel: tiles, tracks */
   --well-edge: inset 0 0 0 1px rgb(255 255 255 / .075);
 
@@ -210,8 +210,8 @@ button:disabled { cursor: default; }
 .follow[aria-pressed="true"] { --glass-base: rgb(245 247 251 / .94); color: #0c0f14; }
 .follow[aria-pressed="true"] svg { transform: rotate(90deg) scale(1.1); }
 
-/* the minimap of follow mode: under the follow button, with the route flown so far */
-.minimap { top: 52px; right: 0; width: clamp(150px, 19%, 210px); padding: 7px 7px 10px; border-radius: 16px;
+/* the minimap of follow mode: in the bottom right corner of the stage, with the route flown so far */
+.minimap { bottom: 0; right: 0; width: clamp(150px, 19%, 210px); padding: 7px 7px 10px; border-radius: 16px;
   display: grid; grid-template-columns: 1fr auto; align-items: baseline; }
 .minimap svg { grid-column: 1 / -1; display: block; width: 100%; margin-bottom: 9px; border-radius: 10px; background: #000;
   box-shadow: 0 0 0 1px rgb(255 255 255 / .1); }
