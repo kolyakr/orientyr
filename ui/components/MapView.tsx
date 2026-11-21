@@ -202,17 +202,15 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
               While the signal is lost it is a ghost: outlines only, dashed. */}
           <g className="craft" style={{ transform: `rotate(${turn}deg)`, transition: `transform ${Math.round(Math.max(stepMs, 200))}ms ease-out` }}>
             {heading !== null && (
-              <line y1={-32 * u} y2={-56 * u} className="beam" strokeWidth={1.8 * u} strokeDasharray={lost ? `${4 * u} ${4 * u}` : undefined} />
+              <line y1={-19 * u} y2={-44 * u} className="beam" strokeWidth={1.8 * u} strokeDasharray={lost ? `${4 * u} ${4 * u}` : undefined} />
             )}
             {[5.2, 1.8].map((width, pass) => (
               <g key={pass} className={pass ? "craft-shape" : "craft-case"} strokeWidth={width * u}
                  strokeDasharray={lost && pass ? `${2.6 * u} ${2.2 * u}` : undefined}>
                 {ROTORS.map(([x, y], i) => <line key={i} x2={x * 9.5 * u} y2={y * 9.5 * u} />)}
                 {ROTORS.map(([x, y], i) => <circle key={i} cx={x * 9.5 * u} cy={y * 9.5 * u} r={5 * u} className="rotor-disc" />)}
-                <rect x={-3.6 * u} y={-17 * u} width={7.2 * u} height={23 * u} rx={3 * u} className="craft-body" />
-                {/* the nose: an arrowhead well ahead of the rotors. The four rotors look the same from every side, so the
-                    arrowhead is what shows where the drone flies. */}
-                {heading !== null && <path d={`M 0 ${-30 * u} L ${8.5 * u} ${-15 * u} L 0 ${-19 * u} L ${-8.5 * u} ${-15 * u} Z`} className="craft-nose" />}
+                <rect x={-3.6 * u} y={-6 * u} width={7.2 * u} height={11.5 * u} rx={3 * u} className="craft-body" />
+                {heading !== null && <path d={`M 0 ${-16.5 * u} L ${4.6 * u} ${-8.5 * u} L ${-4.6 * u} ${-8.5 * u} Z`} className="craft-nose" />}
               </g>
             ))}
             {/* a blade in each disc: it turns only while tracking, as a faint shimmer */}
