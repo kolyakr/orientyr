@@ -80,6 +80,18 @@ def test_build_grid_is_tile_aligned_and_centered():
     assert abs((ty0 + 3936 / 2) - cy) <= 128
 
 
+def test_local_origin_is_target_origin_relative_to_the_fetch_array():
+    grid = bm.build_grid((30.2216, 50.501), size_px=3936, zoom=17, margin_tiles=1)
+    lox, loy = bm.local_origin(grid)
+    fx0, fy0 = grid["fetch_origin_px"]
+    tx0, ty0 = grid["target_origin_px"]
+    assert (lox, loy) == (tx0 - fx0, ty0 - fy0)
+    # the local origin must stay inside the fetched array, with room for the 3936 px crop
+    fetch_size = grid["fetch_tiles"] * 256
+    assert 0 <= lox and lox + 3936 <= fetch_size
+    assert 0 <= loy and loy + 3936 <= fetch_size
+
+
 # ---------------------------------------------------------------------------
 # rasterize_footprint: ArcGIS metadata features -> boolean mask, date/sensor filtered
 # ---------------------------------------------------------------------------
@@ -92,7 +104,7 @@ def _ring_for_px_box(grid, x0, y0, x1, y1):
 
 def _wayback_date_ms(date: str) -> int:
     import datetime as dt
-    return int(dt.datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
+    return int(dt.datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=dt.UTC).timestamp() * 1000)
 
 
 def test_rasterize_footprint_keeps_only_the_matching_date_and_sensor():
@@ -284,7 +296,7 @@ def test_build_sidecar_keeps_an_independent_hires_block_when_given_one():
 def _sidecar_with(coverage=1.0, residual=(0.1, 0.1), reference=False):
     valid = np.ones((10, 10), bool) if coverage == 1.0 else np.zeros((10, 10), bool)
     if coverage not in (0.0, 1.0):
-        valid = np.zeros((10, 10), bool); valid[: int(coverage * 100)] = True
+        valid = np.zeros((10, 10), bool); valid[: int(coverage * 10)] = True
     align = bm.alignment_block(reference=True) if reference else \
         bm.alignment_block((1.0, 1.0), tiles=10, tile_spread_px=0.2, residual_after_px=residual)
     mblock = bm.map_block("maps/irpin_x.png", 17, (0, 0), 10, valid, align)
