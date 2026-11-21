@@ -12,38 +12,85 @@ be cut from three single-date photographs: no seams, no mixed colours.
 
 Epochs: pre < 2022-02-24 <= war <= 2022-12-31 < post (post starts 2023-04-01: rebuilt / long after).
 
-Writes <out>/candidates.json (every AOI x size x triple that has a feasible square, ranked) and
-prints a summary table. Metadata answers are cached in <cache>/<aoi>/<release>.json.
+There is no separate AOI-polygon file in our data, so each area's search box comes from the extent
+of its own UNOSAT labels (see `bbox_from_points`), expanded by MARGIN_KM.
 
-Usage: python scan.py <unosat_labels.geojson> <unosat_aois.geojson> <cache_dir> <out_dir>
+Writes <out>/candidates.json (every AOI x size x triple that has a feasible square, ranked) and
+results/candidates_summary.json (the best candidate per area and size, committed) next to this
+script, and prints a summary table. Metadata answers are cached in <cache>/<aoi>/<release>.json.
+
+Usage: python scan.py <unosat_labels.geojson> <cache_dir> <out_dir>
 """
 import datetime as dt
 import itertools
 import json
-import time
 import math
 import os
+import ssl
 import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from urllib.request import Request
 
 import cv2
 import numpy as np
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
-SESSION = requests.Session()
-SESSION.mount("https://", HTTPAdapter(pool_maxsize=16, max_retries=Retry(
-    total=6, backoff_factor=2, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=None)))
+try:
+    import certifi
+    _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except ImportError:  # no requests/certifi dependency: fall back to the OS's own CA bundle
+    _SSL_CONTEXT = ssl.create_default_context()
+urlopen = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_SSL_CONTEXT)).open
+
 CONFIG = "https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json"
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 Z = 16                    # grid in z16 Web-Mercator pixels (1.0-1.6 m/px in Ukraine), like our maps
 CELL = 32                 # scan cell = 32 z16 px (~45 m): fine enough for footprint edges
 MARGIN_KM = 4.0           # search beyond the AOI box, a flight can start outside the damage zone
 SIZES_KM = (3.0, 5.0, 8.0)
 WAR0, WAR1, POST0 = "2022-02-24", "2022-12-31", "2023-04-01"
+PRE_2019 = "2019-01-01"   # a "pre" capture older than this is a weak before/after comparison
 MIN_COVER = 0.02          # ignore captures covering < 2 % of the search box (slivers)
 META_LAYER = max(0, 23 - Z)
+
+# Occupied / front-line status per UNOSAT area, looked up 2026-11-21 against ISW/Critical Threats'
+# daily control-of-terrain assessments (criticalthreats.org, "Russian offensive campaign assessment",
+# Nov 2026 editions) plus each area's own occupation history. "occupied" = under Russian control;
+# "front_line" = Ukrainian-held but adjacent to active fighting or under regular fire; "none" = rear
+# area, no current front-line activity. An area scanned that is missing here is an error (see
+# status_for), never silently "none".
+STATUS = {
+    "UKR1": "occupied",     # Mariupol (Donetsk) -- occupied since May 2022
+    "UKR2": "none",         # Bucha/Hostomel/Irpin/Moschun/Vorzel, Antonov airport (Kyiv) -- liberated Mar 2022, rear since
+    "UKR3": "occupied",     # Lysychansk/Rubizhne/Sievierodonetsk (Luhansk) -- occupied since Jul 2022
+    "UKR4": "occupied",     # Volnovakha (Donetsk) -- occupied since Mar 2022
+    "UKR5": "occupied",     # Avdiivka (Donetsk) -- occupied since Feb 2024
+    "UKR6": "none",         # Chernihiv -- siege lifted Apr 2022, no front-line activity since
+    "UKR7": "front_line",   # Kharkiv -- near the Vovchansk/Kupiansk footholds, regularly shelled (CT, Aug-Nov 2026)
+    "UKR8": "none",         # Borodyanka (Kyiv) -- liberated Mar 2022, rear since
+    "UKR9": "none",         # Makariv (Kyiv) -- liberated Mar 2022, rear since
+    "UKR10": "none",        # Mykolaiv -- front-line 2022-23, rear since the Kherson liberation (Nov 2022)
+    "UKR11": "occupied",    # Shchastia (Luhansk) -- occupied since 2022
+    "UKR12": "front_line",  # Sumy -- active Russian offensive operations north of Sumy City (CT, Nov 3-4 2026)
+    "UKR13": "none",        # Trostianets (Sumy) -- liberated Mar 2022, south of the active border fighting
+    "UKR14": "front_line",  # Kramatorsk (Donetsk) -- Ukraine's main Donbas stronghold, directly contested (CT, 2026)
+    "UKR15": "none",        # Okhtyrka (Sumy) -- liberated Mar 2022, interior
+    "UKR16": "front_line",  # Kherson/Antonivka -- right bank, faces the occupied left bank across the Dnipro
+    "UKR17": "none",        # Kremenchuk (Poltava) -- interior, no front-line
+    "UKR18": "occupied",    # Melitopol (Zaporizhzhia) -- occupied since 2022
+}
+STATUS_PENALTY = {"occupied": 0.2, "front_line": 0.5, "none": 1.0}
+
+
+def status_for(aoi):
+    """STATUS[aoi], or an error -- a scanned area missing from STATUS must be added, not assumed safe."""
+    if aoi not in STATUS:
+        raise ValueError(f"no status recorded for area {aoi!r}: add it to STATUS, don't assume 'none'")
+    return STATUS[aoi]
 
 
 def merc(lon, lat):
@@ -61,12 +108,31 @@ def m_per_px(lat):
     return 156543.03392 * math.cos(math.radians(lat)) / 2 ** Z
 
 
-def all_coords(c):
-    if isinstance(c[0], (int, float)):
-        yield c
-    else:
-        for x in c:
-            yield from all_coords(x)
+def bbox_from_points(pts, margin_km=MARGIN_KM):
+    """lon/lat bounding box of `pts`, expanded by `margin_km` on every side (flat-earth approximation,
+    like the rest of this module). Used instead of an AOI-polygon file, which we don't have."""
+    if not pts:
+        raise ValueError("no points to derive a bounding box from")
+    lat_c = sum(p[1] for p in pts) / len(pts)
+    dlat, dlon = margin_km / 111.0, margin_km / (111.0 * math.cos(math.radians(lat_c)))
+    return (min(p[0] for p in pts) - dlon, min(p[1] for p in pts) - dlat,
+            max(p[0] for p in pts) + dlon, max(p[1] for p in pts) + dlat)
+
+
+def _fetch_json(url, params, timeout, attempts=6):
+    """GET url?params as JSON, retrying 429/5xx and connection errors with exponential backoff."""
+    qs = "?" + urllib.parse.urlencode(params) if params else ""
+    for attempt in range(attempts):
+        try:
+            with urlopen(Request(url + qs), timeout=timeout) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code not in RETRYABLE_STATUS or attempt == attempts - 1:
+                raise
+        except urllib.error.URLError:
+            if attempt == attempts - 1:
+                raise
+        time.sleep(2 ** attempt)
 
 
 def query(cfg, rel, bbox, path):
@@ -76,19 +142,14 @@ def query(cfg, rel, bbox, path):
     lon0, lat0, lon1, lat1 = bbox
     feats, off = [], 0
     while True:
-        for attempt in range(6):  # the service throws sporadic 500s under load: back off and retry
-            try:
-                r = SESSION.get(cfg[rel]["metadataLayerUrl"] + f"/{META_LAYER}/query", params=dict(
-                    geometry=f"{lon0},{lat0},{lon1},{lat1}", geometryType="esriGeometryEnvelope", inSR=4326,
-                    outSR=4326, spatialRel="esriSpatialRelIntersects", outFields="SRC_DATE2,SRC_DESC,SRC_RES,SRC_ACC",
-                    returnGeometry="true", resultOffset=off, f="json"), timeout=120).json()
-            except (requests.RequestException, ValueError) as e:
-                r = {"error": str(e)}
-            if "error" not in r:
-                break
-            time.sleep(2 ** attempt)
-        else:  # some releases' metadata services are broken for good: skip them, don't cache
-            print(f"  warning: release {rel} metadata unavailable ({r['error']}), skipped", file=sys.stderr)
+        try:
+            r = _fetch_json(cfg[rel]["metadataLayerUrl"] + f"/{META_LAYER}/query", dict(
+                geometry=f"{lon0},{lat0},{lon1},{lat1}", geometryType="esriGeometryEnvelope", inSR=4326,
+                outSR=4326, spatialRel="esriSpatialRelIntersects", outFields="SRC_DATE2,SRC_DESC,SRC_RES,SRC_ACC",
+                returnGeometry="true", resultOffset=off, f="json"), timeout=120)
+        except (urllib.error.URLError, json.JSONDecodeError) as e:
+            # some releases' metadata services are broken for good: skip them, don't cache
+            print(f"  warning: release {rel} metadata unavailable ({e}), skipped", file=sys.stderr)
             return []
         feats += r.get("features", [])
         if not r.get("exceededTransferLimit"):
@@ -138,13 +199,11 @@ def doy_gap(d1, d2):
     return min(abs(a - b), 365 - abs(a - b))
 
 
-def scan_aoi(aoi, labels, cfg, cache):
-    pts = list(all_coords(aoi["geometry"]["coordinates"]))
-    lat_c = np.mean([p[1] for p in pts])
-    dlat, dlon = MARGIN_KM / 111.0, MARGIN_KM / (111.0 * math.cos(math.radians(lat_c)))
-    bbox = (min(p[0] for p in pts) - dlon, min(p[1] for p in pts) - dlat,
-            max(p[0] for p in pts) + dlon, max(p[1] for p in pts) + dlat)
+def scan_aoi(name, labels, cfg, cache):
+    pts = [tuple(f["geometry"]["coordinates"][:2]) for f in labels]
+    bbox = bbox_from_points(pts)
     caps, (x0, y0, W, H) = footprints(cfg, bbox, cache)
+    lat_c = sum(p[1] for p in pts) / len(pts)
 
     # label rasters: destroyed+severe (damage 1-2) and all; and the assessment dates
     lab = np.zeros((H, W), np.float32); lab_all = np.zeros((H, W), np.float32)
@@ -191,7 +250,7 @@ def scan_aoi(aoi, labels, cfg, cache):
             lon, lat = unmerc(cx, cy)
             trip = (pre, war, post)
             out.append({
-                "aoi": aoi["properties"]["aoi"], "size_km": size_km, "center": [round(lat, 5), round(lon, 5)],
+                "aoi": name, "size_km": size_km, "center": [round(lat, 5), round(lon, 5)],
                 "square_merc_z16": [round(cx - s * CELL / 2), round(cy - s * CELL / 2), s * CELL],
                 "destroyed_severe": int(cnt[i, j]), "all_labels": int(cnt_all[i, j]),
                 "feasible_area_cells": int(ok.sum()),
@@ -208,27 +267,49 @@ def scan_aoi(aoi, labels, cfg, cache):
     return out, summary, sorted(dates)
 
 
+def penalties(c):
+    """Named, independent multiplicative factors behind score() -- each documents one ranking rule."""
+    return {
+        "pre_2019": 0.7 if c["pre"]["date"] < PRE_2019 else 1.0,
+        "off_date": 1.0 if c["war"]["is_unosat_date"] else 0.7,
+        "season_gap": 1.0 - min(c["max_season_gap_days"], 120) / 240,     # 120+ days apart halves the score
+        "mixed_sensor": 1.0 if c["same_sensor"] else 0.85,
+        "resolution": 1.0 if c["worst_res"] <= 0.6 else 0.8,
+        "status": STATUS_PENALTY[status_for(c["aoi"])],
+    }
+
+
 def score(c):
-    """Rank: damage inside first, then a clean comparison (same season, sensor, sharp, UNOSAT's own image)."""
-    return (c["destroyed_severe"]
-            * (1.0 if c["war"]["is_unosat_date"] else 0.7)
-            * (1.0 - min(c["max_season_gap_days"], 120) / 240)     # 120+ days apart halves the score
-            * (1.0 if c["same_sensor"] else 0.85)
-            * (1.0 if c["worst_res"] <= 0.6 else 0.8))
+    """Rank: damage inside first, then a clean, safe comparison (penalties())."""
+    p = 1.0
+    for factor in penalties(c).values():
+        p *= factor
+    return c["destroyed_severe"] * p
+
+
+def summarize(candidates):
+    """Best-scoring candidate per (aoi, size_km) -- what results/candidates_summary.json commits."""
+    best = {}
+    for c in candidates:
+        key = (c["aoi"], c["size_km"])
+        if key not in best or c["score"] > best[key]["score"]:
+            best[key] = c
+    return [best[k] for k in sorted(best)]
 
 
 def main():
-    labels_p, aois_p, cache, out_dir = sys.argv[1:5]
+    labels_p, cache, out_dir = sys.argv[1:4]
     os.makedirs(out_dir, exist_ok=True)
-    cfg = SESSION.get(CONFIG, timeout=30).json()
+    cfg = _fetch_json(CONFIG, None, timeout=30)
     labels = json.load(open(labels_p))["features"]
-    aois = json.load(open(aois_p))["features"]
+    by_aoi = {}
+    for f in labels:
+        by_aoi.setdefault(f["properties"]["aoi"], []).append(f)
     allc, summ = [], {}
-    for aoi in aois:
-        name = aoi["properties"]["aoi"]
-        mine = [f for f in labels if f["properties"]["aoi"] == name]
+    for name in sorted(by_aoi, key=lambda n: int(n[3:])):
+        mine = by_aoi[name]
         cities = sorted({f["properties"]["city"] or "?" for f in mine})
-        cands, s, dates = scan_aoi(aoi, mine, cfg, f"{cache}/{name}")
+        cands, s, dates = scan_aoi(name, mine, cfg, f"{cache}/{name}")
         for c in cands:
             c["cities"] = cities; c["score"] = round(score(c), 1)
         allc += cands
@@ -240,6 +321,9 @@ def main():
                  f"{best['post']['date']} gap {best['max_season_gap_days']}d" if best else ""), flush=True)
     allc.sort(key=lambda c: -c["score"])
     json.dump({"candidates": allc, "aois": summ}, open(f"{out_dir}/candidates.json", "w"), indent=1)
+    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+    os.makedirs(results_dir, exist_ok=True)
+    json.dump(summarize(allc), open(os.path.join(results_dir, "candidates_summary.json"), "w"), indent=1)
 
 
 if __name__ == "__main__":
