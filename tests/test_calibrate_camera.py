@@ -1,15 +1,19 @@
-"""M9-03 · scripts/calibrate_camera.py: once-off camera calibration from checkerboard photos.
+"""M9-03 · camera calibration from checkerboard photos (dronenav.calibration, scripts/calibrate_camera.py).
 
 A phone's K and lens distortion are found the usual way: several photos of a checkerboard (here,
 shown full-screen -- the spec's "checkerboard on the screen") at different angles, corner
 detection, ``cv2.calibrateCamera``. Ground truth we control: render the checkerboard through a
 few known pinhole poses (same camera model as test_perspective.py's own M2-04 test helper), so
 the true K is known exactly and the recovered one can be checked against it.
+
+Mirrors test_check_backups.py: the core logic (``dronenav.calibration``) is unit-tested directly,
+the CLI (a thin argparse wrapper) is tested through a subprocess, same as every other script here.
 """
 from __future__ import annotations
 
 import json
 import math
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,12 +21,10 @@ import cv2
 import numpy as np
 import pytest
 
+from dronenav.calibration import calibrate, find_corners
+from dronenav.camera import Camera
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-from calibrate_camera import calibrate, find_corners, main  # noqa: E402
-
-from dronenav.camera import Camera  # noqa: E402
-
 COLS, ROWS = 9, 6           # inner corners
 SQ_PX = 80                  # one board square, board-image px (== the "square" unit passed to calibrate)
 FRAME = (1280, 960)
@@ -61,7 +63,7 @@ def _camera_h(yaw, pitch, roll, cx, cy, alt, hfov, frame):
 
 
 def _render(board: np.ndarray, H: np.ndarray, frame: tuple[int, int]) -> np.ndarray:
-    """The frame a camera with board -> frame... (frame px -> board px) homography H would see."""
+    """The frame a camera with (frame px -> board px) homography H would see."""
     w, h = frame
     half = np.array([[1, 0, 0.5], [0, 1, 0.5], [0, 0, 1]])
     H_cv = np.linalg.inv(half) @ H @ half
@@ -75,14 +77,11 @@ def synthetic_views(poses=((0, 0, 0), (18, 0, 0), (-15, 10, 0), (0, -12, 14), (1
     bh, bw = board.shape
     cx, cy = bw / 2, bh / 2
     alt = (bw / 2) / math.tan(math.radians(HFOV) / 2) * 1.15     # the whole board stays in frame
-    views = []
-    for yaw, pitch, roll in poses:
-        H = _camera_h(yaw, pitch, roll, cx, cy, alt, HFOV, FRAME)
-        views.append(_render(board, H, FRAME))
-    return views
+    return [_render(board, _camera_h(yaw, pitch, roll, cx, cy, alt, HFOV, FRAME), FRAME)
+            for yaw, pitch, roll in poses]
 
 
-# --- calibrate() on known synthetic views --------------------------------------------------
+# --- dronenav.calibration: unit tests on known synthetic views --------------------------------
 
 def test_calibration_recovers_the_true_focal_length():
     K, dist, size = calibrate(synthetic_views(), COLS, ROWS, square=SQ_PX)
@@ -102,8 +101,7 @@ def test_calibration_output_loads_as_a_camera_block():
 
 
 def test_find_corners_locates_the_checkerboard():
-    view = synthetic_views(((0, 0, 0),))[0]
-    corners = find_corners(view, COLS, ROWS)
+    corners = find_corners(synthetic_views(((0, 0, 0),))[0], COLS, ROWS)
     assert corners is not None
     assert corners.shape == (COLS * ROWS, 2)
 
@@ -124,25 +122,38 @@ def test_calibrate_needs_at_least_two_views():
         calibrate(synthetic_views(((0, 0, 0),)), COLS, ROWS, square=SQ_PX)
 
 
-# --- the CLI: writes a camera.json Camera.from_meta can read straight away --------------------
+# --- scripts/calibrate_camera.py: a thin CLI, tested through a subprocess (test_check_backups.py style) --
 
-def test_cli_writes_a_camera_json(tmp_path):
-    out = tmp_path / "camera.json"
-    paths = []
+def _cli(*args):
+    return subprocess.run([sys.executable, str(ROOT / "scripts" / "calibrate_camera.py"), *map(str, args)],
+                          check=False, capture_output=True, text=True)
+
+
+def test_the_cli_writes_a_camera_json(tmp_path):
     for i, view in enumerate(synthetic_views()):
-        p = tmp_path / f"view_{i}.png"
-        cv2.imwrite(str(p), view)
-        paths.append(p)
-    main(["--images", str(tmp_path / "view_*.png"), "--cols", str(COLS), "--rows", str(ROWS),
-         "--square", str(SQ_PX), "--out", str(out)])
-    meta = json.loads(out.read_text())
-    camera = Camera.from_meta(meta)
-    assert camera is not None
-    assert camera.size == FRAME
+        cv2.imwrite(str(tmp_path / f"view_{i}.png"), view)
+    out = tmp_path / "camera.json"
+    res = _cli("--images", str(tmp_path / "view_*.png"), "--cols", COLS, "--rows", ROWS,
+              "--square", SQ_PX, "--out", out)
+    assert res.returncode == 0, res.stderr
+    camera = Camera.from_meta(json.loads(out.read_text()))
+    assert camera is not None and camera.size == FRAME
 
 
-def test_cli_reports_no_images_found(tmp_path, capsys):
-    with pytest.raises(SystemExit):
-        main(["--images", str(tmp_path / "nothing_*.png"), "--cols", str(COLS), "--rows", str(ROWS),
-             "--out", str(tmp_path / "camera.json")])
-    assert "no images" in capsys.readouterr().err.lower()
+def test_the_cli_exits_2_when_no_images_match(tmp_path):
+    res = _cli("--images", str(tmp_path / "nothing_*.png"), "--cols", COLS, "--rows", ROWS,
+              "--out", tmp_path / "camera.json")
+    assert res.returncode == 2
+    assert "no images" in res.stderr.lower()
+    assert not (tmp_path / "camera.json").exists()
+
+
+def test_the_cli_exits_2_when_a_view_has_no_checkerboard(tmp_path):
+    for i, view in enumerate(synthetic_views(((0, 0, 0), (18, 0, 0)))):
+        cv2.imwrite(str(tmp_path / f"view_{i}.png"), view)
+    cv2.imwrite(str(tmp_path / "view_blank.png"), np.full(FRAME[::-1], 128, np.uint8))
+    res = _cli("--images", str(tmp_path / "view_*.png"), "--cols", COLS, "--rows", ROWS,
+              "--out", tmp_path / "camera.json")
+    assert res.returncode == 2
+    assert "checkerboard" in res.stderr.lower()
+    assert not (tmp_path / "camera.json").exists()
