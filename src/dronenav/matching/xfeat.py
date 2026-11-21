@@ -9,8 +9,8 @@ What this backend adds around the network:
 - **The frame is tried at several turns.** XFeat's descriptors are not rotation-invariant: they hold for some
   ±25°, and a frame at heading 60° finds nothing on a north-up map. So the frame is turned by k * 360° / turns,
   described and matched at each turn, and the turn with the most matches wins (a wrong turn gives a tenth of
-  the right one's). The winner is remembered and tried first for the next frame: while the heading holds, a
-  frame costs one extraction. ``turns=1`` is for a caller that turns the frames north-up itself (a compass).
+  the right one's). A clear winner is remembered and tried first for the next frame: while the heading holds,
+  a frame costs one extraction. ``turns=1`` is for a caller that turns the frames north-up itself (a compass).
 - **The map is described in tiles, once, and cached on disk** (as RootSIFT's features are): a window query takes
   the cached keypoints inside the window, with no extraction. The map is described more densely than a frame,
   because every frame keypoint needs its partner to be there.
@@ -89,8 +89,11 @@ class XFeatConfig:
     Frame and matching (not part of the key): top_k, keypoints kept per frame; min_cossim, the least cosine
     similarity of a match; ratio, keep a match when its descriptor distance is under ratio * the runner-up's
     (Lowe's test; 1.0 turns it off); turns, how many turns of the frame are tried (8: every 45°; 1: frames are
-    already north-up); keep_fraction and keep_min, the remembered turn is kept while it gives at least
-    keep_fraction of the matches it won with and at least keep_min, otherwise all turns are tried again.
+    already north-up); win_ratio, a turn is remembered only when it wins clearly, with at least win_ratio times
+    the matches of every turn that is not its neighbour (a frame at the wrong scale, or off the map, gives a
+    few chance matches at every turn: no winner worth remembering); keep_fraction and keep_min, the remembered
+    turn is kept while it gives at least keep_fraction of the matches it won with and at least keep_min,
+    otherwise all turns are tried again.
     """
 
     top_k: int = 4096
@@ -99,6 +102,7 @@ class XFeatConfig:
     min_cossim: float = 0.82
     ratio: float = 0.9
     turns: int = 8
+    win_ratio: float = 2.0
     keep_fraction: float = 0.5
     keep_min: int = 30
     tile: int = 1024
@@ -115,8 +119,10 @@ class XFeatConfig:
             raise ValueError(f"ratio must be in (0, 1], got {self.ratio}")
         if self.turns < 1:
             raise ValueError(f"turns must be >= 1, got {self.turns}")
-        if not 0.0 <= self.keep_fraction <= 1.0 or self.keep_min < 0:
-            raise ValueError("keep_fraction must be in [0, 1] and keep_min >= 0")
+        if self.win_ratio < 1.0:
+            raise ValueError(f"win_ratio must be >= 1, got {self.win_ratio}")
+        if not 0.0 <= self.keep_fraction <= 1.0 or self.keep_min < 1:
+            raise ValueError("keep_fraction must be in [0, 1] and keep_min >= 1")
         if self.tile < _STRIDE or self.tile % _STRIDE:
             raise ValueError(f"tile must be a positive multiple of {_STRIDE}, got {self.tile}")
         if self.tile_margin < 0 or self.tile_margin % _STRIDE:
@@ -150,8 +156,9 @@ class XFeatMatcher:
     not there (False: raise :class:`XFeatWeightsMissing` instead, for tests and machines without a network).
 
     ``map_extractions`` and ``map_features_source`` are as in RootSiftMatcher. ``frame_extractions`` counts
-    network passes over frames (one per turn tried) and ``turn_deg`` is the turn that won last, None before the
-    first match: together they show whether a frame took the short path.
+    network passes over frames (one per turn tried) and ``turn_deg`` is the turn the last matches were found
+    at, None before the first match and when there were none: together they show whether a frame took the short
+    path.
     """
 
     backend = BACKEND
@@ -167,7 +174,7 @@ class XFeatMatcher:
         self.map_features_source: str | None = None
         self.frame_extractions = 0
         self.turn_deg: float | None = None
-        self._turn_matches = 0                    # how many matches the remembered turn won with
+        self._kept: tuple[float, int] | None = None   # the remembered turn and how many matches it won with
         self._torch, self._net, self._weights_key = _load_network(self.weights, self.device, cfg, download)
         self._map: np.ndarray | None = None       # registered map, grayscale
         self._map_feats: _MapFeatures | None = None
@@ -293,24 +300,25 @@ class XFeatMatcher:
         if len(feats) < 2:
             return Matches.empty(BACKEND, _ms(t0))
 
-        best = None                                   # (pts_frame, map indices, scores) of the best turn so far
-        tried = set()
-        if self.turn_deg is not None:
-            best = self._match_at(frame, self.turn_deg, feats)
-            tried.add(self.turn_deg)
-            if len(best[0]) >= max(self.cfg.keep_min, self.cfg.keep_fraction * self._turn_matches):
-                return self._matches(best, feats, t0)
+        found = {}                                    # turn -> (pts_frame, map indices, scores)
+        if self._kept is not None:
+            turn, won_with = self._kept
+            found[turn] = self._match_at(frame, turn, feats)
+            if len(found[turn][0]) >= max(self.cfg.keep_min, self.cfg.keep_fraction * won_with):
+                self.turn_deg = turn
+                return self._matches(found[turn], feats, t0)
+        step = 360.0 / self.cfg.turns
         for k in range(self.cfg.turns):
-            turn = 360.0 * k / self.cfg.turns
-            if turn in tried:
-                continue
-            cand = self._match_at(frame, turn, feats)
-            if best is None or len(cand[0]) > len(best[0]):       # a tie keeps the earlier turn
-                best, self.turn_deg = cand, turn
-        self._turn_matches = len(best[0])
-        if not len(best[0]):
-            self.turn_deg = None                      # nothing matched at any turn: no turn to remember
-        return self._matches(best, feats, t0)
+            if k * step not in found:
+                found[k * step] = self._match_at(frame, k * step, feats)
+        count = {turn: len(f[0]) for turn, f in found.items()}
+        best = max(sorted(count), key=count.get)      # a tie goes to the smaller turn
+        # A clear win: over every turn that is not a neighbour (a heading between two turns matches at both).
+        far = [n for turn, n in count.items() if min(abs(turn - best), 360.0 - abs(turn - best)) > step + 1e-9]
+        if count[best] >= self.cfg.keep_min and count[best] >= self.cfg.win_ratio * max(far, default=0):
+            self._kept = (best, count[best])
+        self.turn_deg = best if count[best] else None
+        return self._matches(found[best], feats, t0)
 
     @staticmethod
     def _matches(found, feats: _MapFeatures, t0: float) -> Matches:

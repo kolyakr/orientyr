@@ -59,7 +59,8 @@ def _script(name: str, *args) -> subprocess.CompletedProcess:
 # --- no weights needed ------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("bad", [{"top_k": 0}, {"map_top_k": 0}, {"detection_threshold": 0.0}, {"min_cossim": 1.5},
-                                 {"ratio": 0.0}, {"ratio": 1.5}, {"turns": 0}, {"tile": 100}, {"tile": 1000},
+                                 {"ratio": 0.0}, {"ratio": 1.5}, {"turns": 0}, {"win_ratio": 0.5},
+                                 {"keep_fraction": 1.5}, {"keep_min": 0}, {"tile": 100}, {"tile": 1000},
                                  {"tile_margin": 48}, {"tile_margin": -32}])
 def test_config_rejects_bad_values(bad):
     # tile and tile_margin: multiples of 32, the network's stride, so a tile is never resized on its way in
@@ -193,6 +194,20 @@ def test_a_frame_that_turned_away_gets_all_turns_again():
 
 
 @needs_xfeat_weights
+def test_chance_matches_do_not_leave_a_turn_to_trust():
+    # the scale probe (dronenav.scale) hands the matcher the same frame shrunk several times: at the wrong size
+    # it matches by chance at every turn, and the "winner" of that must not be kept for the next call
+    matcher = _matcher()
+    H = make_h(200.0, 0.8, cx=640.0, cy=420.0, frame_size=FRAME_SIZE)
+    small = cv2.resize(render_frame(MAP, H, FRAME_SIZE), None, fx=0.3, fy=0.3, interpolation=cv2.INTER_AREA)
+    matcher.match(small, MAP)
+    m = matcher.match(FRAME, MAP)
+    assert matcher.turn_deg == 45.0
+    fix = localize(0, m, FRAME_SIZE)
+    assert fix is not None and fix.accepted and np.hypot(fix.x - 640.0, fix.y - 420.0) < 1.0
+
+
+@needs_xfeat_weights
 def test_one_turn_is_enough_for_a_north_up_frame():
     # turns=1: the caller turns frames north-up itself (a compass), and each frame costs one extraction
     matcher = _matcher(cfg=XFeatConfig(turns=1))
@@ -247,10 +262,11 @@ def test_a_map_larger_than_a_tile_is_matched_across_the_seams(tmp_path):
 
 @needs_xfeat_weights
 def test_run_py_localizes_with_the_xfeat_matcher(tmp_path):
-    cv2.imwrite(str(tmp_path / "map.png"), MAP)
-    poses = cutout_route((MAP.shape[1], MAP.shape[0]), 5, seed=3, frame_size=(320, 240), scale=(0.9, 1.1),
+    world = make_map(2000, 1500, shapes=2500)      # room for a cut-out route to turn around in, as in test_run.py
+    cv2.imwrite(str(tmp_path / "map.png"), world)
+    poses = cutout_route((world.shape[1], world.shape[0]), 5, seed=3, frame_size=(320, 240), scale=(0.9, 1.1),
                          tilt_max_deg=3.0)
-    src = CutoutSource(MAP, poses, (320, 240))
+    src = CutoutSource(world, poses, (320, 240))
     (tmp_path / "frames").mkdir()
     for f in src:
         cv2.imwrite(str(tmp_path / "frames" / f"frame_{f.idx:03d}.png"), f.image)
