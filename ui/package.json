@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Orientyr mission control: the console mock-up, driven by a run folder (run.json + run.jsonl + frames/)",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -23,7 +23,8 @@ npm test                                  # vitest: the reader, the numbers, the
 
 ## Which run
 
-The **runs folder** is `ORIENTYR_RUNS`, else the folder `ORIENTYR_RUN` lies in, else `outputs/` in the repo root.
+The **runs folder** is `ORIENTYR_RUNS`, else the folder `ORIENTYR_RUN` lies in, else `public/runs` when a run is
+packed there (see "Hosting"), else `outputs/` in the repo root.
 Every folder in it with a `run.json` is a run, named by its path from the runs folder (`irpin`, or `bench/sift` one
 level down). The **Run** list at the top of the map opens another run without a restart; `/?run=irpin` does the
 same from the address. A name that is not in the list is refused, so the address cannot reach outside the runs
@@ -82,6 +83,33 @@ and the mission log are always shown.
 | `app/page.tsx` | opens the run the address names, or says why it cannot |
 | `app/api/map`, `app/api/frame` | serve the map and the frames of a run (`?run=<name>`) |
 | `tests/fixtures/runs/` | hand-made hard runs: gaps, missing files, an empty and a broken `run.jsonl` |
+| `public/runs/` | packed runs for hosting (gitignored), see "Hosting" |
+
+## Hosting
+
+A replay of the Irpin flight is online: <https://orientyr-nine.vercel.app> (`/?run=irpin&frame=120` opens on that
+frame). It is the console only, replaying a recorded run; the engine does not run there.
+Imagery: Esri World Imagery Wayback (Maxar).
+
+A host has no `data/` and no `outputs/`, so the runs to show are packed into the app first: `scripts/pack_run.py`
+copies the telemetry and writes the map as one WebP and the frames as small JPEGs (about 27 MB for 442 frames).
+When `public/runs` holds a run and no `ORIENTYR_RUNS` / `ORIENTYR_RUN` is set, it is the runs folder: every run
+packed there is in the Run list, and its map and frames are loaded as static files instead of through the API
+routes. `public/runs` is gitignored (imagery is never committed), so the site is built on a laptop that has the
+data and uploaded ready-made. It does not follow the repo: after a change to the console, deploy again.
+
+```bash
+# from the repo root: pack the run to show (never a run over the organisers' map: that map stays private)
+python scripts/pack_run.py --run outputs/irpin --out ui/public/runs/irpin
+
+cd ui
+vercel pull --yes --environment=production   # once per clone, after `vercel link` to the project
+vercel build --prod                          # builds here, with the packed runs inside
+vercel deploy --prebuilt --prod              # uploads the build; the link above then shows it
+```
+
+Remove `ui/public/runs` to see the runs of `outputs/` again with `npm run dev`. `engines.node` in `package.json`
+pins the Node version the host runs.
 
 Technology (decided in M7-01): a Next.js web app. It runs in any browser, is easy to record for the demo
 video, and the same page can later follow a live `run.jsonl` while the engine writes it.

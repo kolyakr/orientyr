@@ -26,7 +26,7 @@ from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ("accuracy.py", "chaos_sheet.py", "check_data.py", "confidence_check.py", "fake_run.py", "mavlink_log.py",
-           "preprocess_ablation.py", "render_image.py", "render_video.py", "rotation_check.py", "run.py",
+           "pack_run.py", "preprocess_ablation.py", "render_image.py", "render_video.py", "rotation_check.py", "run.py",
            "scale_table.py", "search_run.py", "spoof_check.py", "xfeat_timing.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
 # The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
@@ -321,6 +321,7 @@ def test_scale_table_and_search_run_keep_their_behaviour_without_a_dataset():
     ("fake_run.py", ("--map", "nope.png", "--out", "o"), "nope.png"),
     ("render_image.py", ("--run", "no_such_run"), "run.json"),
     ("render_video.py", ("--run", "no_such_run"), "run.json"),
+    ("pack_run.py", ("--run", "no_such_run", "--out", "o"), "run.json"),
 ])
 def test_drawing_scripts_accept_the_log_level_and_fail_as_before(tmp_path, name, args, word):
     args = tuple(str(tmp_path / a) if not a.startswith("--") else a for a in args)

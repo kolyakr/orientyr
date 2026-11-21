@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Que
   }
   return (
     <Console key={opened.dir} run={opened.run} initialFrame={Number.isInteger(frame) ? frame : 0}
-             runName={opened.name} runs={opened.runs} mapMissing={opened.mapMissing}
+             runName={opened.name} runs={opened.runs} mapMissing={opened.mapMissing} assets={opened.assets}
              initialLayers={parseLayers(one(query.off), one(query.on))} />
   );
 }

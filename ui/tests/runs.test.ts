@@ -17,7 +17,8 @@ describe("runsDir", () => {
   it("is ORIENTYR_RUNS, else the folder ORIENTYR_RUN lies in, else outputs/ in the repo root", () => {
     expect(runsDir({ ORIENTYR_RUNS: RUNS, ORIENTYR_RUN: "/somewhere/else/run" })).toBe(RUNS);
     expect(runsDir({ ORIENTYR_RUN: FIXTURE })).toBe(path.dirname(FIXTURE));
-    expect(runsDir({})).toBe(path.resolve(process.cwd(), "..", "outputs"));
+    const app = mkdtempSync(path.join(os.tmpdir(), "orientyr-app-")); // an app folder with no packed runs (M7-07)
+    expect(runsDir({}, app)).toBe(path.resolve(app, "..", "outputs"));
   });
 });
 

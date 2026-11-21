@@ -264,6 +264,7 @@ python scripts/fake_run.py --map data/hackatons-data/global_map.png --out output
 (cd ui && npm install && npm run dev)                    # the console: http://localhost:3000 replays any run folder in outputs/ (/?run=<name>, or the Run list); ORIENTYR_RUNS=<dir of runs> or ORIENTYR_RUN=<run dir> for others
 (cd ui && npm test)                                      # the console's own tests (vitest); pytest also runs them on a fresh fake run
 python scripts/render_image.py --run outputs/fake          # trajectory.png + trajectory_preview.jpg (1600 px)
+python scripts/pack_run.py --run outputs/irpin --out ui/public/runs/irpin   # a small self-contained run for the hosted console (ui/README.md, "Hosting")
 python scripts/chaos_sheet.py --flight data/irpin/flights/mild/2022 --out outputs/chaos_sheets   # one check sheet per chaos degradation (no --flight: synthetic cut-outs, no data/)
 python scripts/render_video.py --run outputs/fake          # trajectory.mp4, HUD video: map stage, camera projected onto its footprint, state lamp, captions, timeline
 python scripts/run.py --map data/irpin/maps/irpin_2022.png --frames data/irpin/flights/mild/2022/frames --out outputs/jam --jam 150:30   # M7-02: the same run with the camera jammed for 30 s from 150 s of flight

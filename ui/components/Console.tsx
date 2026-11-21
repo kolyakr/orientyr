@@ -55,13 +55,14 @@ function Ticker({ value }: { value: string }) {
   );
 }
 
-export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS, initialLayers = DEFAULT_LAYERS, mapMissing = false }: {
+export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS, initialLayers = DEFAULT_LAYERS, mapMissing = false, assets = null }: {
   run: Run;
   initialFrame?: number;
   runName?: string | null;  // the run's name in the runs folder: it goes into the map's and the frames' URLs; null = the default run
   runs?: string[];          // the runs the picker offers
   initialLayers?: Layers;   // from the URL
   mapMissing?: boolean;     // the server did not find the map image
+  assets?: { map: string; frames: string } | null;  // static URLs of the run's images (a packed run); null = the API routes
 }) {
   const n = run.records.length;
   const last = n - 1;
@@ -78,8 +79,11 @@ export function Console({ run, initialFrame = 0, runName = null, runs = NO_RUNS,
   const stepMs = frameMs(run.info.fps, speed);
   // the files of this run: the map and the camera frames
   const runQuery = runName ? `run=${encodeURIComponent(runName)}` : "";
-  const mapUrl = runQuery ? `/api/map?${runQuery}` : "/api/map";
-  const frameUrl = useCallback((r: RunRecord) => `/api/frame?${runQuery && `${runQuery}&`}src=${encodeURIComponent(r.source)}`, [runQuery]);
+  const mapUrl = assets ? assets.map : runQuery ? `/api/map?${runQuery}` : "/api/map";
+  const framesUrl = assets?.frames;
+  const frameUrl = useCallback((r: RunRecord) => framesUrl !== undefined
+    ? `${framesUrl}/${r.source.split("/").map(encodeURIComponent).join("/")}`
+    : `/api/frame?${runQuery && `${runQuery}&`}src=${encodeURIComponent(r.source)}`, [runQuery, framesUrl]);
   // a layer is drawn when the run has it and it is switched on
   const offered = useMemo(() => availableLayers(run.records), [run]);
   const shown = useMemo(
