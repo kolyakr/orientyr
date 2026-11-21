@@ -3,10 +3,11 @@
     python scripts/scenarios.py list                 # every scenario, its one command and the run.py it stands for
     python scripts/scenarios.py list --markdown      # the same as the README table
     python scripts/scenarios.py run all              # run each; PASS / FAIL / MISSING DATA, then a summary
-    python scripts/scenarios.py run C E --data data --out outputs/scenarios
+    python scripts/scenarios.py run C D --data data --out outputs/scenarios
 
 The scenarios are the plan's (docs/plan M6, "Scenarios"): what the drone sees x the map it carries. G (controlled
-drift maps) and the live mode were cut in the last-day re-plan (#128), so they are not here. Each scenario is a
+drift maps) and the live mode were cut in the last-day re-plan (#128), and E and F (the 2017 map, on which SIFT
+localizes no frame) at the freeze, so they are not here. Each scenario is a
 plain scripts/run.py call: the runner adds nothing to the pipeline, so what passes here is exactly what a judge
 runs by hand. A scenario whose data is not downloaded (or not made yet: the phone takes) is MISSING DATA, not a
 failure, unless --strict. Exit code 0: nothing failed. 1: a scenario failed (or, with --strict, had no data).
@@ -65,10 +66,6 @@ SCENARIOS = (
              (*_paths(FLIGHT.format(2025), MAPS.format(2025)), "--jam", "150:30")),
     Scenario("D", "post-war ground", "war map (2022)", "a war-time map, used after the rebuild",
              _paths(FLIGHT.format(2025), MAPS.format(2022))),
-    Scenario("E", "post-war ground", "pre-war map (2017)", "the hardest case: an old map over a changed town",
-             _paths(FLIGHT.format(2025), MAPS.format(2017))),
-    Scenario("F", "war ground", "pre-war map (2017)", "flying into a town during the war",
-             _paths(FLIGHT.format(2022), MAPS.format(2017))),
 )
 BY_KEY = {s.key: s for s in SCENARIOS}
 

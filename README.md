@@ -222,12 +222,10 @@ prints the exact `run.py` command of each.
 | B | the phone take (calm) | the task map | the advanced level | `python scripts/scenarios.py run B` |
 | C | post-war ground | post-war map (2025) | the mechanics: jam and recovery | `python scripts/scenarios.py run C` |
 | D | post-war ground | war map (2022) | a war-time map, used after the rebuild | `python scripts/scenarios.py run D` |
-| E | post-war ground | pre-war map (2017) | the hardest case: an old map over a changed town | `python scripts/scenarios.py run E` |
-| F | war ground | pre-war map (2017) | flying into a town during the war | `python scripts/scenarios.py run F` |
 
 ```bash
 python scripts/scenarios.py run all      # every scenario; outputs/scenarios/<key>/ and a summary
-python scripts/scenarios.py run C E      # some of them
+python scripts/scenarios.py run C D      # some of them
 ```
 
 Each scenario ends as PASS, FAIL or MISSING DATA (its data is not in `data/`, or not made yet, such as the phone

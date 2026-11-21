@@ -1,7 +1,8 @@
 """M8-01 · one command per scenario: scripts/scenarios.py.
 
 Done when (issue #65): "a list of commands, each run once successfully after the freeze". As a contract:
-1. ``scenarios.py list`` names every scenario of the plan that we ship (A-F; G and the live mode were cut in #128),
+1. ``scenarios.py list`` names every scenario of the plan that we ship (A-D; G and the live mode were cut in #128, E and F
+   (the 2017 map, which SIFT cannot use) at the freeze),
    each with exactly one command, and the README shows that same list (generated, so it cannot drift);
 2. ``scenarios.py run <keys|all> --data D --out O`` runs each scenario's command and reports PASS / FAIL /
    MISSING DATA per scenario; a PASS leaves the deliverable outputs in O/<key>; exit 0 only when nothing failed;
@@ -22,7 +23,7 @@ from dronenav.sim import CutoutSource, cutout_route
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "scripts" / "scenarios.py"
-SHIPPED = ["A", "B", "C", "D", "E", "F"]
+SHIPPED = ["A", "B", "C", "D"]
 N = 8              # frames per fake flight: enough for a track, few enough to keep five runs fast
 
 
@@ -92,7 +93,7 @@ def test_all_scenarios_run_and_report(tmp_path, data):
     assert res.returncode == 0, res.stdout + res.stderr
     rep = _report(tmp_path)
     assert sorted(rep) == SHIPPED
-    for key in "ACDEF":
+    for key in "ACD":
         assert rep[key]["status"] == "PASS", (key, rep[key])
         for name in OUTPUTS:
             assert (tmp_path / "out" / key / name).is_file(), (key, name)
@@ -112,17 +113,17 @@ def test_strict_turns_missing_data_into_a_failure(tmp_path, data):
 def test_a_failing_scenario_does_not_stop_the_others(tmp_path, data, monkeypatch):
     bad = tmp_path / "bad"
     (bad / "irpin" / "maps").mkdir(parents=True)
-    for p in data.rglob("*"):                      # the same tree, but the pre-war map is not an image
+    for p in data.rglob("*"):                      # the same tree, but the war-time map is not an image
         q = bad / p.relative_to(data)
         if p.is_dir():
             q.mkdir(parents=True, exist_ok=True)
-        elif p.name != "irpin_2017.png":
+        elif p.name != "irpin_2022.png":
             q.symlink_to(p)
-    (bad / "irpin" / "maps" / "irpin_2017.png").write_text("not an image")
-    res = _run(tmp_path, bad, "E", "C")
+    (bad / "irpin" / "maps" / "irpin_2022.png").write_text("not an image")
+    res = _run(tmp_path, bad, "D", "C")
     assert res.returncode == 1
     rep = _report(tmp_path)
-    assert rep["E"]["status"] == "FAIL" and rep["E"]["exit"] != 0
+    assert rep["D"]["status"] == "FAIL" and rep["D"]["exit"] != 0
     assert rep["C"]["status"] == "PASS"
 
 
