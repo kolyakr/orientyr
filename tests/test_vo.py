@@ -23,6 +23,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.synth import apply, make_h, make_map
 
 from dronenav.pipeline import localize_run, parse_frame_set
 from dronenav.sim import CutoutSource, cutout_route
@@ -32,7 +33,6 @@ from dronenav.tracking.kalman import KalmanConfig, KalmanFilter
 from dronenav.tracking.states import Tracker, TrackerConfig
 from dronenav.types import Fix, TrackMode
 from dronenav.vo import VisualOdometry, VoVelocity, frame_motion
-from tests.synth import apply, make_h, make_map
 
 T, L = TrackMode.TRACKING, TrackMode.LOST
 ROOT = Path(__file__).resolve().parents[1]

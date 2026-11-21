@@ -20,7 +20,7 @@ import sys
 import cv2
 
 from dronenav.config import add_shared_args, init_cli
-from dronenav.pipeline import MATCHERS, TRACKERS, VIDEO_RATE, NothingLocalized, run
+from dronenav.pipeline import MATCHERS, TRACKERS, VIDEO_RATE, NothingLocalized, parse_frame_set, run
 
 
 def _count(text: str) -> int:
@@ -37,6 +37,13 @@ def _jam(text: str) -> tuple[float, float]:
     if not (math.isfinite(start) and math.isfinite(length) and start >= 0 and length > 0):
         raise ValueError(text)
     return start, length
+
+
+def _frame_set(text: str) -> set[int]:
+    try:
+        return parse_frame_set(text)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,6 +67,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jam", type=_jam, default=None, metavar="START:LENGTH",
                     help="stress test: jam the camera for LENGTH seconds from START seconds of flight (those "
                          "frames arrive as noise); the run shows the track lost and found again")
+    ap.add_argument("--vo", action="store_true",
+                    help="visual odometry (M9-02): frame-to-frame motion feeds the Kalman tracker, so it keeps "
+                         "moving through map-match misses (needs --tracker kalman)")
+    ap.add_argument("--jam-match", type=_frame_set, default=set(), metavar="FRAMES",
+                    help="simulate a jammed map matcher on these frames, e.g. 8-19 or 3,5-7: they get no fix, "
+                         "the camera (and --vo) still works")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
     add_shared_args(ap)
     a = ap.parse_args(argv)
@@ -71,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--fps is the rate of a folder's frame numbers; a --video has its own (sample it with --every)")
     try:
         s = run(a.map, a.frames, a.out, matcher=a.matcher, fps=a.fps, speed=a.speed, cache_dir=a.cache,
-                tracker=a.tracker, video=a.video, every=a.every, device=device, jam=a.jam)
+                tracker=a.tracker, video=a.video, every=a.every, device=device, jam=a.jam, vo=a.vo,
+                jam_match=a.jam_match)
     except NothingLocalized as e:
         print(f"run: error: {e}", file=sys.stderr)
         return 1

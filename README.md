@@ -858,3 +858,30 @@ cp outputs/run_irpin/trajectory.mp4 outputs/backups/irpin.mp4
 **Before the pitch, on both machines:** `python scripts/check_backups.py` - it reports every missing or
 unplayable recording by name (exit 0 only when all three decode). A recording that exists on one laptop but not
 the spare does not count as backed up.
+
+### Visual odometry (M9-02)
+
+When the map match fails (a field with no features, clouds, a slow or jammed matcher), the camera still sees the
+ground, and consecutive frames overlap. `--vo` turns on visual odometry: every frame is matched to the one before it
+([vo.py](src/dronenav/vo.py)), and the result goes to the Kalman filter as a velocity on the map
+(`KalmanFilter.update_velocity`, gated like a fix).
+- **How:** SIFT, Lowe's ratio and MAGSAC++ between the two frames give the homography between them. Chained onto the
+  last fix's frame → map homography, it says how far the frame centre moved on the map. Every accepted fix restarts
+  the chain, so drift never outlives a map match.
+- **Why a velocity, not a chained position:** the chain drifts. As a velocity with an honest σ (reprojection error plus
+  3% of the step), the filter's uncertainty keeps growing while the estimate keeps moving.
+- **Why descriptors, not optical flow:** consecutive frames are about a third of a frame apart (a 320 px cut-out steps
+  about 110 px) and turn by several degrees, which is too far for pyramidal LK without a motion guess.
+- **States:** while VO measures, a frame without a fix is not a miss. The track stays TRACKING for up to `vo_max_s`
+  (30 s) after the last fix, and the position doesn't hold. A fix the filter gates is still a miss.
+- **Trying it:** `--jam-match 8-19` simulates a jammed map matcher on those frames. They get no fix
+  (`extra["search"] == "jammed"`), but the camera, and so VO, keeps working. Each record's `extra["vo"]` is
+  `{vx, vy, sigma, inliers}` or None.
+- **On a synthetic 24-frame flight jammed on frames 8–19:**
+
+  | | Mean error in the jam | Error at its last frame | States |
+  |---|---|---|---|
+  | Without VO | 328 px | 869 px | LOST from frame 10, back at 20 |
+  | With VO | 52 px | 76 px | TRACKING throughout |
+- **On the task's 50 frames jammed on frames 20–29** (error against the probe's fit): without VO the mean is 166 px
+  and the last frame is 475 px off, LOST for 8 frames. With VO the mean is 6 px (8 px at most), TRACKING throughout.

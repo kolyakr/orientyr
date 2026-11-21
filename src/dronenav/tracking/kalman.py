@@ -34,6 +34,7 @@ from dronenav.types import Fix, TrackMode, TrackState
 __all__ = ["KalmanConfig", "KalmanFilter", "Step", "StepKind"]
 
 _H = np.eye(2, 4)                      # we measure position, not velocity
+_HV = np.eye(2, 4, k=2)                # ... except visual odometry (M9-02), which measures the velocity
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,23 @@ class KalmanFilter:
         self.P = IKH @ P_pred @ IKH.T + K @ Rm @ K.T      # Joseph form: stays symmetric positive-definite
         self.P = (self.P + self.P.T) / 2
         return Step(StepKind.HIT, self.t, self.x.copy(), self.P.copy(), x_pred, P_pred, F, d2)
+
+    def update_velocity(self, v, R) -> bool:
+        """Use a velocity measurement at the current time (M9-02, visual odometry): v = (vx, vy) map px/s with its
+        2 x 2 covariance R. Gated like a fix (``gate_chi2``): a velocity the state finds implausible is dropped and
+        False returned, the state unchanged. True when it was used."""
+        self._need_state()
+        z, Rm = np.asarray(v, float).reshape(2), np.asarray(R, float).reshape(2, 2)
+        y = z - _HV @ self.x
+        S = _HV @ self.P @ _HV.T + Rm
+        if not np.all(np.isfinite(y)) or float(y @ np.linalg.solve(S, y)) > self.cfg.gate_chi2:
+            return False
+        K = np.linalg.solve(S, _HV @ self.P).T
+        self.x = self.x + K @ y
+        IKH = np.eye(4) - K @ _HV
+        self.P = IKH @ self.P @ IKH.T + K @ Rm @ K.T      # Joseph form, as in step
+        self.P = (self.P + self.P.T) / 2
+        return True
 
     def track_state(self, idx: int, mode: TrackMode, fix: Fix | None = None) -> TrackState:
         """The current belief as the telemetry's TrackState (the mode comes from the state machine, M5-02)."""
