@@ -8,7 +8,9 @@
 #   tools/task.sh start <issue#>     assign me, board → In Progress, branch M1-04-<slug> off fresh develop
 #   tools/task.sh pr [body-file]     tests green, rebase on develop, push, open the PR into develop ("Closes #N")
 #   tools/task.sh finish             tests + checks green, squash-merge into develop, board → Done, fresh develop
-#   tools/task.sh test [pytest args]  run the tests the way pr/finish do (repo root and src/ importable)
+#   tools/task.sh test               the gate pr/finish run: the suite in parallel, without the `data` tests
+#   tools/task.sh test --full        the gate with the `data` tests too (TASK_FULL=1 does the same for pr/finish)
+#   tools/task.sh test <pytest args> pytest with exactly these args (repo root and src/ importable)
 #   tools/task.sh status <issue#> <Todo|In Progress|Done>
 #   tools/task.sh drop              give the current task back: board → Todo, unassign, back on develop
 #   tools/task.sh notify [--throttle SEC]  tasks unblocked for me since the last check (run by Claude Code hooks)
@@ -69,20 +71,65 @@ current_issue() {  # issue number of the current task branch, found by its task 
   echo "$n"
 }
 
+# --- the test gate (M0-11) ---------------------------------------------------------------------------------------
+# What `pr` and `finish` (and a bare `test`) run. Fast by default: in parallel (pytest-xdist, TASK_JOBS workers,
+# default one per core) and without the tests marked `data`, which need the full dataset, take most of the serial
+# time and are skipped by CI anyway. TASK_FULL=1 (or `test --full`) adds them.
+# A green gate on a clean tree leaves a stamp, "<tree hash> <fast|full>", in this worktree's git dir, so `finish`
+# does not repeat the run `pr` has just made on the very same tree.
+STAMP="$(git -C "$ROOT" rev-parse --absolute-git-dir)/task-tests-passed"
+
+gate_mode() { if [[ "${TASK_FULL:-0}" == 1 ]]; then echo full; else echo fast; fi; }
+
+tree_id() { git -C "$ROOT" rev-parse 'HEAD^{tree}'; }
+
+tree_is_clean() { git -C "$ROOT" diff --quiet && git -C "$ROOT" diff --cached --quiet; }
+
+in_root() {  # repo root and src/ importable, whatever pytest's rootdir/import mode decides (src layout: src/dronenav)
+  (cd "$ROOT" && PYTHONPATH="$ROOT/src:$ROOT${PYTHONPATH:+:$PYTHONPATH}" "$@")
+}
+
 run_tests() {  # the suite must be green before a PR or a merge; no tests yet → say so, don't block
   if [[ -d "$ROOT/tests" ]] && ls "$ROOT"/tests/test_*.py >/dev/null 2>&1; then
     command -v pytest >/dev/null || die "pytest not found; install requirements first"
-    # repo root and src/ importable, whatever pytest's rootdir/import mode decides (src layout: src/dronenav)
-    (cd "$ROOT" && PYTHONPATH="$ROOT/src:$ROOT${PYTHONPATH:+:$PYTHONPATH}" pytest -q) \
-      || die "tests are red: fix them (never weaken a test to pass)"
+    local mode args started=$SECONDS
+    mode=$(gate_mode); args=(-q)
+    # asked through the help text and not `python -c "import xdist"`: pytest may live in another interpreter
+    if [[ "$(in_root pytest -h 2>/dev/null)" == *--numprocesses* ]]; then args+=(-n "${TASK_JOBS:-auto}")
+    else echo "task.sh: pytest-xdist is not installed, the tests run one by one (pip install -r requirements.txt)" >&2; fi
+    [[ "$mode" == full ]] || args+=(-m "not data")
+    rm -f "$STAMP"                                    # a red run takes back an earlier green on the same tree
+    in_root pytest "${args[@]}" || die "tests are red: fix them (never weaken a test to pass)"
+    echo "task.sh: $mode gate green in $((SECONDS - started)) s ($(tests_note))" >&2
+    # the stamp speaks for the commit: with uncommitted changes the run says nothing about HEAD's tree
+    if tree_is_clean; then echo "$(tree_id) $mode" >"$STAMP"; fi
   else
     echo "task.sh: no tests in tests/ yet, nothing to run" >&2
   fi
 }
 
+tests_already_green() {  # did HEAD's tree already pass this gate (or the fuller one)? Untracked files are not seen
+  local tree mode
+  [[ -f "$STAMP" ]] && read -r tree mode <"$STAMP" || return 1
+  [[ "$tree" == "$(tree_id)" ]] && [[ "$mode" == full || "$(gate_mode)" == fast ]]
+}
+
+tests_note() {  # for the log and the PR body: were the `data` tests part of the run?
+  if [[ "$(gate_mode)" == full ]]; then echo 'the full suite, with the `data` tests'
+  else echo 'the fast suite; `data` tests not run (`TASK_FULL=1 tools/task.sh pr` runs them)'; fi
+}
+
+TESTS_LINE='**Local tests:**'    # starts the one line of a PR body that `pr` owns and rewrites on every run
+
+with_tests_line() {  # stdin: a PR body → stdout: the same body with the tests line replaced, or added at the end
+  awk -v mark="$TESTS_LINE" -v line="$1" '
+    index($0, mark) == 1 { if (!done) print line; done = 1; next }
+    { print }
+    END { if (!done) { print ""; print line } }'
+}
+
 require_clean() {
-  git -C "$ROOT" diff --quiet && git -C "$ROOT" diff --cached --quiet \
-    || die "uncommitted changes in tracked files; commit or stash first"
+  tree_is_clean || die "uncommitted changes in tracked files; commit or stash first"
 }
 
 all_issues='query($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues(states:OPEN,first:100){nodes{
@@ -158,10 +205,16 @@ case "${1:-}" in
     git push -q --force-with-lease -u origin HEAD     # only ever our own task branch, after the rebase
     if [[ -n "${2:-}" ]]; then body=$(cat "$2")
     else body=$'## What changed\n\n## Tests: one per "Done when" item\n'; fi
+    tests_line="$TESTS_LINE $(tests_note), green on \`$(git rev-parse --short HEAD)\`."
     existing=$(gh pr list -R "$REPO" --head "$(git branch --show-current)" --state open --json url --jq '.[0].url')
-    if [[ -n "$existing" ]]; then echo "PR already open, branch updated: $existing"
+    if [[ -n "$existing" ]]; then
+      # the body is the author's by now: only the tests line is ours, so it stays true after every push
+      { old=$(gh pr view "$existing" -R "$REPO" --json body --jq .body) \
+          && gh pr edit "$existing" -R "$REPO" --body "$(with_tests_line "$tests_line" <<<"$old")" >/dev/null; } \
+        || echo "task.sh: could not update the tests line in the PR body" >&2
+      echo "PR already open, branch updated: $existing"
     else gh pr create -R "$REPO" --base develop --head "$(git branch --show-current)" --title "$title" \
-           --body "$body"$'\n\n'"Closes #$n"; fi
+           --body "$body"$'\n\n'"$tests_line"$'\n\n'"Closes #$n"; fi
     ;;
 
   finish)
@@ -172,7 +225,9 @@ case "${1:-}" in
     pr=$(gh pr list -R "$REPO" --head "$branch" --state open --json number,baseRefName --jq '.[0] | "\(.number) \(.baseRefName)"')
     [[ -n "$pr" && "$pr" != "null null" ]] || die "no open PR for $branch: run tools/task.sh pr"
     [[ "${pr#* }" == develop ]] || die "PR #${pr% *} targets ${pr#* }, not develop"
-    run_tests
+    if tests_already_green; then
+      echo "task.sh: tests already green on this tree ($(git rev-parse --short 'HEAD^{tree}'), $(cut -d' ' -f2 "$STAMP") gate): not run again"
+    else run_tests; fi
     checks=$(gh pr checks "${pr% *}" -R "$REPO" --json bucket --jq '[.[] | select(.bucket=="fail" or .bucket=="pending")] | length' 2>/dev/null || echo 0)
     [[ "$checks" == 0 ]] || die "PR #${pr% *} has failing or pending checks: gh pr checks ${pr% *}"
     gh pr merge "${pr% *}" -R "$REPO" --squash --delete-branch
@@ -185,7 +240,12 @@ case "${1:-}" in
     ;;
 
   test)
-    shift; [[ $# -eq 0 ]] && { run_tests; exit; }
+    shift
+    if [[ "${1:-}" == --full ]]; then
+      [[ $# -eq 1 ]] || die "'test --full' takes no other arguments (pytest args alone run pytest as is)"
+      TASK_FULL=1; shift
+    fi
+    [[ $# -eq 0 ]] && { run_tests; exit; }
     cd "$ROOT" && PYTHONPATH="$ROOT/src:$ROOT${PYTHONPATH:+:$PYTHONPATH}" exec pytest "$@"
     ;;
 
@@ -237,6 +297,6 @@ case "${1:-}" in
     ;;
 
   *)
-    sed -n '2,15p' "$0"; exit 1
+    sed -n '2,16p' "$0"; exit 1
     ;;
 esac
