@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadRun } from "@/lib/run-server";
 import type { RunRecord } from "@/lib/run";
-import { type Camera, type Rect, confidence, courseOf, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail } from "@/lib/view";
+import { type Camera, type Rect, confidence, courseOf, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail, trailRuns } from "@/lib/view";
 
 const run = loadRun(process.env.ORIENTYR_RUN ?? path.join(__dirname, "fixtures", "run"));
 const recs = run.records;
@@ -64,6 +64,32 @@ describe("trail", () => {
       expect(s.confidence).toBe(confidence(recs[i + 1]));
     });
     expect(trail(recs, firstOf("LOST"))).toHaveLength(firstOf("LOST"));
+  });
+});
+
+describe("trailRuns", () => {
+  // the minimap draws the flown route as a few polylines, not one line per step
+  it("joins the steps of one colour into one polyline, in flight order, with nothing lost", () => {
+    expect(trailRuns(recs, 0)).toEqual([]);
+    const upTo = recs.length - 1;
+    const runs = trailRuns(recs, upTo);
+    const segs = trail(recs, upTo);
+    expect(runs.length).toBeLessThan(segs.length);
+    // every step is in exactly one run: a run of k steps has k + 1 points
+    expect(runs.reduce((sum, r) => sum + r.points.length - 1, 0)).toBe(segs.length);
+    expect(runs[0].points[0]).toEqual([recs[0].x, recs[0].y]);
+    expect(runs.at(-1)!.points.at(-1)).toEqual([recs[upTo].x, recs[upTo].y]);
+    for (let i = 1; i < runs.length; i++) {
+      expect(runs[i].points[0]).toEqual(runs[i - 1].points.at(-1)); // no gap between neighbours
+      expect([runs[i].color, runs[i].coasting]).not.toEqual([runs[i - 1].color, runs[i - 1].coasting]); // or they would be one run
+    }
+  });
+
+  it("marks the dead-reckoned stretch and stops at the current frame", () => {
+    const lost = firstOf("LOST");
+    expect(trailRuns(recs, recs.length - 1).some((r) => r.coasting)).toBe(true);
+    expect(trailRuns(recs, lost - 1).some((r) => r.coasting)).toBe(false);
+    expect(trailRuns(recs, lost - 1).at(-1)!.points.at(-1)).toEqual([recs[lost - 1].x, recs[lost - 1].y]);
   });
 });
 
