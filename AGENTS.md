@@ -287,6 +287,6 @@ python scripts/xfeat_timing.py --flight data/irpin/flights/mild/2022 --map data/
 python scripts/live.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png --out outputs/live   # M7-04 live mode: the flight in real time, records streamed; watch it at /?run=live in the console (--start/--seconds a stretch, --jam START:LENGTH, or the console's "Jam camera")
 python scripts/accuracy.py --run outputs/run1 --truth experiments/data_probe/results/probe.json   # M1-10: error per frame vs truth (add --map/--frames to localize first)
 python scripts/mavlink_log.py --run outputs/irpin --utc-start 2025-06-01T10:00:00Z   # M9-01 stub: GPS_INPUT .tlog (map needs a georef sidecar; --udp HOST:PORT feeds a SITL)
-python scripts/benchmark.py --map data/map.png
+python scripts/benchmark.py --data data --out outputs/bench   # M6-03: scenarios C-F x presets x speeds x trackers -> bench.json + bench.md (--frames N: quick; --reuse: table only)
 python scripts/spoof_check.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png   # GPS spoof detector: false-alarm rate, detection delay (--run <run dir> to use a real run's fixes)
 ```

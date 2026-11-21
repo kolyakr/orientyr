@@ -308,6 +308,40 @@ Most of the time is drawing the image and the video, not matching.
 Measurements of single parts (the scale rule, the search, the confidence, the tracker, XFeat) are in the
 [notes](#notes) at the end.
 
+### Benchmark (M6-03)
+
+One command scores every Irpin scenario against exact ground truth. A scenario is what the drone flies over
+combined with the map it carries:
+
+- C: the 2025 ground on the 2025 map;
+- D: the 2025 ground on the 2022 map;
+- E: the 2025 ground on the 2017 map;
+- F: the 2022 ground on the 2017 map.
+
+Each scenario runs for every preset (mild, harsh), speed (15, 30 m/s), matcher and tracker.
+
+```bash
+python scripts/benchmark.py --data data --out outputs/bench                 # everything: bench.json + bench.md
+python scripts/benchmark.py --scenarios C E --speeds 15 --frames 40 --out outputs/bench_quick   # a quick look
+python scripts/benchmark.py --out outputs/bench --reuse                     # the table again, no matching
+```
+
+| Number | Meaning |
+|---|---|
+| Localised % | frames with an accepted fix within 10 m of the truth |
+| Wrong fix % | frames with an accepted fix more than 30 m off: the dangerous number, so it is reported separately |
+| Coverage % | frames where the tracker reports a position at all |
+| Median, RMSE, p95 m | error of the reported position, over the frames that have one |
+| Truth in 95 % region % | frames whose truth is inside the tracker's 95 % ellipse (about 95 % means the covariance is honest) |
+
+Every number has a bootstrap 95 % interval over the frames. The bootstrap is seeded (`--seed`), so the same runs give
+the same table. Time per frame depends on the machine, and it is the one column that does not repeat. A combination
+whose data is not downloaded is listed as "missing data". A run that localizes no frame at all scores 0 % with the
+note "nothing localized": that is a result, not a crash.
+
+First quick look (40 keyframes, mild, 15 m/s, SIFT): in C, 100 % of frames are localised, with a median error of
+0.2 m. In E, on the 2017 map, SIFT localizes nothing. The pre-war map is the case the learned matchers are for.
+
 ## Tests
 
 ```bash
