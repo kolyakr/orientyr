@@ -12,7 +12,7 @@ frames in flight order. The frames are rotated and have a different scale than t
 route on the map and make a video with the drone's position.
 
 This is README v1. It describes what the code does today. Things that are not built yet are marked **planned**.
-Contributors: the team workflow (tasks, branches, PRs) is in [AGENTS.md](AGENTS.md).
+Contributors: the team workflow (feature and fix branches, PRs) is in [AGENTS.md](AGENTS.md).
 
 ## Approach
 
@@ -377,7 +377,7 @@ src/dronenav/        the package
   mavlink.py, georef.py          fixes as MAVLink GPS_INPUT messages (a stub)
   sim/                 synthetic flights and "chaos" (blur, noise, dropped frames) for tests
 scripts/             command-line tools: run.py, render_image.py, render_video.py, accuracy.py, check_data.py, ...
-tools/               data.sh (data from the Drive), task.sh (team workflow and tests)
+tools/               data.sh (data from the Drive), task.sh (tests, PRs and merges)
 tests/               the test suite, with small fixtures in tests/fixtures/
 ui/                  the console: a Next.js app that replays a run folder
 results/             small curated images used in this README
