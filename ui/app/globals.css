@@ -175,9 +175,8 @@ button:disabled { cursor: default; }
 .drone[data-state="LOST"] .blade { opacity: 0; }
 
 /* ---- over the stage: brand, legend, follow, camera ------------------------------------------------------------- */
-.brand { top: 0; left: 0; display: flex; align-items: center; gap: 10px; padding: 9px 18px 9px 11px; border-radius: 99px; }
-.brand svg { width: 30px; height: 30px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
-.brand .needle { fill: var(--state); stroke: none; transform-origin: 16px 16px; animation: needle 1.6s var(--spring) .5s backwards; }
+.brand { top: 0; left: 0; display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 8px; border-radius: 99px; }
+.brand svg { width: 34px; height: 34px; flex: none; }
 .brand p { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 .brand h1 { font-size: 17px; font-weight: 600; letter-spacing: -.015em; line-height: 1.15; }
 
@@ -366,7 +365,6 @@ kbd + kbd { margin-left: 0; }
 @keyframes blink { 50% { opacity: .25; } }
 @keyframes breathe { 50% { opacity: .5; } }
 @keyframes scan { to { transform: translateY(8px); } }
-@keyframes needle { from { transform: rotate(-150deg); } }
 @keyframes arrive { from { transform: scale(.96); } }
 @keyframes badge-ok { from { transform: scale(.86); } }
 @keyframes badge-search { from { transform: scale(.9); } }

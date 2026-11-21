@@ -178,10 +178,18 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
 
       <div ref={overlay} className="overlay">
         <header className="brand glass pill">
+          {/* the Orientyr mark: a drone in a sight. The same drawing as app/icon.svg, the favicon. */}
           <svg viewBox="0 0 32 32" aria-hidden="true">
-            <circle cx="16" cy="16" r="11.5" />
-            <path d="M16 2v6M16 24v6M2 16h6M24 16h6" />
-            <path className="needle" d="m16 9 4 9-4-2.2L12 18Z" />
+            <circle cx="16" cy="16" r="15" fill="#111318"/>
+            <circle cx="16" cy="16" r="12" fill="none" stroke="#ff4438" strokeWidth="1.8"/>
+            <path d="M16 2v5 M16 25v5 M2 16h5 M25 16h5" stroke="#ff4438" strokeWidth="2" strokeLinecap="round"/>
+            <g fill="none" stroke="#F0F1F3" strokeWidth="2.1" strokeLinecap="round">
+            <path d="M14 14L9 9 M18 14L23 9 M14 18L9 23 M18 18L23 23"/>
+            <circle cx="8" cy="8" r="2.3"/><circle cx="24" cy="8" r="2.3"/>
+            <circle cx="8" cy="24" r="2.3"/><circle cx="24" cy="24" r="2.3"/>
+            <path d="M13 14L16 12L19 14V18L16 20L13 18Z"/>
+            </g>
+            <circle cx="16" cy="16" r="1.5" fill="#ff4438"/>
           </svg>
           <div>
             <p>Orientyr / replay</p>
