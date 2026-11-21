@@ -65,15 +65,81 @@ def grey():
 
 # --- the truth is exact --------------------------------------------------------------------------------------
 
+def _corner_error(ref: np.ndarray, img: np.ndarray) -> float:
+    """Register img to ref with a full homography (ECC) and return how far it moves the frame corners, px: a
+    translation-only check would miss a truth off in scale or perspective (review of M2-08)."""
+    warp = np.eye(3, dtype=np.float32)
+    crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-6)
+    _, warp = cv2.findTransformECC(ref, img, warp, cv2.MOTION_HOMOGRAPHY, crit, None, 5)
+    h, w = ref.shape
+    c = np.float32([[[0, 0], [w, 0], [w, h], [0, h]]])
+    return float(np.hypot(*(cv2.perspectiveTransform(c, warp.astype(np.float64)) - c)[0].T).max())
+
+
 def test_the_truth_registers_every_frame_within_1_px(city):
     sim = _sim(city, tilt=1.0, shake=1.0)
     assert len(sim) == 20 and sim.fps == 10.0 and sim.view_contained
     for i in range(0, len(sim), 3):
         t = sim.truth(i)
         ref = render_cutout(city, t.H, CAM.size)                     # the map as the truth says the frame sees it
-        d, resp = _shift(_gray(ref), _gray(sim.frame(i)))
+        img = sim.frame(i)
+        d, resp = _shift(_gray(ref), _gray(img))
         # measured ~0.05 px; 1 px is the spec. resp: the same content, not a lucky peak on a different view
         assert d <= 1.0 and resp > 0.3, f"frame {i}: shift {d:.2f} px, response {resp:.2f}"
+        e = _corner_error(_gray(ref), _gray(img))
+        assert e <= 1.0, f"frame {i}: the corners are {e:.2f} px off"            # measured <= 0.06 px
+
+
+def test_the_corner_check_catches_a_truth_off_in_scale(city):
+    """The check above can fail: a truth scaled 2 % about the frame centre (~3.7 px at the corners) is caught."""
+    sim = _sim(city)
+    t = sim.truth(5)
+    w, h = CAM.size
+    S = np.array([[1.02, 0, -0.02 * w / 2], [0, 1.02, -0.02 * h / 2], [0, 0, 1.0]])
+    assert _corner_error(_gray(render_cutout(city, t.H @ S, CAM.size)), _gray(sim.frame(5))) > 2.0
+
+
+def test_pitch_and_roll_mean_what_they_mean_in_the_irpin_flights(city):
+    """In the Irpin truth, pitch > 0 makes the top of the frame the far side (more map px per frame px there) and
+    roll > 0 the right side: all 67 sampled records agree. The simulator must mean the same (review of M2-08)."""
+    from dronenav.sim.truth import centre_scale
+    sim = _sim(city, seconds=4.0, tilt=1.0)
+    w, h = CAM.size
+    checked = 0
+    for i in range(len(sim)):
+        t = sim.truth(i)
+        if abs(t.pitch_deg) > 2:
+            assert (t.pitch_deg > 0) == (centre_scale(t.H, w / 2, 0) > centre_scale(t.H, w / 2, h)), i
+            checked += 1
+        if abs(t.roll_deg) > 2:
+            assert (t.roll_deg > 0) == (centre_scale(t.H, w, h / 2) > centre_scale(t.H, 0, h / 2)), i
+            checked += 1
+    assert checked > 20
+
+
+def test_altitude_is_the_perpendicular_distance_to_the_screen(city):
+    sim = _sim(city, tilt=1.0)
+    for i in (0, 10):
+        _, C, _ = sim._camera(i / sim.fps)
+        assert sim.truth(i).altitude_m == pytest.approx(-C[2] / 1000, rel=1e-9)   # not the slant range
+
+
+def test_frame_0_moves_like_any_other(city):
+    """Time before 0 exists: frame 0's speed is the route's, and its rolling shutter shears it (it used to be
+    clamped at t = 0, review of M2-08)."""
+    sim = ScreenSim(city, seconds=2.0, seed=0, effects={"rolling_shutter": 1.0}, speed_mm_s=120.0, **KW)
+    assert sim.truth(0).speed_mps == pytest.approx(sim.truth(1).speed_mps, rel=0.15)
+    h = CAM.size[1]
+    ref, img = _gray(render_cutout(city, sim.truth(0).H, CAM.size)), _gray(sim.frame(0))
+    assert _shift(ref[: int(h * 0.2)], img[: int(h * 0.2)])[0] > 3.0
+
+
+def test_truth_outside_the_take_is_an_error(city):
+    sim = _sim(city)
+    with pytest.raises(IndexError):
+        sim.truth(len(sim))
+    with pytest.raises(IndexError):
+        sim.truth(-1)
 
 
 def test_the_truth_heading_is_the_engines_heading_and_points_along_the_route(city):
@@ -172,7 +238,9 @@ def test_motion_blur_softens_and_keeps_the_truth(city):
     sharp, blurred = _sim(city), _sim(city, motion_blur=1.0)
     lap = [cv2.Laplacian(_gray(s.frame(10)), cv2.CV_32F).var() for s in (sharp, blurred)]
     assert lap[1] < 0.8 * lap[0]
-    assert np.allclose(sharp.truth(10).H, blurred.truth(10).H)
+    # the blur is centred on the frame's moment: the blurred frame still sits where its truth says
+    ref = _gray(render_cutout(city, blurred.truth(10).H, CAM.size))
+    assert _shift(ref, _gray(blurred.frame(10)))[0] <= 1.0
 
 
 def test_edge_lets_the_view_run_past_the_screen(city):
@@ -199,11 +267,24 @@ def test_a_covered_lens_is_dark_and_flagged(city):
 
 
 def test_the_same_seed_gives_the_same_take(city):
-    a, b, c = _sim(city, seed=4, shake=0.5, noise=0.5), _sim(city, seed=4, shake=0.5, noise=0.5), \
-        _sim(city, seed=5, shake=0.5, noise=0.5)
-    assert np.array_equal(a.frame(7), b.frame(7)) and np.allclose(a.truth(7).H, b.truth(7).H)
-    assert a.frame(3) is not None and not np.allclose(a.truth(7).H, c.truth(7).H)
-    assert np.array_equal(a.frame(7), _sim(city, seed=4, shake=0.5, noise=0.5).frame(7))   # random access
+    def make(seed=4):
+        return _sim(city, seed=seed, shake=0.5, noise=0.5, glare=0.5, exposure=0.5)
+    a, b = make(), make()
+    first = a.frame(7)                                    # a: frame 7 first
+    for i in (3, 12, 0):
+        b.frame(i)                                        # b: other frames first, then 7
+    assert np.array_equal(first, b.frame(7)) and np.allclose(a.truth(7).H, b.truth(7).H)
+    assert not np.allclose(a.truth(7).H, make(5).truth(7).H)
+
+
+@pytest.mark.parametrize("name", ["shake", "tilt", "grid", "glare", "motion_blur", "rolling_shutter", "exposure",
+                                  "banding", "noise"])
+def test_strength_0_is_the_effect_off(city, name):
+    """Strength 0 is the clean frame, and a tiny strength is next to it (no jump at 0). Not for edge (it widens
+    the route's box), cover (a window in time) or compression (CRF 16 at 0: near-lossless, not lossless)."""
+    clean, tiny = _sim(city).frame(9).astype(int), _sim(city, **{name: 1e-4}).frame(9).astype(int)
+    assert np.array_equal(clean, _sim(city, **{name: 0.0}).frame(9))
+    assert np.abs(clean - tiny).mean() < 0.5
 
 
 # --- presets and settings ------------------------------------------------------------------------------------
@@ -278,6 +359,52 @@ def test_compression_is_the_videos_crf(tmp_path, city):
     assert sizes[1.0] < sizes[0.0]
 
 
+def test_keyframes_follow_the_readers_rounding(tmp_path, city):
+    """At 12.5 fps a keyframe is every 13th frame (round half up, as FlightSource and VideoSource do)."""
+    cv2.imwrite(str(tmp_path / "map.png"), city)
+    cam = Camera(size=(320, 180), fps=12.5)
+    out = write_screen_video(tmp_path / "map.png", tmp_path / "take", seconds=3.0, camera=cam,
+                             screen=SCREEN, distance_mm=DIST)
+    assert FolderSource(out / "frames").idxs == [0, 13, 26]
+    assert [f.idx for f in FlightSource(out, fps=1, keyframes=True)] == [0, 13, 26]
+
+
+def test_an_existing_folder_is_replaced_only_if_it_is_a_simulated_take(tmp_path, city):
+    cv2.imwrite(str(tmp_path / "map.png"), city)
+    real = tmp_path / "flight"                            # e.g. a real flight's folder: never overwritten
+    real.mkdir()
+    (real / "meta.json").write_text('{"fps": 30}')
+    (real / "flight.mp4").write_bytes(b"real")
+    with pytest.raises(ValueError, match="simulated"):
+        write_screen_video(tmp_path / "map.png", real, seconds=1.0, **KW)
+    assert (real / "flight.mp4").read_bytes() == b"real" and not (real / "truth.jsonl").exists()
+    take = write_screen_video(tmp_path / "map.png", tmp_path / "take", seconds=2.0, **KW)
+    (take / "frames" / "frame_99999.png").write_bytes(b"old")       # left from a longer take
+    write_screen_video(tmp_path / "map.png", take, seconds=1.0, **KW)
+    assert sorted(p.name for p in take.iterdir()) == ["flight.mp4", "frames", "meta.json", "truth.jsonl"]
+    assert FolderSource(take / "frames").idxs == [0]                # the old take is gone, whole
+    assert not any(p.name.startswith(".") for p in tmp_path.iterdir())
+
+
+def test_the_crf_is_recorded_only_when_x264_writes_the_video(tmp_path, city, monkeypatch):
+    from dronenav.sim import screen
+    cv2.imwrite(str(tmp_path / "map.png"), city)
+    monkeypatch.setattr(screen, "_has_x264", lambda: False)
+    out = write_screen_video(tmp_path / "map.png", tmp_path / "take", seconds=1.0, **KW)
+    assert json.loads((out / "meta.json").read_text())["crf"] is None
+
+
+def test_bad_seeds_and_sizes_are_clear_errors(city):
+    with pytest.raises(ValueError, match="seed"):
+        ScreenSim(city, seconds=1.0, seed=-1, **KW)
+    for cam in (Camera(size=(321, 180), fps=10.0), Camera(size=(320, 180), hfov_deg=0.0, fps=10.0),
+                Camera(size=(320, 180), hfov_deg=180.0, fps=10.0)):
+        with pytest.raises(ValueError):
+            ScreenSim(city, seconds=1.0, screen=SCREEN, camera=cam, distance_mm=DIST)
+    with pytest.raises(ValueError):
+        ScreenSim(city, seconds=1.0, screen=Screen(size=(0, 800)), camera=CAM, distance_mm=DIST)
+
+
 def test_a_missing_map_is_a_clear_error(tmp_path):
     with pytest.raises(FileNotFoundError):
         write_screen_video(tmp_path / "nope.png", tmp_path / "out", **KW)
@@ -308,13 +435,16 @@ def test_the_script_draws_the_check_sheet(tmp_path, city):
     assert sheet is not None and sheet.shape[0] > sheet.shape[1] / 2      # one row per effect: tall
 
 
-@pytest.mark.parametrize("args", [
-    ["--preset", "windy"], ["--effect", "glare"], ["--effect", "sparkle=1"], ["--size", "big"], ["--seconds", "-1"],
-], ids=["preset", "effect-form", "effect-name", "size", "seconds"])
-def test_the_script_fails_clearly(tmp_path, city, args):
+@pytest.mark.parametrize(("args", "says"), [
+    (["--preset", "windy"], "windy"), (["--effect", "glare"], "NAME=STRENGTH"), (["--effect", "sparkle=1"], "sparkle"),
+    (["--size", "big"], "WxH"), (["--seconds", "-1"], "seconds"),
+    (["--size", "321x181"], "even"),           # H.264 needs even sizes: said at once, not by x264 at the end
+    (["--seed", "-1"], "seed"),
+], ids=["preset", "effect-form", "effect-name", "size", "seconds", "odd-size", "negative-seed"])
+def test_the_script_fails_clearly(tmp_path, city, args, says):
     cv2.imwrite(str(tmp_path / "map.png"), city)
     r = _cli("--map", tmp_path / "map.png", "--out", tmp_path / "take", *args)
-    assert r.returncode == 2 and r.stderr.strip() and "Traceback" not in r.stderr
+    assert r.returncode == 2 and says in r.stderr and "Traceback" not in r.stderr, r.stderr
     assert not (tmp_path / "take").exists()
 
 
