@@ -528,10 +528,12 @@ def test_the_camera_picture_is_the_current_frame_projected_onto_its_footprint(ja
     expected = cv2.resize(src, (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA).astype(int)
     assert np.abs(img[y0:y1, x0:x1].astype(int) - expected).mean() < 4
     assert not fi.no_signal and not fi.frame_missing
-    # the picture is tied to the place it shows: two lines from the footprint to the picture
+    # the picture is tied to the place it shows: two lines from the footprint to the picture's edge that faces the
+    # map (to its far corners they would run across the panel's text)
     assert fi.projection and fi.match_lines == 0                     # this run folder carries no match points
     (p, q), _ = hv.projection_links(np.array([_px(jam["plan"], 30, *c) for c in jam["plan"].frames[30].footprint]),
-                                    fi.inset_box)
+                                    (x0, y0, x0, y1))
+    assert q[0] == x0 and q[1] in (y0, y1)
     mid = (0.5 * (p[0] + q[0]), 0.5 * (p[1] + q[1]))
     bare, _ = jam["renderer"].draw(80)                               # LOST: the same place with no projection
     assert not jam["renderer"].draw(80)[1].projection                # nothing on the map to project onto
@@ -724,7 +726,7 @@ def test_records_without_a_position_are_left_out(tmp_path):
     d = _write(tmp_path, rows)
     lines = (d / "run.jsonl").read_text().splitlines()
     first = json.loads(lines[0])
-    first["track"].update(state="LOST", x=None, y=None, vx=None, vy=None, cov=None, fix=None)
+    first.update(state="LOST", x=None, y=None, vx=None, vy=None, cov=None, fix=None)
     (d / "run.jsonl").write_text("\n".join([json.dumps(first), *lines[1:]]) + "\n")
     records, info = _load(d)
     assert not records[0].track.has_position
