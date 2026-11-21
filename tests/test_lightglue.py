@@ -245,3 +245,17 @@ def test_the_pipeline_hands_it_the_device():
     from dronenav.pipeline import MATCHERS
 
     assert MATCHERS["lightglue"][1](MAP, None, "cpu").device == "cpu"
+
+
+@needs_weights
+def test_matched_points_follow_the_corner_convention():
+    # M1-12 (#106): matchers return corner-origin pixels (pixel centres at +0.5), like RootSIFT. A frame that is a
+    # map patch turned 180° exactly (np.rot90, no resampling) has its point (x, y) at map (x0 + w - x, y0 + h - y);
+    # OpenCV's centre convention would put every match 1 px off on each axis. DISK keypoints sit on whole pixels,
+    # so on this exact copy the right convention gives ~0 px and the wrong one ~1.4 px: 0.25 px separates them.
+    x0, y0, w, h = 300, 200, 320, 240
+    frame = np.ascontiguousarray(np.rot90(MAP[y0:y0 + h, x0:x0 + w], 2))
+    m = LightGlueMatcher(MAP, cache_dir=None, device="cpu").match(frame, MAP)
+    assert len(m) >= 50
+    expected = np.column_stack([x0 + w - m.pts_frame[:, 0], y0 + h - m.pts_frame[:, 1]])
+    assert np.median(np.linalg.norm(m.pts_map - expected, axis=1)) < 0.25
