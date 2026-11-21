@@ -6,7 +6,10 @@ therefore how the next frame is searched (docs/proposal.md "The state machine", 
 - **LOST** (the start, and after ``lost_after`` misses in a row): the prediction is not trusted, the frame is
   searched on the whole map (GLOBAL). An accepted fix is a *candidate*: the filter restarts there -> RELOCALIZING.
 - **RELOCALIZING**: one fix may be a coincidence (a look-alike block elsewhere), so wait for a second one that
-  agrees with it (passes the filter's gate) -> TRACKING. A fix that disagrees becomes the new candidate; a miss
+  agrees with it (passes the filter's gate) -> TRACKING. A fix that disagrees becomes the new candidate. Its speed
+  is unknown, but at least as uncertain as the speed the two candidates imply (M5-06): otherwise a drone moving
+  faster than the filter's initial speed σ puts every next fix outside the gate and is never confirmed, and a
+  look-alike before a true fix still lets the next true fix confirm at once. A miss
   -> LOST.
 - **TRACKING**: fixes that pass the gate update the filter and reset the miss count. A miss (no fix, a rejected
   one) or a gated outlier counts one; the filter coasts on its prediction and stays TRACKING until the
@@ -22,6 +25,7 @@ zero and the position holds there, while the uncertainty keeps growing (as M1-09
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
@@ -82,6 +86,7 @@ class Tracker:
         self.misses = 0
         self._t_fix: float | None = None          # time of the last fix the filter took
         self.last_fix: Fix | None = None          # that fix: its footprint sizes the search window (M5-03)
+        self._cand: tuple[float, Fix] | None = None   # the last restart (time, fix): the candidate's speed bound
 
     @property
     def search(self) -> SearchMode:
@@ -125,7 +130,7 @@ class Tracker:
                 self.mode, self.misses = TrackMode.TRACKING, 0
             elif self.mode is TrackMode.RELOCALIZING:
                 if step.kind is StepKind.GATED:   # disagrees with the candidate: the newer fix is the candidate
-                    step = self._restart(t, fix)
+                    step = self._restart(t, fix, prev=self._cand)
                 else:                             # no confirmation: back to searching everywhere
                     self.mode, self.misses = TrackMode.LOST, 1
             else:
@@ -135,9 +140,16 @@ class Tracker:
         track = self.kf.track_state(idx, self.mode, fix) if self.kf.initialized else None
         return TrackerUpdate(self.mode, step, track, self.misses)
 
-    def _restart(self, t: float, fix: Fix) -> Step:
+    def _restart(self, t: float, fix: Fix, prev: tuple[float, Fix] | None = None) -> Step:
+        """Restart the filter at ``fix``, speed unknown (zero, σ = the filter's initial speed σ). With ``prev``, the
+        previous candidate (time, fix) this one disagreed with, the speed σ is at least the speed between the two:
+        one of them may be a look-alike, so the speed is not taken from them, only how large it may be."""
         self.kf.reset(t, (fix.x, fix.y), fix_covariance(fix))
-        self._t_fix, self.misses, self.last_fix = t, 0, fix
+        if prev is not None and t > prev[0]:
+            t0, f0 = prev
+            speed = math.hypot(fix.x - f0.x, fix.y - f0.y) / (t - t0)
+            self.kf.P[2, 2] = self.kf.P[3, 3] = max(self.cfg.kalman.init_speed_sigma, speed) ** 2
+        self._t_fix, self.misses, self.last_fix, self._cand = t, 0, fix, (t, fix)
         return Step(StepKind.INIT, t, self.kf.x.copy(), self.kf.P.copy(), self.kf.x.copy(), self.kf.P.copy(),
                     None)
 

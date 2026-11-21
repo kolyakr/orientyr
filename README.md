@@ -195,11 +195,22 @@ The regression tests are in [tests/test_accuracy.py](tests/test_accuracy.py):
   prediction is not trusted, so the frame is searched on the whole map.
 - **RELOCALIZING:** a fix found while LOST is only a candidate, since a look-alike block can fool one frame. A second
   fix that agrees with it gives **TRACKING**. One that disagrees becomes the new candidate, and a miss means LOST again.
+  The new candidate allows at least the speed between the two candidates, so a drone faster than the filter's
+  starting guess (80 px/s) still gets confirmed on the next fix (M5-06 found the endless restart without this).
 - **TRACKING:** misses coast on the filter's prediction. Counting refused fixes as misses also resets a filter that
   has drifted and refuses every true fix.
 - After 5 s without a fix the position holds instead of flying on a stale velocity, and its uncertainty keeps growing.
 - On the task's 50 frames: RELOCALIZING on frame 0, then TRACKING throughout.
 - Each record's `extra["step"]` says what the filter did with that frame's fix: INIT, HIT, GATED, COAST or NONE.
+
+**Tested on synthetic flights (M5-06),** [tests/test_tracker_synthetic.py](tests/test_tracker_synthetic.py): a flight
+from the filter's own motion model, with seeded fixes of known noise, in about a second of CPU.
+- Noisy fixes: the track is closer to the truth than the fixes, and stays TRACKING.
+- Dropouts: short ones are coasted through; a long one is LOST, then relocalized on the truth within two fixes.
+- A wrong fix far away is refused; three in a row lose the track, which then comes back.
+- A slow wrong drift is followed (the filter can't tell it from flight); the snap-back to the truth relocalizes.
+- Honest uncertainty: over 2000 frames, the truth is inside the 95 % circle in 90–98 % of frames, also on the
+  coasted ones (measured 94–95 %, and 92 % coasted at the default setting).
 
 ### Search window from the prediction (M5-03)
 
