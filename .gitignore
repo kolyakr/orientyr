@@ -41,3 +41,6 @@ experiments/**/*.png
 *.bin
 weights/
 cache/
+
+# full scan output (large, regenerable): only the committed results/candidates_summary.json survives
+experiments/ukraine_scan/candidates.json
