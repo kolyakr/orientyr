@@ -123,12 +123,13 @@ drift apart. In Claude Code the same flow is `/start-task` and `/finish-task` (i
 | 2. Start | `tools/task.sh start <issue#>` | refuses if blocked, taken or the tree is dirty; assigns you; board → **In Progress**; branch `M1-04-<slug>` off fresh `develop`, pushed (resumes it if it exists); prints the spec |
 | 3. Tests (red) | write tests, `tools/task.sh test` shows them fail, `git commit -m "M1-04: tests for … (red)"` | see TDD rules below |
 | 4. Implement (green) | code until `tools/task.sh test` passes; `git commit -m "M1-04: …"` | small commits, ID first |
-| 5. PR | `tools/task.sh pr [body.md]` | rebases on `develop`, runs the tests on the result (refuses if red), pushes, opens the PR into `develop` titled like the issue with `Closes #N`; rerun to update it |
-| 6. Merge | `tools/task.sh finish` | refuses on red tests, unpushed commits, failing checks or a PR not into `develop`; squash-merges, deletes the branch, board → **Done**, back on fresh `develop` |
+| 5. PR | `tools/task.sh pr [body.md]` | rebases on `develop`, runs the test gate on the result (refuses if red), pushes, opens the PR into `develop` titled like the issue with `Closes #N`; rerun to update it. The gate is the fast suite: in parallel, without the `data` tests; `TASK_FULL=1 tools/task.sh pr` (like `tools/task.sh test --full`) runs them too, and the PR body says which it was |
+| 6. Merge | `tools/task.sh finish` | refuses on red tests, unpushed commits, failing checks or a PR not into `develop`; squash-merges, deletes the branch, board → **Done**, back on fresh `develop`. Tests already green on the same committed tree (the run `pr` just made) are not run again; any new commit brings the run back |
 
 Other commands: `tools/task.sh mine` (my tasks and what blocks them), `claim <issue#>` (reserve a task, blocked or
 not), `drop` (give the current task back: board → Todo, unassigned; then say why in the issue),
-`status <issue#> <Todo|In Progress|Done>`, `notify` (tasks just unblocked for me; the Claude Code hooks run it).
+`status <issue#> <Todo|In Progress|Done>`, `notify` (tasks just unblocked for me; the Claude Code hooks run it),
+`test` (the gate; `test --full` adds the `data` tests; `test <pytest args>` runs pytest with exactly those args).
 One task in progress per person at a time.
 
 **Owner-only tasks** (label `owner-only`, e.g. M8-07: repo clean-up and publishing) are done by @kolyakr alone.
@@ -210,7 +211,10 @@ What makes a test reliable here:
 - Never propose, claim or work on an `owner-only` task unless the human is @kolyakr.
 - Commits: message starts with the task ID (`M1-04: …`), one logical change each, made in the human's git identity.
   Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
-- Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). Run the full suite before `tools/task.sh pr` and before `finish`; never merge red.
+- Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). With no
+  arguments it is the gate `pr` and `finish` run: the suite in parallel (`-n auto`), without the `data` tests. Run
+  `tools/task.sh test --full` when the task touches code the `data` tests cover and `data/` is on the machine; never merge red.
+- Tests run in parallel, in any order: write only under `tmp_path`, never to a fixed path in `outputs/` or the repo.
 - `finish` merges into `develop` only after the human says so.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
@@ -251,7 +255,9 @@ browser and unzip it into `data/` so the layout above matches (`scripts/check_da
 pip install -r requirements.txt && pip install -e .   # stack, then the dronenav package (src/ layout)
 tools/data.sh setup && tools/data.sh pull               # get the data from the team Drive into data/
 python scripts/check_data.py                             # verify data/ layout; names any missing/truncated file
-tools/task.sh test                                       # the test suite (pytest over tests/)
+tools/task.sh test                                       # the test gate of pr/finish: pytest -n auto, without the `data` tests
+tools/task.sh test --full                                # the gate plus the `data` tests (needs data/); TASK_FULL=1 does it for pr/finish
+tools/task.sh test tests/test_geometry.py -k pose        # any pytest args: passed through as they are (serial, nothing added)
 ruff check .                                             # lint, as CI does (experiments/ excluded)
 python tools/make_ci_fixtures.py --data data             # regenerate tests/fixtures/irpin_mild_2025 (CI fixture)
 python scripts/fake_run.py --map data/hackatons-data/global_map.png --out outputs/fake   # run folder with no engine
