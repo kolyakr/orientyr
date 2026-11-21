@@ -8,7 +8,7 @@ Done when (issue spec update):
    jammed frames before the first fix take its position; all frames jammed -> exit 1, clear message;
    (these are M1's interim states, kept as ``--tracker none``; the default since M5-02 is the Kalman tracker, tested
    at the end of this file)
-4. errors (missing map/frames, unknown matcher, --video) are clear and leave no output folder.
+4. errors (missing map/frames, unknown matcher) are clear and leave no output folder (--video: test_run_video.py).
 """
 import itertools
 import json
@@ -154,14 +154,13 @@ def test_a_run_where_nothing_is_found_is_an_error(tmp_path, world):
 
 # --- 4. errors -------------------------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("case", ["no map", "no frames", "unknown matcher", "video"])
+@pytest.mark.parametrize("case", ["no map", "no frames", "unknown matcher"])
 def test_errors_are_clear_and_leave_nothing_behind(tmp_path, world, case):
     frames, _ = _frames(tmp_path, world, n=2)
     args = {"no map": ["--map", tmp_path / "nope.png", "--frames", frames],
             "no frames": ["--map", world[0], "--frames", tmp_path / "nothing"],
-            "unknown matcher": ["--map", world[0], "--frames", frames, "--matcher", "orb"],
-            "video": ["--map", world[0], "--video", tmp_path / "x.mp4"]}[case]
-    word = {"no map": "nope.png", "no frames": "nothing", "unknown matcher": "orb", "video": "M2-02"}[case]
+            "unknown matcher": ["--map", world[0], "--frames", frames, "--matcher", "orb"]}[case]
+    word = {"no map": "nope.png", "no frames": "nothing", "unknown matcher": "orb"}[case]
     res = _cli(*args, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
     assert res.returncode != 0 and word in res.stderr, res.stderr
     assert "Traceback" not in res.stderr
