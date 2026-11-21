@@ -16,12 +16,12 @@
  * pressed at once and reaches the engine before its next frame. The "GPS check" panel is the lie detector: what the
  * spoof detector says about the receiver at the frame shown (extra.gps), on a live run and on a replay alike.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent } from "react";
 import { DEFAULT_LAYERS, LAYERS, type LayerId, type Layers, availableLayers, consoleUrl } from "@/lib/layers";
 import { FLIGHT_SPEEDS, POLL_MS, glideMs, nextPace } from "@/lib/live";
 import { SPEEDS, frameAt, stepMs as frameMs, keyAction, nextSpeed } from "@/lib/playback";
 import { type Run, type RunRecord, appendRunJsonl } from "@/lib/run";
-import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, gpsOf, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
+import { STATE_LABEL, cameraDrag, cameraWidth, clock, compass, confidence, confidenceColor, drawAngle, events, gpsOf, headingOf, niceStep, searchOf, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
 import { Minimap } from "./Minimap";
 
@@ -29,6 +29,8 @@ const MAX_DOTS = 40;
 const SPARK = 48; // frames in the matched-pairs strip chart of the HUD
 const NO_RUNS: string[] = [];
 // the GPS check: the verdict, and what the gap to the camera's position means
+/** where the viewer's camera panel width is kept (localStorage, per browser) */
+const CAMERA_KEY = "orientyr.camera.width";
 const GPS_TITLE = { OK: "GPS agrees with the camera", SUSPECT: "GPS suspect", SPOOFED: "GPS spoofed", NO_DATA: "GPS not checked" } as const;
 const GPS_NOTE = { OK: "apart", SUSPECT: "apart, more than the noise", SPOOFED: "from the camera position", NO_DATA: "apart" } as const;
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -428,6 +430,70 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
     for (const el of Array.from(cell.children)) watch.observe(el);
     return () => watch.disconnect();
   }, [shown.camera]); // the camera inset comes and goes with its layer: measure again
+  // The camera panel can be made bigger (never smaller than its default): a view preference, kept per viewer.
+  // `camWant` is the wish; the panel gets it clamped to the room the stage has now (see cameraWidth).
+  const camBox = useRef<HTMLElement>(null);
+  const [camWant, setCamWant] = useState<number | null>(null);
+  const [camW, setCamW] = useState<number | null>(null);
+  const camDrag = useRef<{ x: number; y: number; width: number } | null>(null);
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(CAMERA_KEY));
+      if (Number.isFinite(saved) && saved > 0) setCamWant(saved);
+    } catch { /* no storage (a private window): the default size */ }
+  }, []);
+  const camRoom = useCallback(() => {
+    const el = camBox.current, cell = overlay.current, view = el?.querySelector<HTMLElement>(".camera-view");
+    if (!el || !cell || !view) return null;
+    let top = 0; // the brand and the tools: the panel stays under them
+    for (const other of Array.from(cell.children) as HTMLElement[]) {
+      if (other !== el && !other.classList.contains("minimap")) top = Math.max(top, other.offsetTop + other.offsetHeight);
+    }
+    const min = Math.min(236, Math.max(170, cell.offsetWidth * 0.21)); // the width in globals.css (.camera)
+    return { min, aspect: fw / fh, chrome: { x: el.offsetWidth - view.offsetWidth, y: el.offsetHeight - view.offsetHeight },
+             max: { width: cell.offsetWidth, height: cell.offsetHeight - top - 12 } };
+  }, [fw, fh]);
+  useLayoutEffect(() => {
+    const room = camWant == null ? null : camRoom();
+    setCamW(room ? cameraWidth(camWant, room) : null);
+  }, [camWant, camRoom, layout?.cell.width, layout?.cell.height, shown.camera]);
+  const saveCam = (width: number | null) => {
+    setCamWant(width);
+    try {
+      if (width == null) window.localStorage.removeItem(CAMERA_KEY);
+      else window.localStorage.setItem(CAMERA_KEY, String(Math.round(width)));
+    } catch { /* not kept: it still works for this visit */ }
+  };
+  const camGrab = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!camBox.current || (e.pointerType === "mouse" && e.button !== 0)) return;
+    e.preventDefault(); // no text selection, no scroll while dragging
+    e.currentTarget.setPointerCapture(e.pointerId);
+    camDrag.current = { x: e.clientX, y: e.clientY, width: camBox.current.offsetWidth };
+  };
+  const camMove = (e: PointerEvent<HTMLButtonElement>) => {
+    const from = camDrag.current, room = from && camRoom();
+    if (!from || !room) return;
+    setCamWant(cameraWidth(cameraDrag(from.width, e.clientX - from.x, from.y - e.clientY, room.aspect), room));
+  };
+  const camDrop = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!camDrag.current) return;
+    camDrag.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    const room = camRoom();
+    if (room && camBox.current) saveCam(camBox.current.offsetWidth <= Math.ceil(room.min) ? null : camBox.current.offsetWidth);
+  };
+  /** The handle from the keyboard: arrows up / right grow the panel, down / left shrink it, Home is the default size. */
+  const camKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const step = { ArrowUp: 24, ArrowRight: 24, ArrowDown: -24, ArrowLeft: -24 }[e.key];
+    const room = camRoom();
+    if (e.key === "Home") saveCam(null);
+    else if (step && room && camBox.current) {
+      const next = cameraWidth(camBox.current.offsetWidth + step, room);
+      saveCam(next <= Math.ceil(room.min) ? null : next);
+    } else return;
+    e.preventDefault();
+    e.stopPropagation(); // not a step of the playback
+  };
   /** The light under the pointer: each glass panel gets the pointer's place in its own box, CSS draws the glow. */
   const light = (e: PointerEvent<HTMLElement>) => {
     const glass = (e.target as Element).closest<HTMLElement>(".glass");
@@ -513,7 +579,15 @@ export function Console({ run: opened, initialFrame = 0, runName = null, runs = 
         {follow && <Minimap run={run} frame={frame} mapUrl={mapUrl} />}
 
         {shown.camera && (
-          <section data-part="camera" className="camera glass" data-state={rec.state}>
+          <section ref={camBox} data-part="camera" className="camera glass" data-state={rec.state}
+                   style={camW == null ? undefined : ({ "--cam-w": `${camW}px` } as CSSProperties)}>
+            {/* the corner away from the panel's anchor (bottom left): dragging grows it into the map */}
+            <button type="button" data-part="camera-resize" className="camera-grip" aria-label="Resize the camera picture"
+                    title="Drag to resize · double-click for the default size"
+                    onPointerDown={camGrab} onPointerMove={camMove} onPointerUp={camDrop} onPointerCancel={camDrop}
+                    onDoubleClick={() => saveCam(null)} onKeyDown={camKey}>
+              <svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 1.75h3A14.25 14.25 0 0 1 20.25 16v3" /></svg>
+            </button>
             <div className="camera-view" style={{ aspectRatio: `${fw} / ${fh}` }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- a local run file, not a site asset */}
               <img ref={camera} src={src} alt={`Drone camera, frame ${rec.idx}`} hidden={failed === src}

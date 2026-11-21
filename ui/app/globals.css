@@ -301,7 +301,7 @@ button:disabled { cursor: default; }
 .overlay > .minimap { --n: 0; }
 
 /* the camera frame, as a small monitor */
-.camera { left: 0; bottom: 0; width: clamp(170px, 21%, 236px); padding: 7px 7px 10px; border-radius: 16px;
+.camera { left: 0; bottom: 0; width: max(clamp(170px, 21%, 236px), var(--cam-w, 0px)); max-width: 100%; padding: 7px 7px 10px; border-radius: 16px;
   display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: baseline; }
 .camera-view { grid-column: 1 / -1; position: relative; margin-bottom: 9px; border-radius: 10px; overflow: hidden; background: #000;
   box-shadow: 0 0 0 1px rgb(255 255 255 / .1); }
@@ -326,6 +326,15 @@ button:disabled { cursor: default; }
 .camera-view img[hidden] { display: none; }
 .no-signal { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; font-weight: 600; letter-spacing: .18em;
   text-transform: uppercase; color: var(--bad); text-shadow: 0 1px 6px #000; animation: blink 1.1s steps(2, jump-none) infinite; }
+/* the resize handle: the panel's top right corner itself, a little brighter. No box, no fill. */
+.camera-grip { position: absolute; top: 0; right: 0; z-index: 1; width: 22px; height: 22px; padding: 0; border: 0; background: none;
+  border-top-right-radius: 16px; cursor: nesw-resize; touch-action: none; user-select: none; -webkit-user-select: none; }
+.camera-grip::before { content: ""; position: absolute; inset: -6px -6px -8px -8px; } /* a finger-sized target */
+.camera-grip svg { display: block; width: 22px; height: 22px; fill: none; stroke: rgb(255 255 255 / .5); stroke-width: 2.5; stroke-linecap: round;
+  transition: stroke .2s ease; }
+.camera-grip:hover svg, .camera-grip:active svg { stroke: #fff; }
+.camera-grip:focus-visible { outline: none; }
+.camera-grip:focus-visible svg { stroke: #fff; filter: drop-shadow(0 0 4px rgb(255 255 255 / .7)); }
 .camera h2 { padding-left: 7px; font-size: 13px; font-weight: 600; }
 .camera p { padding-right: 7px; text-align: right; font-size: 12.5px; color: var(--state); font-variant-numeric: tabular-nums; }
 
