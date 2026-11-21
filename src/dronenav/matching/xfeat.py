@@ -351,11 +351,11 @@ class XFeatMatcher:
         n = len(a)
         top = torch.full((n, 2), -2.0, device=a.device)             # best and second-best cosine per frame point
         arg = torch.zeros(n, dtype=torch.long, device=a.device)      # which map point is the best
-        back = []                                                    # per map point: its best frame point
+        back = []                                                    # per map point: its best cosine to a frame point
         with torch.inference_mode():
             for s in range(0, len(b), _MATCH_BLOCK):
                 sim = a @ b[s:s + _MATCH_BLOCK].T
-                back.append(sim.argmax(0))
+                back.append(sim.amax(0))      # the value, not the index: several times faster down a column
                 k = min(2, sim.shape[1])
                 v, i = sim.topk(k, dim=1)
                 both = torch.cat([top, v], dim=1)
@@ -366,7 +366,8 @@ class XFeatMatcher:
             # on unit vectors, distance^2 = 2 - 2 cos: Lowe's test on the distances
             d1 = (2.0 - 2.0 * top[:, 0]).clamp_min(0.0).sqrt()
             d2 = (2.0 - 2.0 * top[:, 1]).clamp_min(1e-12).sqrt()
-            keep = (back[arg] == rows) & (top[:, 0] > self.cfg.min_cossim) & (d1 <= self.cfg.ratio * d2)
+            # mutual: nothing on the frame is closer to this map point (the same number from the same product)
+            keep = (top[:, 0] >= back[arg]) & (top[:, 0] > self.cfg.min_cossim) & (d1 <= self.cfg.ratio * d2)
             qi, ti = rows[keep].cpu().numpy(), arg[keep].cpu().numpy()
             score = (1.0 - d1[keep] / d2[keep]).cpu().numpy().astype(np.float64)
         return qi, ti, score
