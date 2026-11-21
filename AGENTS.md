@@ -262,6 +262,8 @@ python scripts/scale_table.py --task data/hackatons-data --probe experiments/dat
 python scripts/search_run.py --irpin data/irpin/flights/mild/2025 --irpin-map data/irpin/maps/irpin_2025.png --miss 200   # M1-05 search modes
 python scripts/confidence_check.py --irpin data/irpin --out outputs/confidence   # M4-08 confidence table + reliability.png
 python scripts/rotation_check.py --irpin data/irpin --out outputs/rotation   # M2-05 success by heading bin (table + rotation.png)
+python scripts/preprocess_ablation.py --flight data/irpin/flights/mild/2022 \
+    --maps data/irpin/maps/irpin_2025.png data/irpin/maps/irpin_2022.png data/irpin/maps/irpin_2017.png   # M4-05 preprocessing ablation (README notes)
 python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run1   # the deliverable: run folder, trajectory image, video (--tracker none: M1's interim states)
 python scripts/run.py --map data/map.png --video data/phone.mp4 --out outputs/phone
 python scripts/accuracy.py --run outputs/run1 --truth experiments/data_probe/results/probe.json   # M1-10: error per frame vs truth (add --map/--frames to localize first)
