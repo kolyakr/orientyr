@@ -50,8 +50,13 @@ def make_h(heading_deg: float, scale: float, cx: float, cy: float, frame_size: t
 
 
 def render_frame(map_img: np.ndarray, H: np.ndarray, frame_size: tuple[int, int]) -> np.ndarray:
-    """The frame a camera with frame -> map homography H would see: each frame pixel samples the map at H p."""
-    return cv2.warpPerspective(map_img, H, frame_size, flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+    """The frame a camera with frame -> map homography H would see: each frame pixel samples the map at H p.
+
+    H is in dronenav.types' corner-origin pixels (centres at +0.5); OpenCV samples at integer centres, so it gets
+    H conjugated by the half-pixel shift. Without it every frame is rendered ~0.5 px off its own truth (#106)."""
+    half = np.array([[1, 0, 0.5], [0, 1, 0.5], [0, 0, 1]])
+    H_cv = np.linalg.inv(half) @ H @ half
+    return cv2.warpPerspective(map_img, H_cv, frame_size, flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
                                borderMode=cv2.BORDER_REFLECT)
 
 
