@@ -13,11 +13,10 @@ stubs on PATH that log how they were called: nothing here talks to GitHub or run
                                                                 test_the_flow_touches_no_issue_and_no_board
 - the board commands and their hooks are gone                → test_the_board_commands_are_gone,
                                                                 test_nothing_runs_the_board_any_more
-- CI uses ``-n auto``; the docs describe the gate            → test_ci_runs_the_suite_in_parallel, test_agents_md_*
+- CI uses ``-n auto``; the docs describe the gate            → test_ci_runs_the_suite_in_parallel, test_contributing_*
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -349,12 +348,8 @@ def test_the_board_commands_are_gone(box, args):
 
 
 def test_nothing_runs_the_board_any_more():
-    settings = ROOT / ".claude" / "settings.json"
-    if settings.exists():                                     # no hook asks the board for news any more
-        assert "notify" not in json.dumps(json.loads(settings.read_text()))
     workflows = {p.name for p in (ROOT / ".github" / "workflows").iterdir()}
     assert not workflows & {"unblock.yml", "owner-only.yml"}, workflows
-    assert not (ROOT / ".claude" / "skills" / "start-task").exists()
     env = (ROOT / "tools" / "task.env").read_text()
     assert "REPO=" in env and "PROJECT_ID" not in env and "STATUS_" not in env
 
@@ -374,8 +369,8 @@ def test_xdist_is_a_dev_requirement():
     assert "pytest-xdist" in names
 
 
-def test_agents_md_describes_the_flow_and_the_gate():
-    text = (ROOT / "AGENTS.md").read_text()
+def test_contributing_describes_the_flow_and_the_gate():
+    text = (ROOT / "CONTRIBUTING.md").read_text()
     commands = text[text.index("## Commands"):]
     assert "tools/task.sh test --full" in commands
     start = text.index("### The flow")

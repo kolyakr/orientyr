@@ -14,7 +14,6 @@ __pycache__/
 build/
 .venv/
 .DS_Store
-.claude/settings.local.json
 
 # docs live in the make-docs library "orientyr", not in git
 docs/

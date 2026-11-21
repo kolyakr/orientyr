@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The test gate and the PR flow for Orientyr: one command per step, so humans and agents follow the same flow.
-# Work happens on feat/<slug>, fix/<slug> or chore/<slug> branches off develop (AGENTS.md, "How we work").
+# The test gate and the PR flow for Orientyr: one command per step, so everyone follows the same flow.
+# Work happens on feat/<slug>, fix/<slug> or chore/<slug> branches off develop (CONTRIBUTING.md, "How we work").
 # Needs: gh logged in. Works on macOS bash 3.2.
 #
 #   tools/task.sh test               the gate pr/finish run: the suite in parallel, without the `data` tests

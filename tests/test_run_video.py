@@ -6,7 +6,7 @@ Done when (issue #127):
    frame is localized within a stated tolerance;
 3. ``--every N`` gives the expected number of records (and the default comes from the video's fps: ~3 frames/s);
    a missing or unreadable video is a clear error with exit != 0;
-4. AGENTS.md Commands shows the real --video command.
+4. CONTRIBUTING.md Commands shows the real --video command.
 Records keep the video's frame index and time; the sampled frames are saved in the run folder for the inset.
 """
 import math
@@ -131,9 +131,9 @@ def test_every_needs_a_video(tmp_path, take):
 
 # --- 4. the command is documented --------------------------------------------------------------------------------
 
-def test_agents_md_shows_the_real_video_command():
-    lines = [ln for ln in (ROOT / "AGENTS.md").read_text().splitlines()
+def test_contributing_shows_the_real_video_command():
+    lines = [ln for ln in (ROOT / "CONTRIBUTING.md").read_text().splitlines()
              if "scripts/run.py" in ln and "--video" in ln]
-    assert lines, "no run.py --video command in AGENTS.md"
+    assert lines, "no run.py --video command in CONTRIBUTING.md"
     assert any("--every" in ln for ln in lines), lines
     assert not any("data/phone.mp4" in ln for ln in lines), "still the placeholder command"

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "dronenav"
 dynamic = ["version"]
 description = "GNSS-denied drone navigation: localize UAV frames on a satellite map"
-readme = "AGENTS.md"
+readme = "README.md"
 requires-python = ">=3.11"
 # The heavy stack (torch, opencv, lightglue) lives in requirements.txt so `pip install -e .`
 # stays fast and offline-friendly; install requirements first.
