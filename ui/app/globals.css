@@ -193,11 +193,11 @@ button:disabled { cursor: default; }
   text-shadow: 0 0 2px rgb(0 0 0 / .9), 0 1px 3px rgb(0 0 0 / .85), 0 2px 16px rgb(0 0 0 / .7); }
 
 /* the legend: one quiet wrapped line in the footer of the right column */
-.legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgb(255 255 255 / .08); }
-.legend li { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
-.legend i { flex: none; width: 14px; height: 4px; border-radius: 1px; box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
+.legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
+.legend li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.legend i { flex: none; width: 11px; height: 4px; border-radius: 1px; box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
 /* the same drawing as on the map: a light patch with viewfinder corners; a soft area with a thin edge */
-.legend i.box { height: 11px; width: 13px; margin-right: 3px; border-radius: 0; box-shadow: inset 0 0 0 1px rgb(245 210 31 / .5);
+.legend i.box { height: 11px; width: 13px; margin-right: 2px; border-radius: 0; box-shadow: inset 0 0 0 1px rgb(245 210 31 / .5);
   background: linear-gradient(var(--footprint) 0 0) top left / 4px 2px, linear-gradient(var(--footprint) 0 0) top left / 2px 4px,
     linear-gradient(var(--footprint) 0 0) top right / 4px 2px, linear-gradient(var(--footprint) 0 0) top right / 2px 4px,
     linear-gradient(var(--footprint) 0 0) bottom left / 4px 2px, linear-gradient(var(--footprint) 0 0) bottom left / 2px 4px,
@@ -279,12 +279,11 @@ button:disabled { cursor: default; }
 
 .scrub { flex: 1; min-width: 0; }
 .chart { position: relative; height: 42px; }
-.bars { position: absolute; inset: 0 0 5px; display: flex; align-items: flex-end; gap: 2px; }
+.bars { position: absolute; inset: 0 0 5px; display: flex; align-items: flex-end; gap: 2px;
+  mask-image: linear-gradient(90deg, #000 var(--played, 100%), rgb(0 0 0 / .3) var(--played, 100%)); }
 .bars i { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; }
 .bars[data-dense] { gap: 0; }
 .bars[data-dense] i { border-radius: 0; }
-/* the frames still ahead are dimmed by one curtain that shrinks to the right: no bar is restyled during playback */
-.ahead { position: absolute; inset: -1px 0 5px; background: rgb(18 20 24 / .74); transform-origin: right; transition: transform .2s linear; }
 .bands { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; overflow: hidden; background: rgb(255 255 255 / .1); }
 .bands i { position: absolute; top: 0; bottom: 0; background: var(--state); opacity: .9; }
 .bands i[data-state="TRACKING"] { opacity: .34; }
@@ -451,13 +450,15 @@ button:disabled { cursor: default; }
 .controls button { flex: 1 0 auto; padding: 8px 6px; border-radius: 9px; border: 1px dashed rgb(255 255 255 / .24); font-size: 13px;
   color: var(--muted); white-space: nowrap; }
 
-.meta { padding: 8px 12px; border-radius: 12px; background: rgb(18 20 24 / .6); font-size: 12.5px; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
-.meta p { text-wrap: balance; }
-.keys { margin-top: 5px; }
-kbd { display: inline-block; min-width: 20px; margin: 0 3px 0 6px; padding: 1px 5px; border-radius: 6px; font: inherit; font-size: 12px; text-align: center;
+/* the footer of the column: three tidy lines (legend, run, keys), no panel of its own */
+.meta { display: grid; gap: 6px; padding: 2px 6px 0; font-size: 12.5px; line-height: 1.3; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
+.meta .run, .keys { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; }
+.meta .run span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.meta .run span:last-child { color: var(--faint); font-variant-numeric: tabular-nums; }
+.keys span { display: inline-flex; align-items: center; gap: 5px; }
+kbd { display: inline-block; min-width: 20px; margin: 0; padding: 1px 5px; border-radius: 6px; font: inherit; font-size: 12px; text-align: center;
   color: var(--ink); background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); }
-kbd:first-child { margin-left: 0; }
-kbd + kbd { margin-left: 0; }
+kbd + kbd { margin-left: -2px; }
 
 /* ---- no run ---------------------------------------------------------------------------------------------------- */
 .empty { max-width: 720px; margin: 12vh auto; padding: 0 24px; }

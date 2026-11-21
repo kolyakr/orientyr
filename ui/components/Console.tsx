@@ -6,7 +6,7 @@
  * on the left, the timeline dock under the map, and on the right what the tracker knows at this frame.
  * Playback works; the mission controls are drawn but inactive until the live engine exists (M7).
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import type { Run, RunRecord } from "@/lib/run";
 import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
@@ -144,7 +144,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   // an event reads "what happened: what the tracker does now"; the HUD sets the two parts as a title and a note
   const [eventTitle, eventNote = ""] = sentence(lastEvent ? lastEvent.text : "mission start: tracking").split(/:\s*/, 2);
 
-  // The timeline is drawn once: the playhead and the curtain over the frames ahead move by transform alone.
+  // The timeline is drawn once: the playhead moves by transform, the frames ahead are paled by one mask over all bars.
   const bars = useMemo(() => run.records.map((r) => (
     <i key={r.idx} style={{ height: `${r.fix ? Math.max(10, (r.fix.inliers / maxPairs) * 100) : 6}%`, background: confidenceColor(confidence(r)) }} />
   )), [run, maxPairs]);
@@ -262,8 +262,8 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         {/* one bar per frame: its height is how many point pairs matched, its colour is the trail's */}
         <div className="scrub">
           <div className="chart">
-            <div className="bars" data-dense={n > 120 || undefined} aria-hidden="true">{bars}</div>
-            <span className="ahead" style={{ transform: `scaleX(${Math.round((100 - progress) * 1000) / 100000})` }} aria-hidden="true" />
+            {/* the part not flown yet is the same bars, paler: no dark plate over the chart */}
+            <div className="bars" data-dense={n > 120 || undefined} style={{ "--played": `${progress}%` } as CSSProperties} aria-hidden="true">{bars}</div>
             <div className="bands" aria-hidden="true">
               {bands.map((b) => (
                 <i key={b.from} data-state={b.state} style={{ left: `${(b.from / n) * 100}%`, width: `${((b.to - b.from + 1) / n) * 100}%` }} />
@@ -432,11 +432,13 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <li><i style={{ background: confidenceColor(1) }} />sure</li>
             <li><i style={{ background: confidenceColor(0.3) }} />less sure</li>
             <li><i style={{ background: confidenceColor(0) }} />guessing</li>
-            <li><i className="box" />camera view</li>
-            <li><i className="ring" />where it can be</li>
+            <li><i className="box" />camera</li>
+            <li><i className="ring" />error area</li>
           </ul>
-          <p>{run.info.generator ?? "run"} · {n} frames · map {mw} × {mh} px</p>
-          <p className="keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> step <kbd>F</kbd> follow</p>
+          <p className="run" title={`${run.info.generator ?? "run"} · ${n} frames · map ${mw} × ${mh} px`}>
+            <span>{run.info.generator ?? "run"}</span><span>{n} frames</span>
+          </p>
+          <p className="keys"><span><kbd>Space</kbd>play</span><span><kbd>←</kbd><kbd>→</kbd>step</span><span><kbd>F</kbd>follow</span></p>
         </footer>
       </aside>
     </main>
