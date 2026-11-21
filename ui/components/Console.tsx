@@ -14,6 +14,7 @@ import { Minimap } from "./Minimap";
 
 const SPEEDS = [1, 2, 4, 8];
 const MAX_DOTS = 40;
+const SPARK = 48; // frames in the matched-pairs strip chart of the HUD
 const frameUrl = (rec: RunRecord) => `/api/frame?src=${encodeURIComponent(rec.source)}`;
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -110,15 +111,20 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   const [mw, mh] = run.info.map_size;
   const tick = niceStep(n, 6);
   const [fw, fh] = run.info.frame_size ?? [1, 1];
-  const tiles: { label: string; value: string; sub: string; turn?: number }[] = [
-    { label: "Position", value: `${Math.round(rec.x)}, ${Math.round(rec.y)}`, sub: "map px, x and y" },
-    heading == null
-      ? { label: "Heading", value: "–", sub: "not known yet" }
-      : { label: "Heading", value: `${Math.round(heading)}°`, sub: `${compass(heading)}${fix?.accepted ? "" : ", from motion"}`, turn: heading },
-    { label: "Matched pairs", value: fix ? String(fix.inliers) : "0",
-      sub: !fix ? "no picture to match" : fix.accepted ? `${Math.round(fix.inlier_ratio * 100)} % of all matches` : "fix rejected" },
-    { label: "Uncertainty", value: `± ${Math.round(sigmaPx(rec.cov))} px`, sub: `search: ${String(rec.extra.search ?? "none")}` },
-  ];
+  // The compass needle turns along the shortest arc: its drawn angle follows the heading without wrapping at 360°.
+  const [needle, setNeedle] = useState(drawAngle(heading ?? 0));
+  if (heading != null) {
+    const next = drawAngle(needle + ((((heading - needle) % 360) + 540) % 360) - 180);
+    if (next !== needle) setNeedle(next);
+  }
+  // The pairs matched over the last frames, as a strip chart that runs with the flight: x in 0..120, y in 4..30.
+  const strip = run.records.slice(Math.max(0, frame - SPARK + 1), frame + 1).map((r, i, all) => [
+    Math.round((SPARK - all.length + i) * (120 / (SPARK - 1)) * 10) / 10,
+    Math.round((30 - ((r.fix?.inliers ?? 0) / maxPairs) * 26) * 10) / 10,
+  ]);
+  const sigma = sigmaPx(rec.cov);
+  // the uncertainty ring grows with the logarithm of sigma: 1 px and 100 px both stay readable in one small dial
+  const ringScale = Math.round(Math.min(1, 0.2 + 0.36 * Math.log10(1 + sigma)) * 100) / 100;
 
   // The timeline is drawn once: the playhead and the curtain over the frames ahead move by transform alone.
   const bars = useMemo(() => run.records.map((r) => (
@@ -278,19 +284,65 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <div><i style={{ transform: `scaleX(${trust / 100})` }} /></div>
             <b><Ticker value={`${trust} %`} /></b>
           </div>
-          <dl className="tiles">
-            {tiles.map((t) => (
-              <div key={t.label}>
-                <dt>{t.label}</dt>
-                <dd>
-                  <Ticker value={t.value} />
-                  {t.turn != null && (
-                    <svg viewBox="0 0 16 16" style={{ transform: `rotate(${drawAngle(t.turn)}deg)` }} aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
-                  )}
-                </dd>
-                <dd className="sub">{t.sub}</dd>
+          {/* the instruments: each value has its own small live drawing, not four equal boxes */}
+          <dl className="gauges">
+            <div className="g-nav">
+              {/* a compass: the needle shows the heading, north is map up */}
+              <svg className="compass" viewBox="-36 -36 72 72" aria-hidden="true">
+                <circle r="33" className="dial" />
+                {Array.from({ length: 24 }, (_, i) => (
+                  <line key={i} y1={i % 6 === 0 ? -33 : -32} y2={i % 6 === 0 ? -26 : -29} className={i % 6 === 0 ? "major" : undefined} transform={`rotate(${i * 15})`} />
+                ))}
+                <text y="-15.5" textAnchor="middle">N</text>
+                {heading != null && (
+                  <g className="needle" style={{ transform: `rotate(${needle}deg)` }}>
+                    <path d="M0 -25 5.2 3 0 -1 -5.2 3Z" className="needle-head" />
+                    <path d="M0 21 3.6 4 0 7 -3.6 4Z" className="needle-tail" />
+                  </g>
+                )}
+                <circle r="2.2" className="hub" />
+              </svg>
+              <div>
+                <dt>Heading</dt>
+                <dd><Ticker value={heading == null ? "–" : `${Math.round(heading)}°`} /></dd>
+                <dd className="sub">{heading == null ? "not known yet" : `${compass(heading)}${fix?.accepted ? "" : ", from motion"}`}</dd>
               </div>
-            ))}
+              <div className="g-pos">
+                <dt>Position</dt>
+                <dd><i>x</i><Ticker value={String(Math.round(rec.x))} /></dd>
+                <dd><i>y</i><Ticker value={String(Math.round(rec.y))} /></dd>
+                <dd className="sub">map px</dd>
+              </div>
+            </div>
+            <div className="g-row">
+              <div>
+                <dt>Matched pairs</dt>
+                <dd><Ticker value={fix ? String(fix.inliers) : "0"} /></dd>
+                <dd className="sub">{!fix ? "no picture to match" : fix.accepted ? `${Math.round(fix.inlier_ratio * 100)} % of all matches` : "fix rejected"}</dd>
+              </div>
+              {/* the last frames as a strip chart: the newest value is the dot on the right */}
+              <span className="strip" aria-hidden="true">
+              <svg viewBox="0 0 120 34" preserveAspectRatio="none">
+                <path className="strip-grid" d="M0 4h120M0 17h120M0 30h120" />
+                {strip.length > 1 && <polygon className="strip-area" points={`${strip[0][0]},32 ${strip.map((p) => p.join(",")).join(" ")} 120,32`} />}
+                {strip.length > 1 && <polyline className="strip-line" points={strip.map((p) => p.join(",")).join(" ")} />}
+              </svg>
+              <i className="strip-dot" style={{ top: `${Math.round((strip.at(-1)![1] / 34) * 1000) / 10}%` }} />
+              </span>
+            </div>
+            <div className="g-row">
+              <div>
+                <dt>Uncertainty</dt>
+                <dd><Ticker value={`± ${Math.round(sigma)} px`} /></dd>
+                <dd className="sub">search: {String(rec.extra.search ?? "none")}</dd>
+              </div>
+              {/* the same blue area as on the map, in a sight: it swells while the camera is jammed */}
+              <svg className="sight" viewBox="-20 -20 40 40" aria-hidden="true">
+                <path className="sight-cross" d="M0 -19v7M0 12v7M-19 0h7M12 0h7" />
+                <circle r="18" className="sight-area" style={{ transform: `scale(${ringScale})` }} />
+                <circle r="1.6" className="sight-dot" />
+              </svg>
+            </div>
           </dl>
         </section>
 
