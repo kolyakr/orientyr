@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadRun } from "@/lib/run-server";
 import type { RunRecord } from "@/lib/run";
-import { type Camera, type Rect, confidence, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail } from "@/lib/view";
+import { type Camera, type Rect, confidence, courseOf, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail } from "@/lib/view";
 
 const run = loadRun(process.env.ORIENTYR_RUN ?? path.join(__dirname, "fixtures", "run"));
 const recs = run.records;
@@ -195,5 +195,31 @@ describe("camera", () => {
       expect((px * t.scale + t.x) * fit + off[0]).toBeCloseTo(px * cam.scale + cam.x, 6);
       expect((py * t.scale + t.y) * fit + off[1]).toBeCloseTo(py * cam.scale + cam.y, 6);
     }
+  });
+});
+
+describe("courseOf", () => {
+  // the drone marker turns the way the drone really moved since the last point, also when that is backwards
+  const at = (x: number, y: number): RunRecord => ({ ...recs[0], x, y });
+
+  it("is the direction of the last step, clockwise from map up", () => {
+    const flight = [at(100, 100), at(100, 80), at(120, 80), at(120, 100), at(100, 100)];
+    expect(courseOf(flight, 1)).toBeCloseTo(0, 9); // up: map y points down
+    expect(courseOf(flight, 2)).toBeCloseTo(90, 9);
+    expect(courseOf(flight, 3)).toBeCloseTo(180, 9);
+    expect(courseOf(flight, 4)).toBeCloseTo(270, 9);
+  });
+
+  it("turns around when the drone flies back", () => {
+    const flight = [at(0, 0), at(30, 0), at(10, 0)];
+    expect(courseOf(flight, 1)).toBeCloseTo(90, 9);
+    expect(courseOf(flight, 2)).toBeCloseTo(270, 9);
+  });
+
+  it("keeps the last course while the drone stands still, and is unknown before the first move", () => {
+    const flight = [at(5, 5), at(5, 5), at(5, 25), at(5, 25), at(5, 25)];
+    expect(courseOf(flight, 0)).toBeNull();
+    expect(courseOf(flight, 1)).toBeNull();
+    expect(courseOf(flight, 4)).toBeCloseTo(180, 9);
   });
 });
