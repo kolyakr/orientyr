@@ -91,6 +91,24 @@ def test_the_truth_heading_is_the_engines_heading_and_points_along_the_route(cit
     assert np.median(ahead) < 20                                                 # measured ~6 with shake
 
 
+def test_the_centre_is_where_the_optical_axis_meets_the_map(city):
+    """center_map_px is H at the principal point (the flight format's meaning, sim/truth.py), which this camera
+    puts at the frame's centre (w/2, h/2 in the corner-origin convention)."""
+    sim = _sim(city, tilt=1.0)
+    assert np.allclose(sim.K[:2, 2], (CAM.size[0] / 2, CAM.size[1] / 2))
+    for i in (0, 9, 19):
+        t = sim.truth(i)
+        q = t.H @ [sim.K[0, 2], sim.K[1, 2], 1.0]
+        assert np.allclose(t.center, q[:2] / q[2], atol=1e-9)
+
+
+def test_one_effects_strength_changes_that_effect_only(city):
+    """The route depends on the seed (and edge) only: tilting the phone keeps it looking at the same points, so a
+    sweep over one strength (the check sheet) shows the same place."""
+    flat, tilted = _sim(city), _sim(city, tilt=1.0)
+    assert all(np.allclose(flat.truth(i).center, tilted.truth(i).center, atol=1e-6) for i in range(len(flat)))
+
+
 def test_tilt_makes_a_perspective_view_and_shake_moves_the_truth(city):
     flat, tilted, shaken = _sim(city), _sim(city, tilt=1.0), _sim(city, shake=1.0)
     pitch = [abs(tilted.truth(i).pitch_deg) + abs(tilted.truth(i).roll_deg) for i in range(len(tilted))]
