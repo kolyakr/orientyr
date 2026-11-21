@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import type { Run } from "@/lib/run";
-import { type Camera, type Rect, confidenceColor, drawAngle, fitRoute, footprintSize, headingOf, inViewBox, niceStep, routeBox, sigmaEllipse, stateRuns, trail } from "@/lib/view";
+import { type Camera, type Rect, confidenceColor, courseOf, drawAngle, fitRoute, footprintSize, headingOf, inViewBox, niceStep, routeBox, sigmaEllipse, stateRuns, trail } from "@/lib/view";
 
 /** The stage as Console.tsx measures it, in CSS px counted from the stage cell's top-left corner. */
 export interface StageLayout {
@@ -70,7 +70,9 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
   const labelEvery = niceStep(run.records.length, 10); // number about ten points: all of them would cover the route
   const segs = trail(run.records, frame);
   const flown = run.records.slice(0, frame + 1);
-  const heading = headingOf(rec);
+  // the marker points the way the drone moved since the last point, so it turns around when the route doubles back;
+  // before the first move it shows the camera's heading
+  const heading = courseOf(run.records, frame) ?? headingOf(rec);
   const fix = rec.fix;
   const ellipse = sigmaEllipse(rec.cov);
   const start = run.records[0];

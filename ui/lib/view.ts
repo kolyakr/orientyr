@@ -25,6 +25,19 @@ export function headingOf(rec: RunRecord): number | null {
   return ((deg % 360) + 360) % 360;
 }
 
+/**
+ * The course the drone really flew into `frame`, in degrees clockwise from map up: the direction of the last step
+ * that moved it. Unlike the camera's heading it turns around when the drone flies back. Null before the first move.
+ */
+export function courseOf(records: RunRecord[], frame: number): number | null {
+  for (let i = Math.min(frame, records.length - 1); i > 0; i--) {
+    const dx = records[i].x - records[i - 1].x;
+    const dy = records[i].y - records[i - 1].y;
+    if (dx !== 0 || dy !== 0) return ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360; // map y points down
+  }
+  return null;
+}
+
 export interface TrailSegment {
   x1: number;
   y1: number;
