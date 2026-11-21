@@ -278,6 +278,8 @@ button:disabled { cursor: default; }
 
 .follow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; transition: transform .6s var(--spring); }
 .follow[aria-pressed="true"] { --glass-base: rgb(245 247 251 / .94); color: #0c0f14; }
+/* the switched-on pill is light with dark text: its hover stays light (the pills' dark hover would hide the text) */
+.tools .follow[aria-pressed="true"]:hover { --glass-base: rgb(226 230 238 / .96); }
 .follow[aria-pressed="true"] svg { transform: rotate(90deg) scale(1.1); }
 
 /* the minimap of follow mode: in the bottom right corner of the stage, with the route flown so far */
