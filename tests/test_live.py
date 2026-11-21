@@ -217,7 +217,9 @@ def test_a_jam_is_switched_on_and_off_while_the_flight_runs(tmp_path, world):
         noise = cv2.imread(str(out / r.source), cv2.IMREAD_GRAYSCALE)   # what the engine saw is what is saved
         assert noise is not None and noise.std() > 40, r.idx
     for r in recs[:4]:
-        assert r.track.state is TrackMode.TRACKING and r.track.fix.accepted, r.idx
+        assert r.track.fix.accepted, r.idx
+    # the tracker's own rule (M5-02): the first fix is a candidate, the second one confirms it
+    assert [r.track.state for r in recs[:4]] == [TrackMode.RELOCALIZING] + [TrackMode.TRACKING] * 3
     end = recs[-1]
     tr = src.truth(end.idx)
     assert end.track.state is TrackMode.TRACKING and end.track.fix.accepted
