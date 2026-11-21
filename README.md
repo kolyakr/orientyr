@@ -885,3 +885,35 @@ ground, and consecutive frames overlap. `--vo` turns on visual odometry: every f
   | With VO | 52 px | 76 px | TRACKING throughout |
 - **On the task's 50 frames jammed on frames 20–29** (error against the probe's fit): without VO the mean is 166 px
   and the last frame is 475 px off, LOST for 8 frames. With VO the mean is 6 px (8 px at most), TRACKING throughout.
+
+### Live mode (M7-04)
+
+One command plays a simulated flight in real time and streams its telemetry; the console follows it.
+
+```bash
+python scripts/live.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png --out outputs/live
+(cd ui && npm run dev)        # then http://localhost:3000/?run=live
+```
+
+- **The simulator** is `FlightSource` on a pre-rendered Irpin flight. Its frames are released by the clock: a frame
+  with flight time `t` reaches the engine `t` seconds after the start (`--speed` scales it), `--rate` frames per
+  second of flight (default 2). A real camera does not wait for a slow engine, so a frame the engine is one frame
+  period late for is skipped and counted; the position on screen is never older than one period plus one search.
+- **The stream** is the run folder itself, written in the order a reader needs: `run.json`, then per frame its
+  image, its line in `run.jsonl` (flushed) and `live.json`, the engine's heartbeat (state, frames, fixes, fixes per
+  second). The console reads the appended lines every 0.4 s. No socket, no second format: a live run is a replay the
+  moment it ends, and every tool that reads a run folder reads it.
+- **Chaos, switched on live.** `{"jam": true}` in the run's `control.json` (the console's "Jam camera" button writes
+  it) turns every following frame into noise until it is switched off; the engine reads the file before each frame.
+  `--jam START:LENGTH` schedules one. The tracker loses the fix and relocalizes on its own, as in `run.py --jam`.
+- **Smooth between fixes.** A fix is a point once or twice a second. The console moves the drone to each new fix in
+  a straight line, for a little longer than the fixes are apart (their measured pace + one poll), so the marker is
+  still moving when its next target arrives.
+
+Measured on the Irpin "mild 2022" flight, seconds 30 to 120, with an 8 s jam in the middle, SIFT, on a laptop:
+121 accepted fixes on 137 frames in 91.9 s, **1.40 fixes per second** (counted between the first and the last fix,
+the jam included); 44 of 181 frames were skipped because a search took longer than the 0.5 s between frames.
+
+Limits: the viewer is started separately (`npm run dev`); the console polls, so a fix is seen up to 0.4 s after it
+is made; a frame before the first fix has no position (live there is no later fix to borrow one from, the console
+places it at the first fix once that arrives).

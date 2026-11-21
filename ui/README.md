@@ -1,4 +1,4 @@
-# Orientyr console: replay viewer
+# Orientyr console: replay viewer and live view
 
 Mission control for a flight: the map, the route coloured by confidence, the footprint of the current frame,
 the camera inset, the telemetry HUD, the tracker state and a mission log. The right column shows the state as a
@@ -6,8 +6,9 @@ lamp, the last event, confidence, heading on a compass, the drone's place on a s
 pairs and uncertainty. The mission log is a timeline that follows the current event; in follow mode a minimap shows
 the whole route. It replays a **run folder**
 (`run.json` + `run.jsonl` + `frames/`, the format in `src/dronenav/telemetry.py`): the fake run (M0-04), a real
-run of `scripts/run.py`, a benchmark run. Play, pause, scrub, speed and layers work; the mission controls are drawn
-but inactive until the live engine (M7-04, M7-05).
+run of `scripts/run.py`, a benchmark run. Play, pause, scrub, speed and layers work. A run that `scripts/live.py`
+is writing right now is followed as it grows (see "Live mode"); there the jam switch works, the other mission
+controls are drawn but inactive until M7-05.
 
 ```bash
 # from the repo root: make a run to show
@@ -54,6 +55,29 @@ ground with a note.
 Scrub with the pointer: press anywhere on the timeline and drag, also outside it. A flight that was playing goes on
 from where you let go.
 
+## Live mode
+
+```bash
+# terminal 1, from the repo root: the simulator and the engine, in real time
+python scripts/live.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png --out outputs/live
+# terminal 2: the console; open http://localhost:3000/?run=live
+cd ui && npm run dev
+```
+
+`scripts/live.py` plays a rendered flight at its own pace (2 frames per second of flight by default), localizes each
+frame when it arrives and appends its record to `run.jsonl`. The console opens such a run at its newest record and
+stays there: every 0.4 s it asks `/api/live` for the lines appended since, and the drone glides to each new fix for a
+little longer than the fixes are apart, so it is still moving when the next one arrives (`lib/live.ts`). Before the
+first record the page says it is waiting and asks again by itself.
+
+- **Live** (next to the time): lit while the view follows the flight. Stepping, scrubbing or `Space` holds a frame
+  to look back while the flight goes on; press Live to return. A replay that catches up with the flight goes on
+  with it. When the flight ends the page becomes an ordinary replay.
+- **Jam camera** (Mission controls): the frames reach the engine as noise until "Stop jamming". The press is written
+  to the run's `control.json`, which the engine reads before every frame.
+- The engine says it is alive by rewriting `live.json` after every record; silent for 30 s, the run is shown as a
+  replay of what was written.
+
 ## Layers
 
 | Key | Layer | What is drawn |
@@ -82,6 +106,8 @@ and the mission log are always shown.
 | `components/Console.tsx` | the page: panels, run picker, layers, playback, scrubbing, keyboard |
 | `app/page.tsx` | opens the run the address names, or says why it cannot |
 | `app/api/map`, `app/api/frame` | serve the map and the frames of a run (`?run=<name>`) |
+| `app/api/live` | live mode: the records appended since byte `from` (GET), the jam switch (POST) |
+| `lib/live.ts` | live mode: the engine's status, the pace of the fixes, how long the drone glides |
 | `tests/fixtures/runs/` | hand-made hard runs: gaps, missing files, an empty and a broken `run.jsonl` |
 | `public/runs/` | packed runs for hosting (gitignored), see "Hosting" |
 
@@ -112,4 +138,4 @@ Remove `ui/public/runs` to see the runs of `outputs/` again with `npm run dev`. 
 pins the Node version the host runs.
 
 Technology (decided in M7-01): a Next.js web app. It runs in any browser, is easy to record for the demo
-video, and the same page can later follow a live `run.jsonl` while the engine writes it.
+video, and the same page follows a live `run.jsonl` while the engine writes it (M7-04).
