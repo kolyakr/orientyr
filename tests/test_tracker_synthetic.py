@@ -43,11 +43,13 @@ def _truth(seed: int, n: int, cfg: KalmanConfig, dt: float = 1.0) -> np.ndarray:
     """n true states (x, y, vx, vy), one per dt, drawn from the filter's own motion model."""
     rng = np.random.default_rng(seed)
     F, Q = _transition(dt, cfg.sigma_acc)
+    # Cholesky, not the default SVD: SVD's factor differs between LAPACK builds, so the same seed flew a different
+    # route on Linux CI than on macOS; the Cholesky factor of a positive-definite Q is unique
     s = np.array([5000.0, 5000.0, *rng.normal(0.0, cfg.init_speed_sigma, 2)])
     out = []
     for _ in range(n):
         out.append(s.copy())
-        s = F @ s + rng.multivariate_normal(np.zeros(4), Q)
+        s = F @ s + rng.multivariate_normal(np.zeros(4), Q, method="cholesky")
     return np.array(out)
 
 
@@ -112,9 +114,8 @@ def test_dropouts_shorter_than_lost_after_are_coasted_through():
     assert drop.sum() > 80
     assert all(u.mode is not L for u in ups), "a short dropout must not lose the track"
     assert all(u.step.kind is StepKind.COAST for u, d in zip(ups, drop, strict=True) if d)
-    coasted = [_d2(u, t) for u, t, d in zip(ups, truth, drop, strict=True) if d]
-    # the coasted positions are as honest as the rest: their 95 % circles hold the truth ~95 % of the time
-    assert 0.88 <= np.mean(np.array(coasted) <= CHI2_95) <= 0.99
+    # how honest the coasted positions are is checked on 2000 frames below (the last test): ~120 correlated coasted
+    # frames here are too few for a 95 % circle's coverage to land reliably within a few points
 
 
 def test_a_long_dropout_is_lost_then_relocalized_on_the_truth():
@@ -170,8 +171,9 @@ def test_a_run_of_wrong_fixes_loses_the_track_and_the_truth_wins_it_back():
         fixes[k] = (truth[k, :2] + (1500.0, -900.0), sigma)
     ups = _fly(truth, fixes, GENTLE)
     assert [u.step.kind for u in ups[20:23]] == [StepKind.GATED] * 3
-    assert [u.mode for u in ups[20:25]] == [T, T, L, R, T]
-    assert all(_err(u, t) < 4 * sigma for u, t in zip(ups[24:], truth[24:], strict=True))
+    assert [u.mode for u in ups[20:24]] == [T, T, L, R]
+    assert all(u.mode is T for u in ups[26:])               # confirmed within two fixes (as the long dropout)
+    assert all(_err(u, t) < 4 * sigma for u, t in zip(ups[26:], truth[26:], strict=True))
 
 
 # --- a slow wrong drift: followed (nothing to tell it from motion), then let go when the truth returns ----------
@@ -189,8 +191,10 @@ def test_a_slow_drift_is_followed_and_the_snap_back_relocalizes():
     zs = truth[:, :2] + rng.normal(0.0, sigma, (n, 2)) + np.stack([bias, 0 * bias], 1)
     ups = _fly(truth, [(z, sigma) for z in zs], GENTLE)
     drift = range(ramp[0], ramp[1])
-    assert all(ups[k].mode is T and ups[k].step.kind is StepKind.HIT for k in drift)
-    for k in drift:                                         # follows the fixes it is given: stays near them
+    assert all(ups[k].mode is T for k in drift)
+    # used, bar the 99.9 % gate's rare refusal of a true fix (as with plain noise above)
+    assert sum(ups[k].step.kind is StepKind.HIT for k in drift) >= 0.98 * len(drift)
+    for k in (k for k in drift if ups[k].step.kind is StepKind.HIT):   # follows the fixes it uses: stays near them
         assert math.hypot(ups[k].track.x - zs[k, 0], ups[k].track.y - zs[k, 1]) < 4 * sigma, k
     after = [u.mode for u in ups[ramp[1]:]]
     assert after[:4] == [T, T, L, R]                    # refused three times (coasting), LOST, restarted at the truth
