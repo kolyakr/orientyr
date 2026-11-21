@@ -33,6 +33,7 @@ from dronenav.geometry import localize
 from dronenav.matching.lightglue import (
     LightGlueConfig,
     LightGlueMatcher,
+    auto_upsample,
     quarter_turn_back,
     turn_back,
     turn_image,
@@ -103,11 +104,23 @@ def test_quarter_turn_back_works_between_pixels():
 @pytest.mark.parametrize("bad", [
     {"features": "orb"}, {"max_keypoints": 0}, {"map_keypoints": 0}, {"tile_px": 16},
     {"turns": 0}, {"turns": 3}, {"turns": 5}, {"turns": 16}, {"window_keypoints": 0},
-    {"upsample": 0.5}, {"upsample": 0.0}, {"upsample": 5.0},
+    {"upsample": 0.5}, {"upsample": 0.0}, {"upsample": 5.0}, {"upsample_budget_mp": 0.0},
 ])
 def test_config_is_checked(bad):
     with pytest.raises(ValueError):
         LightGlueConfig(**bad)
+
+
+# the two real maps: the task map (3645 x 1845, 6.7 MP) and an Irpin map (3936 x 3936, 15.5 MP)
+@pytest.mark.parametrize("shape, expected", [((1845, 3645, 3), 2.0), ((3936, 3936, 3), 1.0), ((10, 10), 2.0)])
+def test_upsampling_is_automatic_within_the_pixel_budget(shape, expected):
+    # 2x only while the enlarged map stays within the budget (32 MP): the low-resolution task map needs it (frames
+    # 21 and 35 go from ~12 inliers to 150+), the Irpin maps already match at 1x and would cost 4x to extract
+    assert auto_upsample(shape, 32.0) == expected
+
+
+def test_an_explicit_upsample_wins_over_the_budget():
+    assert LightGlueConfig(upsample=1.0).upsample == 1.0 and LightGlueConfig().upsample is None
 
 
 def test_unknown_device_is_an_error():
@@ -174,6 +187,12 @@ def test_map_features_are_read_from_the_pack_when_present(tmp_path):
     empty.mkdir()
     m = LightGlueMatcher(MAP, cache_dir=None, pack_dir=empty)
     assert m.map_extractions == 1 and not list(empty.iterdir())
+
+
+@needs_weights
+def test_the_matcher_reports_the_upsampling_it_chose(tmp_path):
+    assert LightGlueMatcher(MAP, cache_dir=tmp_path).upsample == 2.0                 # a small map: 2x
+    assert LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(upsample=1.0)).upsample == 1.0
 
 
 @needs_weights
