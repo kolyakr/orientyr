@@ -25,13 +25,13 @@ from dronenav.config import CommonArgs, add_arguments, add_shared_args, arg, ini
 from dronenav.logs import DEVICE_LINE
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("accuracy.py", "calibrate_camera.py", "chaos_sheet.py", "check_backups.py", "check_data.py",
-           "confidence_check.py", "fake_run.py", "live.py", "mavlink_log.py",
+SCRIPTS = ("accuracy.py", "benchmark.py", "calibrate_camera.py", "chaos_sheet.py", "check_backups.py",
+           "check_data.py", "confidence_check.py", "fake_run.py", "live.py", "mavlink_log.py",
            "pack_run.py", "preprocess_ablation.py", "render_image.py", "render_video.py", "rotation_check.py", "run.py",
            "scale_table.py", "search_run.py", "spoof_check.py", "xfeat_timing.py")
 # the scripts that match frames to the map: a torch backend would run there, so they pick and log a device.
 # The others only check, draw or write files (numpy / OpenCV / ffmpeg on the CPU): no device to pick.
-DEVICE_SCRIPTS = ("scale_table.py", "search_run.py")
+DEVICE_SCRIPTS = ("benchmark.py", "scale_table.py", "search_run.py")
 # run.py, confidence_check.py, accuracy.py (it localizes with --map/--frames), rotation_check.py and
 # preprocess_ablation.py match too and take --device, but their required arguments stop them before any work
 # when called bare,
