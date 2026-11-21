@@ -1,81 +1,11 @@
-# AGENTS.md — Orientyr (Spectron hackathon): GNSS-denied drone navigation
+# Contributing to Orientyr
 
-Shared context for any coding agent (Claude Code, Codex, Cursor, …) working in this repo.
-Full task statement: [docs/TASK.md](docs/TASK.md) (extracted from the IT-JIM PDF in the repo root).
-
-## Mission
-
-We are competing in a hackathon. The task: given a **satellite panorama** and **50 consecutive UAV frames**
-(rotated, different scale), recover and visualise the drone's route by matching each frame to the map —
-i.e. visual navigation for a drone that has lost GPS (electronic-warfare resistant).
-
-**Chosen level: ADVANCED.** Our main input is our own video, filmed with a phone/webcam over the map
-shown full-screen (real camera blur, glare, perspective, screen moiré). The provided 50 frames are the
-standard-level dataset — we support them too, as a sanity check and benchmark.
-
-**Winning criterion for us = impression.** A correct trajectory is the baseline; judges remember
-what looks and feels like a real product. Every decision should serve one of:
-
-1. **It works, visibly** — every frame localized, with confidence, on the real data and on our own video.
-2. **It is sophisticated** — a principled pipeline (coarse→fine, temporal filtering, failure recovery), not one `findHomography` call.
-3. **It is measured** — numbers (localization error, success rate, fps) from a ground-truth benchmark we build ourselves.
-4. **It looks spectacular** — a "mission control" video/demo that a judge watches once and remembers.
-
-## Deliverables (hard requirements — never break these)
-
-- Code reads the **map** and a **folder of frames** (or a **video**) from CLI-specified paths.
-- Output: a **trajectory image** (map + route + start/finish + numbered points) **and** a **video** with live UAV position.
-- `requirements.txt` (or `environment.yml`), `README.md` describing the approach, well-commented code.
-- **Advanced level (chosen, required for us):** our own phone/webcam video filmed over the map on a screen,
-  processed by the same pipeline. Video frames need extra preprocessing: sampling every N-th frame, blur
-  rejection, screen-glare/moiré handling, and a perspective (homography, not just similarity) model.
-
-## Planned pipeline (target architecture)
-
-```
-frames/video ─► preprocess ─► coarse localization ─► fine registration ─► pose ─► temporal filter ─► viz
-                 (resize,       (where on the map?     (homography with     (x, y,      (Kalman / outlier
-                  CLAHE)         retrieval or search    RANSAC/MAGSAC++)     heading,     rejection,
-                                 window from prior)                          scale)       smoothing)
-```
-
-- **Matching backends, pluggable** behind one interface:
-  - classic baseline: SIFT / RootSIFT + FLANN + Lowe ratio, ORB/AKAZE for speed;
-  - DL: SuperPoint + LightGlue (via `kornia` or `lightglue`), optionally LoFTR / RoMa for hard frames.
-- **Coarse-to-fine**: downscale the map for a global search (first frame / after loss), then refine
-  in a local window around the predicted position at higher resolution.
-- **Pose from homography**: frame center → map point, heading from rotation, scale ≈ altitude proxy,
-  footprint polygon = warped frame corners. Reject degenerate homographies (det, aspect, inlier ratio).
-- **Temporal reasoning**: motion prior to restrict search, Kalman filter / smoothing, interpolation for
-  failed frames, explicit "LOST → RELOCALIZING → TRACKING" state.
-- **Confidence** per frame (inliers, reprojection error) — shown in the viz, used by the filter.
-
-## "Wow" layer (pick in this order, stop when time runs out)
-
-1. Mission-control video: map with trail colored by confidence, rotated footprint boxes, heading arrow,
-   picture-in-picture of the current drone frame + match lines, HUD (frame #, x/y, heading, inliers, state).
-2. Synthetic benchmark: generate flights from the map with known ground truth (random path, rotation,
-   scale, blur, brightness, perspective) → report RMSE in px and % localized; compare classic vs DL.
-3. Robustness demo: simulated "jamming" — dropped frames, noise, occlusion — and the tracker recovers.
-4. (Optional) interactive web viewer to scrub the flight.
-
-## Repo layout (intended — create as needed)
-
-```
-docs/TASK.md            task statement (+ docs/task_images/)
-data/                   all data (gitignored; from the team Google Drive via tools/data.sh, see "Data")
-src/dronenav/           package: io, preprocess, matching/, localize, tracking, viz
-scripts/                CLI entry points (run.py, make_video.py, benchmark.py, synth_flight.py)
-outputs/                generated images/videos (gitignored, except curated results/)
-results/                final images/videos used in README and pitch
-tests/                  quick sanity tests (homography math, synthetic GT)
-ui/                     mission-control console: a Next.js app that replays a run folder (see ui/README.md)
-```
+How the team works on this repo: conventions, branches, tests, data and commands.
 
 ## Engineering conventions
 
 - Python 3.11+, `opencv-contrib-python`, `numpy`, `torch` (use `mps` on Apple Silicon, fall back to CPU), `kornia`.
-- Type hints and short docstrings; comments explain *why*, not *what*. Code is part of the grade.
+- Type hints and short docstrings; comments explain *why*, not *what*.
 - Coordinates: always **map pixel coords (x, y)** at full map resolution; convert at the boundaries only.
 - Everything deterministic and runnable with one command; config via CLI args / a small dataclass, no hard-coded paths.
 - Cache expensive things (map keypoints/descriptors) to `outputs/cache/`.
@@ -98,7 +28,7 @@ main ◄──── release PR (owner only) ──── develop ◄───�
 
 | Branch | Role | Who changes it |
 |---|---|---|
-| `main` | Release: always runnable and demo-able; what the judges see. | Only the repo owner (@kolyakr), only by merging a PR **from `develop`**. No direct pushes. |
+| `main` | Release: always runnable and demo-able. | Only the repo owner (@kolyakr), only by merging a PR **from `develop`**. No direct pushes. |
 | `develop` | Integration: the default branch. Every finished feature and fix lands here. | Anyone, **only through a PR**. No direct pushes, no force-push. |
 | `feat/<slug>` | A new feature, e.g. `feat/phone-glare-mask`. | Its author. Branch off `develop`, PR back into `develop`. Deleted after merge. |
 | `fix/<slug>` | A bug fix, e.g. `fix/blank-frame-crash`. | Same as `feat/`. |
@@ -115,9 +45,7 @@ git clone git@github.com:kolyakr/orientyr.git && cd orientyr   # lands on develo
 git config user.name "<you>" && git config user.email "<your GitHub email>"
 ```
 
-Open Claude Code (or any agent) at the repo root: `CLAUDE.md` imports this file, so the agent starts with these rules.
-
-### The flow (humans and agents alike)
+### The flow
 
 | Step | Command | What it does |
 |---|---|---|
@@ -128,7 +56,6 @@ Open Claude Code (or any agent) at the repo root: `CLAUDE.md` imports this file,
 | 5. PR | `tools/task.sh pr [body.md]` | rebases on `develop`, runs the test gate (refuses if red), pushes, opens the PR into `develop`, titled from the branch (`feat/phone-glare-mask` → `feat: phone glare mask`); rerun to update it. `TASK_FULL=1 tools/task.sh pr` adds the `data` tests |
 | 6. Merge | `tools/task.sh finish` | refuses on red tests, unpushed commits, failing checks or a PR not into `develop`; squash-merges, deletes the branch, back on fresh `develop`. Tests already green on the same committed tree (the run `pr` just made) are not run again; any new commit brings the run back |
 
-- **In Claude Code,** `/finish-task` (in `.claude/skills/`) walks through steps 5 and 6.
 - **Commit messages** start with the kind of change: `feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`.
 - **The PR description** holds What, Done when, and which test proves each "Done when" item; a screenshot for
   anything visual. The tests commit comes before the implementation commits. CI must pass.
@@ -163,25 +90,23 @@ What makes a test reliable here:
   after checking that `develop` runs end to end (`scripts/run.py` on the task data at least).
 - Hotfix on `main`: branch `hotfix/<slug>` off `main`, PR into `main`, then merge `main` back into `develop`.
 
-### Rules for coding agents
+### Rules
 
 - Never commit or push to `main` or `develop` directly; never force-push a shared branch; never merge into `main`.
-- At the start of a session, run `git status`. On a `feat/`, `fix/` or `chore/` branch with work in progress,
-  continue it. Otherwise ask the human what to build or fix, then create the branch with the matching prefix.
-- Do what was asked and no more. A bug or a better idea found on the way goes into your reply (or an issue), not
-  into the same branch.
-- Commits: message starts with its kind (`feat: …`, `fix: …`), one logical change each, made in the human's git
+- Do what was asked and no more. A bug or a better idea found on the way goes into an issue, not into the
+  same branch.
+- Commits: message starts with its kind (`feat: …`, `fix: …`), one logical change each, made in your own git
   identity. Never commit `data/`, outputs, videos, weights or secrets; check `git status` before every commit.
 - Run tests only via `tools/task.sh test` (it puts the repo root and `src/` on the import path, as CI must). With no
   arguments it is the gate `pr` and `finish` run: the suite in parallel (`-n auto`), without the `data` tests. Run
   `tools/task.sh test --full` when the change touches code the `data` tests cover and `data/` is on the machine; never merge red.
 - Tests run in parallel, in any order: write only under `tmp_path`, never to a fixed path in `outputs/` or the repo.
-- `finish` merges into `develop` only after the human says so.
+- `finish` merges into `develop` only after the PR is reviewed.
 - Outputs go to `outputs/` (gitignored); only curated, small ones go to `results/`.
 - When a command becomes real, update the **Commands** section below in the same PR.
 - Data moves only through `tools/data.sh` (see **Data** below). `ls`, `pull` and `check` are always fine;
-  `push` uploads to the shared team folder, so run it only when the human asks, show the dry run first,
-  and pass `--yes` after they confirm. Never delete or rename anything on the Drive.
+  `push` uploads to the shared team folder, so look at the dry run first
+  and pass `--yes` only when it shows what you expect. Never delete or rename anything on the Drive.
 
 ## Data: the team Google Drive
 

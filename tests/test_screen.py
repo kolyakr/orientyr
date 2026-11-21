@@ -448,9 +448,9 @@ def test_the_script_fails_clearly(tmp_path, city, args, says):
     assert not (tmp_path / "take").exists()
 
 
-def test_the_readme_says_it_is_a_simulation():
-    text = (ROOT / "README.md").read_text()
+def test_the_notes_say_it_is_a_simulation():
+    text = (ROOT / "NOTES.md").read_text()
     i = text.find("(M2-08)")
-    assert i >= 0, "no M2-08 section in the README"
+    assert i >= 0, "no M2-08 section in NOTES.md"
     section = text[i:i + 3000].lower()
     assert "simulat" in section and "m2-01" in section

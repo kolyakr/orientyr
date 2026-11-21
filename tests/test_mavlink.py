@@ -211,8 +211,8 @@ def test_a_map_with_no_georeference_is_refused(tmp_path):
     assert not (run / "gps_input.tlog").exists()
 
 
-def test_the_readme_calls_it_a_stub():
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+def test_the_notes_call_it_a_stub():
+    readme = (ROOT / "NOTES.md").read_text(encoding="utf-8")
     section = readme[readme.index("MAVLink"):]
     section = section[:section.index("\n## ") if "\n## " in section else len(section)]
     assert "stub" in section and "not flight-tested" in section

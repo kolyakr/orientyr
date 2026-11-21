@@ -28,7 +28,7 @@ from dronenav.pipeline import OUTPUTS
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 
-MAX_IMAGE_BYTES = 500_000   # curated results stay small (AGENTS.md); a README that loads megabytes is not read
+MAX_IMAGE_BYTES = 500_000   # curated results stay small (CONTRIBUTING.md); a README that loads megabytes is not read
 
 
 # --- sections ---------------------------------------------------------------------------------------------------
