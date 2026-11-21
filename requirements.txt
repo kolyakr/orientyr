@@ -11,5 +11,6 @@ matplotlib>=3.8     # reliability plot of the per-fix confidence (scripts/confid
 pymavlink>=2.4.40  # MAVLink GPS_INPUT log / SITL feed (scripts/mavlink_log.py, M9-01), a stub
 # dev
 pytest>=8
+pytest-xdist>=3.5   # the suite runs in parallel: tools/task.sh test and CI use -n auto (M0-11)
 ruff>=0.17,<0.18    # pinned: ruff's default rule set changes between minor versions, CI and laptops must agree
 pyyaml>=6           # tests read .github/workflows/ci.yml (M0-08)

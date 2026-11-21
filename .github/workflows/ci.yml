@@ -55,5 +55,5 @@ jobs:
           pip install -r requirements.txt
           pip install --no-deps -e .
       - name: pytest
-        # the same import path as tools/task.sh test: repo root and src/
-        run: PYTHONPATH=src:. pytest -q -ra
+        # the same import path as tools/task.sh test: repo root and src/; in parallel, one worker per core (M0-11)
+        run: PYTHONPATH=src:. pytest -q -ra -n auto
