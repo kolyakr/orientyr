@@ -330,3 +330,18 @@ What the numbers say:
 
 The defaults follow this: CLAHE and scale normalisation on, grey-world off.
 
+### MAVLink `GPS_INPUT` (M9-01, a stub, not flight-tested)
+
+[scripts/mavlink_log.py](scripts/mavlink_log.py) turns a run's fixes into the message an autopilot (ArduPilot
+`GPS_TYPE = 14`, PX4) reads in place of a jammed GPS: `GPS_INPUT`, written to `<run>/gps_input.tlog` and optionally
+sent over UDP to a SITL simulator (`--udp 127.0.0.1:14550`). See [mavlink.py](src/dronenav/mavlink.py).
+- **One message per accepted, measured fix,** not the smoothed track. The autopilot's own EKF does the fusing;
+  feeding it our filtered position would count the same evidence twice. Frames without a fix send nothing, as a
+  GPS dropout would.
+- **lat/lon** come from the map's georeference sidecar (Irpin has one; the task map has none and is refused).
+  **horiz_accuracy** is the fix's σ (M4-08) in metres. There's no altitude and no velocity (ignore flags set, a 2D
+  fix), and `satellites_visible` is 0. GPS week and time are computed from `--utc-start` (UTC + 18 leap seconds).
+- **What's checked:** the log reads back through pymavlink with no bad data, with one `GPS_INPUT` per fix and the
+  right position, accuracy and time ([tests/test_mavlink.py](tests/test_mavlink.py)).
+- **What isn't:** no autopilot, simulated or real, has flown on these messages. The log opens with a STATUSTEXT
+  saying so: "orientyr GPS_INPUT stub, not flight-tested".
