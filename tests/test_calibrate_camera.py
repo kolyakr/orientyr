@@ -64,7 +64,6 @@ def _camera_h(yaw, pitch, roll, cx, cy, alt, hfov, frame):
 
 def _render(board: np.ndarray, H: np.ndarray, frame: tuple[int, int]) -> np.ndarray:
     """The frame a camera with (frame px -> board px) homography H would see."""
-    w, h = frame
     half = np.array([[1, 0, 0.5], [0, 1, 0.5], [0, 0, 1]])
     H_cv = np.linalg.inv(half) @ H @ half
     return cv2.warpPerspective(board, H_cv, frame, flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
@@ -76,7 +75,10 @@ def synthetic_views(poses=((0, 0, 0), (18, 0, 0), (-15, 10, 0), (0, -12, 14), (1
     board = _board()
     bh, bw = board.shape
     cx, cy = bw / 2, bh / 2
-    alt = (bw / 2) / math.tan(math.radians(HFOV) / 2) * 1.15     # the whole board stays in frame
+    # camera_h doesn't re-aim at (cx, cy) under tilt (unlike dronenav.sim.cutout's helper), so a
+    # tilted view's apparent centre shifts by roughly alt * tan(tilt); 2x the margin a nadir view
+    # would need keeps the board fully framed up to the poses' largest combined tilt below
+    alt = (bw / 2) / math.tan(math.radians(HFOV) / 2) * 2.0
     return [_render(board, _camera_h(yaw, pitch, roll, cx, cy, alt, HFOV, FRAME), FRAME)
             for yaw, pitch, roll in poses]
 
@@ -84,7 +86,7 @@ def synthetic_views(poses=((0, 0, 0), (18, 0, 0), (-15, 10, 0), (0, -12, 14), (1
 # --- dronenav.calibration: unit tests on known synthetic views --------------------------------
 
 def test_calibration_recovers_the_true_focal_length():
-    K, dist, size = calibrate(synthetic_views(), COLS, ROWS, square=SQ_PX)
+    K, _dist, size = calibrate(synthetic_views(), COLS, ROWS, square=SQ_PX)
     assert size == FRAME
     # a handful of noise-free synthetic views, no real lens distortion to fight: a tight relative
     # tolerance is appropriate (checkerboard corner detection itself is sub-pixel accurate)
