@@ -185,10 +185,12 @@ button:disabled { cursor: default; }
 .drone[data-state="LOST"] .blade { opacity: 0; }
 
 /* ---- over the stage: brand, legend, follow, camera ------------------------------------------------------------- */
-.brand { top: 0; left: 0; display: flex; align-items: center; gap: 11px; padding: 7px 20px 7px 8px; border-radius: 99px; }
-.brand svg { width: 34px; height: 34px; flex: none; }
+/* no panel behind the brand: the mark has its own dark tile, and the wordmark carries a shadow that keeps it sharp on any terrain */
+.brand { top: 0; left: 0; display: flex; align-items: center; gap: 12px; padding: 4px 6px; }
+.brand svg { width: 38px; height: 38px; flex: none; border-radius: 10px; box-shadow: 0 0 0 1px rgb(255 255 255 / .1), 0 4px 14px rgb(0 0 0 / .55); }
 /* the wordmark: wide capitals, nothing else. The .2em after the last letter is taken back from the padding. */
-.brand h1 { font-size: 15px; font-weight: 650; letter-spacing: .2em; text-transform: uppercase; line-height: 1; margin-right: -.2em; }
+.brand h1 { font-size: 19px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; line-height: 1; color: #fff;
+  text-shadow: 0 0 2px rgb(0 0 0 / .9), 0 1px 3px rgb(0 0 0 / .85), 0 2px 16px rgb(0 0 0 / .7); }
 
 /* the legend: one quiet wrapped line in the footer of the right column */
 .legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgb(255 255 255 / .08); }
@@ -293,7 +295,7 @@ button:disabled { cursor: default; }
 .now i::before { content: ""; position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: #fff;
   box-shadow: 0 0 0 1px rgb(0 0 0 / .35), 0 0 0 3px color-mix(in srgb, var(--state) 55%, transparent); }
 .chart input { position: absolute; inset: -8px 0 0; width: 100%; height: calc(100% + 8px); margin: 0; opacity: 0; cursor: pointer; }
-.axis { position: relative; height: 16px; margin-top: 3px; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.axis { position: relative; height: 17px; margin-top: 3px; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .axis b { position: absolute; top: 0; transform: translateX(-50%); font-weight: 400; color: var(--muted); }
 .axis span { position: absolute; right: 0; top: 0; color: var(--muted); }
 .axis b:first-of-type { transform: none; margin-left: -1px; }
@@ -310,7 +312,7 @@ button:disabled { cursor: default; }
 .speeds button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
 
 /* ---- the instruments on the right ------------------------------------------------------------------------------ */
-.side h2 { font-size: 12px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.side h2 { font-size: 13px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
 /* a little darker than the other panels: the instruments' colours stay pure on any terrain */
 .hud { padding: 16px; --glass-base: rgb(13 15 19 / .68); }
 .status { display: flex; justify-content: space-between; align-items: center; }
@@ -352,24 +354,30 @@ button:disabled { cursor: default; }
 .gauges { margin-top: 14px; }
 .gauges > div { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid rgb(255 255 255 / .1); }
 .gauges > div:last-child { padding-bottom: 0; }
-.gauges dt { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: rgb(226 232 245 / .64); }
+.gauges dt { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgb(226 232 245 / .64); }
 .gauges dd { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; font-size: 22px; font-weight: 550; line-height: 1.1;
   letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gauges dd.sub { margin-top: 3px; font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--muted); white-space: normal; }
+.gauges dd.sub { margin-top: 4px; font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--muted); white-space: normal; }
 /* heading and position: a compass, then the two readouts */
 .g-nav > div { min-width: 0; }
 .g-nav > div:nth-of-type(1) { flex: 1; }
-.g-pos dd { font-size: 16px; margin-top: 2px; }
-.g-pos dt + dd { margin-top: 4px; }
-.g-pos i { width: 9px; font-style: normal; font-size: 11px; font-weight: 500; color: var(--faint); }
-.compass { flex: none; width: 78px; height: 78px; overflow: visible; }
+.g-pos i { font-style: normal; font-size: 14px; font-weight: 500; color: var(--faint); }
+.g-pos i + .ticker + i { margin-left: 12px; }
+/* the map as a plate with the drone's place on it */
+.locator { flex: none; height: 62px; margin-right: 2px; overflow: hidden; border-radius: 8px; }
+.loc-plate { fill: rgb(6 8 11 / .6); stroke: rgb(255 255 255 / .5); stroke-width: 2.4; vector-effect: non-scaling-stroke; }
+.loc-grid { fill: none; stroke: rgb(255 255 255 / .13); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.loc-at { transition: transform .5s var(--out); }
+.loc-cross { fill: none; stroke: color-mix(in srgb, var(--state) 60%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.loc-dot { fill: var(--state); stroke: #0d0f13; stroke-width: 1.5; transition: fill .6s ease; }
+.loc-ping { fill: none; stroke: var(--state); stroke-width: 1.5; vector-effect: non-scaling-stroke; animation: probe 2s var(--out) infinite; transform-box: fill-box; transform-origin: center; }
+.compass { flex: none; width: 86px; height: 86px; overflow: visible; }
 .compass .bezel { fill: none; stroke: rgb(255 255 255 / .2); stroke-width: 1; }
 .compass .dial { fill: rgb(6 8 11 / .6); stroke: rgb(255 255 255 / .5); stroke-width: 1.2; }
 .compass line { stroke: rgb(255 255 255 / .32); stroke-width: .8; }
 .compass line.mid { stroke: rgb(255 255 255 / .6); stroke-width: 1; }
 .compass line.major { stroke: #fff; stroke-width: 1.8; }
-.compass text { font-size: 6.6px; font-weight: 600; fill: rgb(226 232 245 / .6); }
-.compass text.north { font-size: 8.4px; font-weight: 700; fill: #fff; }
+.compass text.north { font-size: 11.5px; font-weight: 700; fill: #fff; }
 .needle { transition: transform .7s var(--spring); }
 .needle-head { fill: var(--state); transition: fill .6s ease; }
 .needle-head.shade { fill: color-mix(in srgb, var(--state) 62%, #000); }
@@ -424,13 +432,13 @@ button:disabled { cursor: default; }
 .controls h2 span { text-transform: none; letter-spacing: 0; color: var(--faint); }
 .controls h2 span::before { content: "· "; }
 .controls div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.controls button { flex: 1 0 auto; padding: 8px 6px; border-radius: 9px; border: 1px dashed rgb(255 255 255 / .24); font-size: 12px;
+.controls button { flex: 1 0 auto; padding: 8px 6px; border-radius: 9px; border: 1px dashed rgb(255 255 255 / .24); font-size: 13px;
   color: var(--muted); white-space: nowrap; }
 
-.meta { padding: 8px 12px; border-radius: 12px; background: rgb(18 20 24 / .6); font-size: 11.5px; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
+.meta { padding: 8px 12px; border-radius: 12px; background: rgb(18 20 24 / .6); font-size: 12.5px; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / .8); animation: fade 1s ease-out .8s backwards; }
 .meta p { text-wrap: balance; }
 .keys { margin-top: 5px; }
-kbd { display: inline-block; min-width: 20px; margin: 0 3px 0 6px; padding: 1px 5px; border-radius: 6px; font: inherit; font-size: 11px; text-align: center;
+kbd { display: inline-block; min-width: 20px; margin: 0 3px 0 6px; padding: 1px 5px; border-radius: 6px; font: inherit; font-size: 12px; text-align: center;
   color: var(--ink); background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); }
 kbd:first-child { margin-left: 0; }
 kbd + kbd { margin-left: 0; }
