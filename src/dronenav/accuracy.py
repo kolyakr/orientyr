@@ -61,12 +61,13 @@ def _xy(v) -> tuple[float, float]:
 @dataclass(frozen=True)
 class FrameError:
     """One frame. fix_px: the accepted fix's distance from the truth, None when the frame wasn't localized.
-    track_px: the recorded position's distance from the truth, for every frame (LOST ones coast or hold)."""
+    track_px: the recorded position's distance from the truth (LOST frames coast or hold); None before the first
+    fix, when the record has no position yet (M0-12)."""
 
     idx: int
     state: str
     fix_px: float | None
-    track_px: float
+    track_px: float | None
 
 
 @dataclass(frozen=True)
@@ -136,7 +137,8 @@ def score(records: Iterable[Record], truth: dict[int, tuple[float, float]],
         tx, ty = truth[rec.idx]
         tr, fix = rec.track, rec.track.fix
         fix_px = math.hypot(fix.x - tx, fix.y - ty) if fix is not None and fix.accepted else None
-        frames.append(FrameError(rec.idx, tr.state.value, fix_px, math.hypot(tr.x - tx, tr.y - ty)))
+        track_px = math.hypot(tr.x - tx, tr.y - ty) if tr.has_position else None
+        frames.append(FrameError(rec.idx, tr.state.value, fix_px, track_px))
     if not frames:
         raise ValueError(f"none of the run's {missing} frames has a truth: is it the truth of this run?")
     return Accuracy(tuple(frames), float(within_px), missing, len(truth.keys() - {f.idx for f in frames}))

@@ -129,8 +129,8 @@ def _flight(n_unknown=3, n_known=6):
 
 def test_the_trajectory_image_starts_at_the_first_fix(tmp_path):
     d = _run(tmp_path, _flight())
-    out = render_trajectory(d)
-    assert out.exists() and cv2.imread(str(out)) is not None
+    img, _ = render_trajectory(d)
+    assert img.shape == (400, 600, 3)                 # drawn over the whole map, from the first fix on
 
 
 def test_the_video_plan_follows_only_records_with_a_position(tmp_path):

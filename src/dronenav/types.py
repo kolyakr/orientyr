@@ -184,15 +184,19 @@ class TrackState:
     idx: frame index. state: TrackMode (a name such as "LOST" is accepted). x, y: filtered position, map px.
     vx, vy: velocity, map px per second. cov: 2 x 2 position covariance, map px squared.
     fix: the frame's Fix if one was produced (accepted or not), else None.
+
+    No position yet (M0-12): before the first accepted fix there is nothing to report, so x, y, vx, vy and cov
+    are then all None (``has_position`` is False), never a placeholder a renderer would draw as a real point.
+    It is all five or none, and only LOST or RELOCALIZING may lack a position: TRACKING always has one.
     """
 
     idx: int
     state: TrackMode
-    x: float
-    y: float
-    vx: float
-    vy: float
-    cov: np.ndarray
+    x: float | None
+    y: float | None
+    vx: float | None
+    vy: float | None
+    cov: np.ndarray | None
     fix: Fix | None = None
 
     def __post_init__(self):
@@ -200,4 +204,16 @@ class TrackState:
             object.__setattr__(self, "state", TrackMode(self.state))
         except ValueError:
             raise ValueError(f"state must be one of {[m.value for m in TrackMode]}, got {self.state!r}") from None
+        given = [v is not None for v in (self.x, self.y, self.vx, self.vy, self.cov)]
+        if not all(given):
+            if any(given):
+                raise ValueError("x, y, vx, vy and cov are all set or all None (no position yet), not a mix")
+            if self.state is TrackMode.TRACKING:
+                raise ValueError("a TRACKING state needs a position; with none yet it is LOST or RELOCALIZING")
+            return
         object.__setattr__(self, "cov", _array(self.cov, (2, 2), "cov"))
+
+    @property
+    def has_position(self) -> bool:
+        """False before the first fix: x, y, vx, vy and cov are then None."""
+        return self.x is not None

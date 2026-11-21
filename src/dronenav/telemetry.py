@@ -14,6 +14,8 @@ A line is the ``TrackState`` flattened, plus the frame's identity and a few opti
      "backend": "sift", "ms": 42.5, "interpolated": false, "extra": {}}
 
 - ``fix`` is ``null`` when no homography was produced; its ``idx`` is the record's and is not repeated.
+- ``x``, ``y``, ``vx``, ``vy`` and ``cov`` are ``null`` together before the first fix (no position yet, M0-12);
+  the state is then LOST or RELOCALIZING. Consumers draw and score only records with a position.
 - ``backend``, ``ms``, ``interpolated`` and ``extra`` are optional when reading (defaults: null, null, false, {});
   the writer always writes them, so readers in other languages see one fixed shape.
 - ``extra`` holds fields that later milestones add (simulator truth, GPS, search window, events). Unknown
@@ -111,9 +113,10 @@ def record_to_dict(rec: Record) -> dict:
     d = {
         "idx": rec.idx, "t": rec.t, "source": rec.source,
         "state": tr.state.value,
-        "x": _number("x", tr.x), "y": _number("y", tr.y),
-        "vx": _number("vx", tr.vx), "vy": _number("vy", tr.vy),
-        "cov": _array_out("cov", tr.cov),
+        # no position yet (before the first fix): the five are null together (TrackState checks it)
+        "x": _maybe(_number, "x", tr.x), "y": _maybe(_number, "y", tr.y),
+        "vx": _maybe(_number, "vx", tr.vx), "vy": _maybe(_number, "vy", tr.vy),
+        "cov": _maybe(_array_out, "cov", tr.cov),
         "fix": None if tr.fix is None else _fix_to_dict(tr.fix),
         "backend": rec.backend, "ms": rec.ms, "interpolated": rec.interpolated,
         "extra": _json_copy("extra", rec.extra),
@@ -146,14 +149,19 @@ def record_from_dict(d: dict) -> Record:
     except ValueError:
         raise TelemetryError(f"state must be one of {[m.value for m in TrackMode]}, got {d['state']!r}") from None
     track = _built("track", TrackState, idx=idx, state=state,
-                   x=_number("x", d["x"]), y=_number("y", d["y"]),
-                   vx=_number("vx", d["vx"]), vy=_number("vy", d["vy"]),
-                   cov=_array_in("cov", d["cov"], (2, 2)),
+                   x=_maybe(_number, "x", d["x"]), y=_maybe(_number, "y", d["y"]),
+                   vx=_maybe(_number, "vx", d["vx"]), vy=_maybe(_number, "vy", d["vy"]),
+                   cov=_maybe(_array_in, "cov", d["cov"], (2, 2)),
                    fix=None if fix is None else _fix_from_dict(fix, idx))
     ms = d.get("ms")
     return Record(idx=idx, t=_number("t", d["t"]), source=d["source"], track=track,
                   backend=d.get("backend"), ms=None if ms is None else _number("ms", ms),
                   interpolated=d.get("interpolated", False), extra=d.get("extra", {}))
+
+
+def _maybe(convert, name: str, value, *args):
+    """``convert(name, value, *args)``, or None for a null: a position field before the first fix."""
+    return None if value is None else convert(name, value, *args)
 
 
 def _fix_to_dict(f: Fix) -> dict:
