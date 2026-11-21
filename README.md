@@ -210,6 +210,29 @@ python scripts/run.py --help
 Exit code 0 means success. Code 1 means that no frame was found on the map (wrong map?). Code 2 means a bad path
 or option. On an error, the output folder stays as it was.
 
+### Scenarios (M8-01)
+
+Each demo scenario is one command: what the drone sees, against the map it carries. Behind each one is a plain
+`scripts/run.py` call, so the scenario runner adds nothing to the pipeline. `python scripts/scenarios.py list`
+prints the exact `run.py` command of each.
+
+| Scenario | Drone sees | Map it carries | Shows | Command |
+|---|---|---|---|---|
+| A | the 50 task frames | the task map | the deliverable | `python scripts/scenarios.py run A` |
+| B | the phone take (calm) | the task map | the advanced level | `python scripts/scenarios.py run B` |
+| C | post-war ground | post-war map (2025) | the mechanics: jam and recovery | `python scripts/scenarios.py run C` |
+| D | post-war ground | war map (2022) | a war-time map, used after the rebuild | `python scripts/scenarios.py run D` |
+
+```bash
+python scripts/scenarios.py run all      # every scenario; outputs/scenarios/<key>/ and a summary
+python scripts/scenarios.py run C D      # some of them
+```
+
+Each scenario ends as PASS, FAIL or MISSING DATA (its data is not in `data/`, or not made yet, such as the phone
+take before M2-01). Missing data is not a failure unless you pass `--strict`. The report is also written to
+`outputs/scenarios/scenarios.json`. Exit code 0 means that nothing failed. G (controlled drift maps) and the live
+mode were cut in the last-day re-plan (#128).
+
 ## Outputs
 
 `outputs/run1` gets five files:

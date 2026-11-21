@@ -279,6 +279,7 @@ python scripts/preprocess_ablation.py --flight data/irpin/flights/mild/2022 \
     --maps data/irpin/maps/irpin_2025.png data/irpin/maps/irpin_2022.png data/irpin/maps/irpin_2017.png   # M4-05 preprocessing ablation (README notes)
 python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run1   # the deliverable: run folder, trajectory image, video (--tracker none: M1's interim states)
 python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/vo --vo --jam-match 20-29   # M9-02: visual odometry through a simulated map-match jam
+python scripts/scenarios.py run all                       # M8-01: every demo scenario (A-F) from one command each; `list` shows them
 python scripts/run.py --map data/irpin/maps/irpin_2025.png --video data/video/take.mp4 --every 10 --out outputs/phone   # M2-09: a video, every 10th frame (default: ~3 frames/s); frames/ holds the sampled frames
 python scripts/calibrate_camera.py --images "data/video/calib/*.jpg" --cols 9 --rows 6 --out outputs/camera.json   # M9-03: once-off checkerboard calibration -> a camera.json Camera.from_meta reads straight away
 python scripts/run.py --map data/irpin/maps/irpin_2025.png --video data/video/take.mp4 --camera outputs/camera.json --m-per-px 0.1 --out outputs/pose6dof   # M9-03: altitude_m/roll_deg/pitch_deg per accepted fix (--m-per-px: the map's scale, or its own georef sidecar)
