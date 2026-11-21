@@ -21,7 +21,7 @@ but they bring three constraints this module deals with:
 Map features are extracted once and cached on disk under a key made of the map's pixels and the extraction
 parameters (like RootSIFT). A Map Pack (M4-06) holds the same file: when ``pack_dir`` has it, it is read from
 there and nothing is extracted. Windows of the registered map reuse its keypoints. Every returned map point is
-in full-map pixels.
+in full-map pixels, corner-origin like dronenav.types (pixel centres at +0.5).
 
 Weights: DISK ("depth") and LightGlue's DISK weights (both Apache-2.0 / BSD-style) are downloaded by torch.hub on
 first use into ``~/.cache/torch/hub/checkpoints``. SuperPoint's weights are for non-commercial use only, so DISK is
@@ -377,7 +377,11 @@ class LightGlueMatcher:
             return Matches.empty(BACKEND, _ms(t0))
         _, k, pts_frame, pts_map, scores = best
         self._turn = k
-        return Matches(pts_frame.astype(np.float32), pts_map.astype(np.float32), scores, BACKEND, _ms(t0))
+        # DISK and the turns work with pixel centres at integers (OpenCV's convention); dronenav.types puts them
+        # at +0.5. Shifted here, once, on both sides, so the cached map keypoints stay valid (M1-12, #106).
+        half = np.float32(0.5)
+        return Matches(pts_frame.astype(np.float32) + half, pts_map.astype(np.float32) + half, scores, BACKEND,
+                       _ms(t0))
 
     def _lightglue(self, frame: _Features, frame_size: tuple[int, int], chunk: _Chunk):
         """LightGlue between the frame's and the chunk's keypoints: matched indices on each side, and scores."""
