@@ -5,9 +5,10 @@ frame it saw and a HUD (M1-08, M7-02).
     python scripts/render_video.py --run outputs/irpin --out outputs/demo --speed 8 --size 1920x1080
 
 Writes trajectory.mp4 (H.264, plays in QuickTime and browsers) into the run folder, or --out.
---style hud (default) is the mission-control video: trail coloured by confidence, 3-sigma ellipse, state badge,
-event captions, eased camera (see dronenav.viz.hud_video). --style classic is the plain M1 video
-(dronenav.viz.trajectory_video).
+--style hud (default) is the mission-control video: the map with the trail coloured by confidence, the footprint,
+the 3-sigma ellipse and event captions; a side panel with the camera picture projected onto its footprint, match
+lines, the state lamp and the numbers; a timeline of the run (see dronenav.viz.hud_video). The camera is eased and
+never leaves the map. --style classic is the plain M1 video (dronenav.viz.trajectory_video).
 """
 from __future__ import annotations
 
