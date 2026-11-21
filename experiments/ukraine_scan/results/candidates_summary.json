@@ -1,0 +1,987 @@
+[
+ {
+  "aoi": "UKR1",
+  "size_km": 3.0,
+  "center": [
+   47.12418,
+   37.63525
+  ],
+  "square_merc_z16": [
+   10141610,
+   5891563,
+   1856
+  ],
+  "destroyed_severe": 678,
+  "all_labels": 1222,
+  "feasible_area_cells": 15851,
+  "pre": {
+   "date": "2021-06-21",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-07-31",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-06-24",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 40,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "?",
+   "Mariupol"
+  ],
+  "score": 67.2
+ },
+ {
+  "aoi": "UKR1",
+  "size_km": 5.0,
+  "center": [
+   47.13773,
+   37.63525
+  ],
+  "square_merc_z16": [
+   10141002,
+   5890027,
+   3072
+  ],
+  "destroyed_severe": 530,
+  "all_labels": 945,
+  "feasible_area_cells": 3808,
+  "pre": {
+   "date": "2021-06-21",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-07-31",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-06-24",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 40,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "?",
+   "Mariupol"
+  ],
+  "score": 52.6
+ },
+ {
+  "aoi": "UKR10",
+  "size_km": 3.0,
+  "center": [
+   46.839,
+   31.99569
+  ],
+  "square_merc_z16": [
+   9878803,
+   5911060,
+   1824
+  ],
+  "destroyed_severe": 16,
+  "all_labels": 27,
+  "feasible_area_cells": 270,
+  "pre": {
+   "date": "2020-04-12",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-05-21",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-06-05",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 53,
+  "same_sensor": true,
+  "worst_res": 0.5,
+  "cities": [
+   "Mykolaiv"
+  ],
+  "score": 8.7
+ },
+ {
+  "aoi": "UKR10",
+  "size_km": 5.0,
+  "center": [
+   46.82984,
+   32.00908
+  ],
+  "square_merc_z16": [
+   9878803,
+   5911060,
+   3072
+  ],
+  "destroyed_severe": 16,
+  "all_labels": 34,
+  "feasible_area_cells": 4185,
+  "pre": {
+   "date": "2020-04-12",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-05-21",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-06-22",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 71,
+  "same_sensor": true,
+  "worst_res": 0.5,
+  "cities": [
+   "Mykolaiv"
+  ],
+  "score": 7.9
+ },
+ {
+  "aoi": "UKR10",
+  "size_km": 8.0,
+  "center": [
+   46.94599,
+   32.04856
+  ],
+  "square_merc_z16": [
+   9879731,
+   5902228,
+   4896
+  ],
+  "destroyed_severe": 13,
+  "all_labels": 36,
+  "feasible_area_cells": 355,
+  "pre": {
+   "date": "2020-04-12",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-03-15",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-06-22",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 100,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Mykolaiv"
+  ],
+  "score": 4.5
+ },
+ {
+  "aoi": "UKR11",
+  "size_km": 3.0,
+  "center": [
+   48.74951,
+   39.25338
+  ],
+  "square_merc_z16": [
+   10216988,
+   5778456,
+   1920
+  ],
+  "destroyed_severe": 8,
+  "all_labels": 8,
+  "feasible_area_cells": 644,
+  "pre": {
+   "date": "2021-06-19",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-07-07",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": true
+  },
+  "post": {
+   "date": "2024-05-28",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 39,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Shchastia"
+  ],
+  "score": 1.1
+ },
+ {
+  "aoi": "UKR14",
+  "size_km": 3.0,
+  "center": [
+   48.74576,
+   37.60169
+  ],
+  "square_merc_z16": [
+   10140014,
+   5778721,
+   1920
+  ],
+  "destroyed_severe": 7,
+  "all_labels": 15,
+  "feasible_area_cells": 10357,
+  "pre": {
+   "date": "2019-06-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-08-08",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-06-20",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 49,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Kramatorsk"
+  ],
+  "score": 1.7
+ },
+ {
+  "aoi": "UKR14",
+  "size_km": 5.0,
+  "center": [
+   48.75459,
+   37.61508
+  ],
+  "square_merc_z16": [
+   10140014,
+   5777473,
+   3168
+  ],
+  "destroyed_severe": 9,
+  "all_labels": 17,
+  "feasible_area_cells": 2696,
+  "pre": {
+   "date": "2019-06-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-08-08",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-07-10",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 42,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Kramatorsk"
+  ],
+  "score": 2.2
+ },
+ {
+  "aoi": "UKR16",
+  "size_km": 3.0,
+  "center": [
+   46.6841,
+   32.493
+  ],
+  "square_merc_z16": [
+   9901980,
+   5921598,
+   1824
+  ],
+  "destroyed_severe": 20,
+  "all_labels": 33,
+  "feasible_area_cells": 14311,
+  "pre": {
+   "date": "2019-08-19",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-09-25",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-08-26",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 37,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Antonivka",
+   "Kherson"
+  ],
+  "score": 5.0
+ },
+ {
+  "aoi": "UKR16",
+  "size_km": 5.0,
+  "center": [
+   46.66855,
+   32.62415
+  ],
+  "square_merc_z16": [
+   9907484,
+   5922046,
+   3040
+  ],
+  "destroyed_severe": 31,
+  "all_labels": 36,
+  "feasible_area_cells": 39692,
+  "pre": {
+   "date": "2019-08-19",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-09-25",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-07-09",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 77,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Antonivka",
+   "Kherson"
+  ],
+  "score": 6.3
+ },
+ {
+  "aoi": "UKR16",
+  "size_km": 8.0,
+  "center": [
+   46.66243,
+   32.63445
+  ],
+  "square_merc_z16": [
+   9907036,
+   5921534,
+   4896
+  ],
+  "destroyed_severe": 47,
+  "all_labels": 58,
+  "feasible_area_cells": 17892,
+  "pre": {
+   "date": "2019-08-19",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-09-25",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-07-09",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 77,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Antonivka",
+   "Kherson"
+  ],
+  "score": 9.5
+ },
+ {
+  "aoi": "UKR17",
+  "size_km": 3.0,
+  "center": [
+   49.10981,
+   33.42374
+  ],
+  "square_merc_z16": [
+   9945307,
+   5752898,
+   1920
+  ],
+  "destroyed_severe": 1,
+  "all_labels": 3,
+  "feasible_area_cells": 2131,
+  "pre": {
+   "date": "2019-09-07",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-08-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2025-08-17",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 21,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Kremenchuk"
+  ],
+  "score": 0.5
+ },
+ {
+  "aoi": "UKR18",
+  "size_km": 3.0,
+  "center": [
+   46.84795,
+   35.3787
+  ],
+  "square_merc_z16": [
+   10036463,
+   5910450,
+   1824
+  ],
+  "destroyed_severe": 9,
+  "all_labels": 14,
+  "feasible_area_cells": 4586,
+  "pre": {
+   "date": "2014-07-29",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 10.2
+  },
+  "war": {
+   "date": "2022-07-02",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-07-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 27,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Melitopol"
+  ],
+  "score": 0.7
+ },
+ {
+  "aoi": "UKR18",
+  "size_km": 5.0,
+  "center": [
+   46.80731,
+   35.3605
+  ],
+  "square_merc_z16": [
+   10034991,
+   5912594,
+   3072
+  ],
+  "destroyed_severe": 8,
+  "all_labels": 14,
+  "feasible_area_cells": 2271,
+  "pre": {
+   "date": "2014-07-29",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 10.2
+  },
+  "war": {
+   "date": "2022-07-31",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-07-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 4,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Melitopol"
+  ],
+  "score": 0.7
+ },
+ {
+  "aoi": "UKR2",
+  "size_km": 3.0,
+  "center": [
+   50.52214,
+   30.2225
+  ],
+  "square_merc_z16": [
+   9796087,
+   5650849,
+   1984
+  ],
+  "destroyed_severe": 369,
+  "all_labels": 483,
+  "feasible_area_cells": 1299,
+  "pre": {
+   "date": "2020-03-03",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-03-31",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": true
+  },
+  "post": {
+   "date": "2025-04-11",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 8.47
+  },
+  "max_season_gap_days": 38,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Antonov Airport",
+   "Bucha",
+   "Hostomel",
+   "Irpin",
+   "Moschun",
+   "Vorzel"
+  ],
+  "score": 264.0
+ },
+ {
+  "aoi": "UKR2",
+  "size_km": 5.0,
+  "center": [
+   50.5145,
+   30.20774
+  ],
+  "square_merc_z16": [
+   9794743,
+   5650753,
+   3296
+  ],
+  "destroyed_severe": 385,
+  "all_labels": 518,
+  "feasible_area_cells": 1798,
+  "pre": {
+   "date": "2020-03-03",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-03-31",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": true
+  },
+  "post": {
+   "date": "2023-05-28",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "max_season_gap_days": 85,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Antonov Airport",
+   "Bucha",
+   "Hostomel",
+   "Irpin",
+   "Moschun",
+   "Vorzel"
+  ],
+  "score": 211.3
+ },
+ {
+  "aoi": "UKR3",
+  "size_km": 3.0,
+  "center": [
+   49.01864,
+   38.37582
+  ],
+  "square_merc_z16": [
+   10176091,
+   5759383,
+   1920
+  ],
+  "destroyed_severe": 1496,
+  "all_labels": 1715,
+  "feasible_area_cells": 354,
+  "pre": {
+   "date": "2020-10-13",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-07-02",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-09-01",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "max_season_gap_days": 104,
+  "same_sensor": false,
+  "worst_res": 0.46,
+  "cities": [
+   "Lysychansk",
+   "Rubizhne",
+   "Sievierodonetsk"
+  ],
+  "score": 100.9
+ },
+ {
+  "aoi": "UKR3",
+  "size_km": 5.0,
+  "center": [
+   49.02044,
+   38.39024
+  ],
+  "square_merc_z16": [
+   10176123,
+   5758615,
+   3200
+  ],
+  "destroyed_severe": 1638,
+  "all_labels": 1934,
+  "feasible_area_cells": 1317,
+  "pre": {
+   "date": "2018-09-18",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 8.47
+  },
+  "war": {
+   "date": "2022-07-02",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-09-01",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "max_season_gap_days": 78,
+  "same_sensor": false,
+  "worst_res": 0.46,
+  "cities": [
+   "Lysychansk",
+   "Rubizhne",
+   "Sievierodonetsk"
+  ],
+  "score": 92.1
+ },
+ {
+  "aoi": "UKR4",
+  "size_km": 3.0,
+  "center": [
+   47.6025,
+   37.49723
+  ],
+  "square_merc_z16": [
+   10135178,
+   5858654,
+   1856
+  ],
+  "destroyed_severe": 720,
+  "all_labels": 819,
+  "feasible_area_cells": 9988,
+  "pre": {
+   "date": "2021-07-18",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-09-02",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-08-07",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "max_season_gap_days": 46,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Volnovakha"
+  ],
+  "score": 69.3
+ },
+ {
+  "aoi": "UKR4",
+  "size_km": 5.0,
+  "center": [
+   47.60041,
+   37.49139
+  ],
+  "square_merc_z16": [
+   10134282,
+   5858174,
+   3104
+  ],
+  "destroyed_severe": 789,
+  "all_labels": 959,
+  "feasible_area_cells": 2058,
+  "pre": {
+   "date": "2021-07-18",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-09-02",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-08-07",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "max_season_gap_days": 46,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Volnovakha"
+  ],
+  "score": 75.9
+ },
+ {
+  "aoi": "UKR5",
+  "size_km": 3.0,
+  "center": [
+   48.15617,
+   37.72939
+  ],
+  "square_merc_z16": [
+   10145981,
+   5820165,
+   1888
+  ],
+  "destroyed_severe": 117,
+  "all_labels": 181,
+  "feasible_area_cells": 6356,
+  "pre": {
+   "date": "2021-10-16",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "war": {
+   "date": "2022-08-24",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2023-09-25",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 53,
+  "same_sensor": false,
+  "worst_res": 0.46,
+  "cities": [
+   "Avdiivka"
+  ],
+  "score": 10.8
+ },
+ {
+  "aoi": "UKR5",
+  "size_km": 5.0,
+  "center": [
+   48.16968,
+   37.73935
+  ],
+  "square_merc_z16": [
+   10145821,
+   5818597,
+   3136
+  ],
+  "destroyed_severe": 110,
+  "all_labels": 163,
+  "feasible_area_cells": 2335,
+  "pre": {
+   "date": "2014-07-27",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 10.16
+  },
+  "war": {
+   "date": "2022-08-24",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5,
+   "is_unosat_date": false
+  },
+  "post": {
+   "date": "2024-08-20",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5
+  },
+  "max_season_gap_days": 28,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Avdiivka"
+  ],
+  "score": 8.1
+ },
+ {
+  "aoi": "UKR8",
+  "size_km": 3.0,
+  "center": [
+   50.65243,
+   29.93959
+  ],
+  "square_merc_z16": [
+   9782902,
+   5641285,
+   1984
+  ],
+  "destroyed_severe": 78,
+  "all_labels": 134,
+  "feasible_area_cells": 2822,
+  "pre": {
+   "date": "2010-06-11",
+   "sensor": "WV02",
+   "res": 0.5,
+   "acc": 10.199999809265137
+  },
+  "war": {
+   "date": "2022-05-02",
+   "sensor": "WV03",
+   "res": 0.31,
+   "acc": 5,
+   "is_unosat_date": true
+  },
+  "post": {
+   "date": "2023-09-13",
+   "sensor": "GE01",
+   "res": 0.46,
+   "acc": 5
+  },
+  "max_season_gap_days": 134,
+  "same_sensor": false,
+  "worst_res": 0.5,
+  "cities": [
+   "Borodyanka"
+  ],
+  "score": 23.2
+ }
+]
