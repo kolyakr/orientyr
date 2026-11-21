@@ -76,6 +76,21 @@ def test_the_truth_registers_every_frame_within_1_px(city):
         assert d <= 1.0 and resp > 0.3, f"frame {i}: shift {d:.2f} px, response {resp:.2f}"
 
 
+def test_the_truth_heading_is_the_engines_heading_and_points_along_the_route(city):
+    """The heading in truth.jsonl must mean what the engine's pose means (types.py: clockwise from map up), or a
+    heading error measured against it is wrong; and the phone looks ahead, as a drone camera does."""
+    from dronenav.geometry import pose_from_homography
+    sim = _sim(city, seconds=4.0, tilt=1.0, shake=1.0)
+    ahead = []
+    for i in range(0, len(sim) - 1, 3):
+        t = sim.truth(i)
+        d = (pose_from_homography(t.H, CAM.size).heading_deg - t.heading_deg + 180) % 360 - 180
+        assert abs(d) < 0.5, f"frame {i}: heading off by {d:.2f} degrees"        # measured 0.0
+        v = np.subtract(sim.truth(i + 1).center, t.center)
+        ahead.append(abs((math.degrees(math.atan2(v[0], -v[1])) - t.heading_deg + 180) % 360 - 180))
+    assert np.median(ahead) < 20                                                 # measured ~6 with shake
+
+
 def test_tilt_makes_a_perspective_view_and_shake_moves_the_truth(city):
     flat, tilted, shaken = _sim(city), _sim(city, tilt=1.0), _sim(city, shake=1.0)
     pitch = [abs(tilted.truth(i).pitch_deg) + abs(tilted.truth(i).roll_deg) for i in range(len(tilted))]

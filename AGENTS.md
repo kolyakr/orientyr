@@ -250,4 +250,5 @@ python scripts/accuracy.py --run outputs/run1 --truth experiments/data_probe/res
 python scripts/mavlink_log.py --run outputs/irpin --utc-start 2025-06-01T10:00:00Z   # M9-01 stub: GPS_INPUT .tlog (map needs a georef sidecar; --udp HOST:PORT feeds a SITL)
 python scripts/benchmark.py --data data --out outputs/bench   # M6-03: scenarios C-F x presets x speeds x trackers -> bench.json + bench.md (--frames N: quick; --reuse: table only)
 python scripts/spoof_check.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png   # GPS spoof detector: false-alarm rate, detection delay (--run <run dir> to use a real run's fixes)
+python scripts/screen_video.py --map data/hackatons-data/global_map.png --out data/sim_phone/task_calm --preset calm   # M2-08: SIMULATED phone take with exact truth (--sheet PNG: effects)
 ```
