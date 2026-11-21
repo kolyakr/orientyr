@@ -20,6 +20,7 @@ export function sigmaPx(cov: number[][]): number {
 /** Heading in degrees, clockwise from map up: the fix's, else the direction of travel, else unknown. */
 export function headingOf(rec: RunRecord): number | null {
   if (rec.fix?.accepted) return rec.fix.heading_deg;
+  if (!rec.located) return null;
   if (rec.vx === 0 && rec.vy === 0) return null;
   const deg = (Math.atan2(rec.vx, -rec.vy) * 180) / Math.PI; // map y points down, so up is -y
   return ((deg % 360) + 360) % 360;
@@ -31,6 +32,7 @@ export function headingOf(rec: RunRecord): number | null {
  */
 export function courseOf(records: RunRecord[], frame: number): number | null {
   for (let i = Math.min(frame, records.length - 1); i > 0; i--) {
+    if (!records[i].located || !records[i - 1].located) continue; // a borrowed place is not a move
     const dx = records[i].x - records[i - 1].x;
     const dy = records[i].y - records[i - 1].y;
     if (dx !== 0 || dy !== 0) return ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360; // map y points down
@@ -47,13 +49,18 @@ export interface TrailSegment {
   coasting: boolean; // arrived without an accepted fix: dead-reckoned, drawn dashed
 }
 
-/** The route flown so far: one segment per step, from frame 0 up to `frame`. */
+/**
+ * The route flown so far: one segment per step, from the first frame up to `frame`. Frames without a position
+ * are not on the route: it starts at the first located frame and passes over the others.
+ */
 export function trail(records: RunRecord[], frame: number): TrailSegment[] {
   const segs: TrailSegment[] = [];
-  for (let i = 1; i <= Math.min(frame, records.length - 1); i++) {
-    const a = records[i - 1];
+  let a: RunRecord | null = null;
+  for (let i = 0; i <= Math.min(frame, records.length - 1); i++) {
     const b = records[i];
-    segs.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, confidence: confidence(b), coasting: !b.fix?.accepted });
+    if (!b.located) continue;
+    if (a) segs.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, confidence: confidence(b), coasting: !b.fix?.accepted });
+    a = b;
   }
   return segs;
 }
@@ -193,11 +200,13 @@ export function footprintSize(records: RunRecord[]): number {
 
 /**
  * The box around the whole route, in map px, with a margin for what is drawn around the points (the footprint,
- * the labels). The margin never reaches outside the map; a point that drifted off the map still stays inside.
+ * the labels). Frames without a position do not count. The margin never reaches outside the map; a point that drifted off the map still stays inside.
  */
 export function routeBox(records: RunRecord[], [w, h]: [number, number], margin: number): Rect {
-  const xs = records.map((r) => r.x);
-  const ys = records.map((r) => r.y);
+  const located = records.filter((r) => r.located);
+  if (located.length === 0) return { x: 0, y: 0, width: w, height: h }; // never localized: the whole map
+  const xs = located.map((r) => r.x);
+  const ys = located.map((r) => r.y);
   const side = (lo: number, hi: number, size: number) => {
     const from = Math.min(lo, Math.max(0, lo - margin));
     const to = Math.max(hi, Math.min(size, hi + margin), from + 1); // never empty: the scale must stay finite
@@ -242,4 +251,56 @@ export function inViewBox(camera: Camera, [w, h]: [number, number], cell: { widt
     x: (camera.x - (cell.width - w * fit) / 2) / fit,
     y: (camera.y - (cell.height - h * fit) / 2) / fit,
   };
+}
+
+// ---- what a record may carry in `extra` ---------------------------------------------------------------------------
+// `extra` is free-form (telemetry.py): each engine module adds its own keys, and an older run has none of them.
+// These readers check what they read: a value that is missing or of the wrong kind is null, never a crash.
+
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const obj = (v: unknown): Record<string, unknown> | null =>
+  typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
+/** How the matcher searched for this frame (`extra.search`: "global", "window", …). */
+export function searchOf(rec: RunRecord): string | null {
+  return typeof rec.extra.search === "string" && rec.extra.search !== "" ? rec.extra.search : null;
+}
+
+/** Where the drone really was (`extra.truth`, written by synthetic flights), in map px. */
+export function truthOf(rec: RunRecord): { x: number; y: number } | null {
+  const t = obj(rec.extra.truth);
+  return t && finite(t.x) && finite(t.y) ? { x: t.x, y: t.y } : null;
+}
+
+export const GPS_STATES = ["NO_DATA", "OK", "SUSPECT", "SPOOFED"] as const;
+export type GpsState = (typeof GPS_STATES)[number];
+
+export interface GpsReading {
+  x: number | null; // where the GPS receiver says the drone is, in map px; null when it says nothing
+  y: number | null;
+  state: GpsState; // the spoof detector's verdict (M5-07)
+  alarm: boolean;
+  gapPx: number | null; // how far the reading is from the camera's position
+}
+
+/** The GPS reading checked against the camera (`extra.gps`, written by the spoof detector). */
+export function gpsOf(rec: RunRecord): GpsReading | null {
+  const g = obj(rec.extra.gps);
+  if (!g || !GPS_STATES.includes(g.state as GpsState)) return null;
+  const at = finite(g.x) && finite(g.y);
+  return {
+    x: at ? (g.x as number) : null,
+    y: at ? (g.y as number) : null,
+    state: g.state as GpsState,
+    alarm: g.alarm === true,
+    gapPx: finite(g.gap_px) ? g.gap_px : null,
+  };
+}
+
+/** The part of the map the matcher searched for this frame (`extra.predicted_window`: [x0, y0, x1, y1]); null = all of it. */
+export function windowOf(rec: RunRecord): Rect | null {
+  const w = rec.extra.predicted_window;
+  if (!Array.isArray(w) || w.length !== 4 || !w.every(finite)) return null;
+  const [x0, y0, x1, y1] = w as number[];
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
 }

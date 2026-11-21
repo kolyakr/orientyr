@@ -30,6 +30,12 @@ export interface RunRecord {
   t: number; // seconds from the start of the flight
   source: string; // the frame's path, relative to the run folder
   state: TrackMode;
+  /**
+   * False for a frame the tracker had no position for yet (the file holds null for x, y, vx, vy and cov, together:
+   * the frames before the first fix). Such a frame is drawn nowhere; so that no reader has to deal with null,
+   * its numbers are the place of the nearest located frame, standing still, with a zero covariance.
+   */
+  located: boolean;
   x: number;
   y: number;
   vx: number;
@@ -63,30 +69,55 @@ export class RunFormatError extends Error {
 }
 
 const REQUIRED = ["idx", "t", "source", "state", "x", "y", "vx", "vy", "cov", "fix"] as const;
-const NUMBERS = ["idx", "t", "x", "y", "vx", "vy"] as const;
+const POSITION = ["x", "y", "vx", "vy"] as const;
+const FIX_NUMBERS = ["x", "y", "heading_deg", "inliers", "inlier_ratio"] as const; // the ones the console draws or prints
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isPoint = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every(isNumber);
+
+function fixFrom(d: unknown): Fix | null {
+  if (d === null) return null;
+  if (!isObject(d)) throw new RunFormatError("'fix' must be an object or null");
+  for (const k of FIX_NUMBERS) if (!isNumber(d[k])) throw new RunFormatError(`'fix.${k}' must be a finite number`);
+  if (typeof d.accepted !== "boolean") throw new RunFormatError("'fix.accepted' must be true or false");
+  if (!Array.isArray(d.footprint) || d.footprint.length < 3 || !d.footprint.every(isPoint)) {
+    throw new RunFormatError("'fix.footprint' must be the frame's corners on the map: [[x, y], …]");
+  }
+  return { ...(d as unknown as Fix), reject_reason: typeof d.reject_reason === "string" ? d.reject_reason : null };
+}
+
 function recordFrom(d: unknown): RunRecord {
   if (!isObject(d)) throw new RunFormatError("a record must be a JSON object");
   for (const k of REQUIRED) if (d[k] === undefined) throw new RunFormatError(`missing field '${k}'`);
-  for (const k of NUMBERS) {
-    if (typeof d[k] !== "number" || !Number.isFinite(d[k])) throw new RunFormatError(`'${k}' must be a finite number`);
-  }
+  if (!Number.isInteger(d.idx)) throw new RunFormatError("'idx' must be a whole number");
+  if (!isNumber(d.t)) throw new RunFormatError("'t' must be a finite number");
   if (typeof d.source !== "string") throw new RunFormatError("'source' must be a string");
   if (!TRACK_MODES.includes(d.state as TrackMode)) {
     throw new RunFormatError(`state must be one of ${TRACK_MODES.join(", ")}, got ${JSON.stringify(d.state)}`);
   }
-  if (d.fix !== null && (!isObject(d.fix) || !Array.isArray(d.fix.footprint))) {
-    throw new RunFormatError("'fix' must be an object with a footprint, or null");
+  // No position yet: the writer puts null into all five fields. Half a position is a broken file.
+  const located = !([...POSITION, "cov"] as const).every((k) => d[k] === null);
+  if (located) {
+    for (const k of POSITION) {
+      if (!isNumber(d[k])) throw new RunFormatError(`'${k}' must be a finite number (x, y, vx, vy and cov are null only together)`);
+    }
+    const cov = d.cov;
+    if (!Array.isArray(cov) || cov.length !== 2 || !cov.every(isPoint)) {
+      throw new RunFormatError("'cov' must be a 2 x 2 matrix of finite numbers");
+    }
   }
   // The writer always writes the optional fields; the defaults are the reader's side of the same contract.
   return {
     ...(d as unknown as RunRecord),
-    backend: (d.backend as string | null) ?? null,
-    ms: (d.ms as number | null) ?? null,
+    located,
+    ...(located ? {} : { x: 0, y: 0, vx: 0, vy: 0, cov: [[0, 0], [0, 0]] }),
+    fix: fixFrom(d.fix),
+    backend: typeof d.backend === "string" ? d.backend : null,
+    ms: isNumber(d.ms) ? d.ms : null,
     interpolated: d.interpolated === true,
     extra: isObject(d.extra) ? d.extra : {},
   };
@@ -116,6 +147,13 @@ export function parseRunJsonl(text: string): RunRecord[] {
     }
     records.push(rec);
   });
+  // A frame without a position borrows the place of the located frame before it; the frames before the first
+  // located one borrow its place (the first fix).
+  let near = records.find((r) => r.located);
+  for (const r of records) {
+    if (r.located) near = r;
+    else if (near) Object.assign(r, { x: near.x, y: near.y });
+  }
   return records;
 }
 
@@ -138,8 +176,9 @@ export function parseRunInfo(text: string): RunInfo {
     map: d.map,
     map_size: size as [number, number],
     generator: d.generator,
-    frame_size: (d.frame_size as [number, number] | null) ?? null,
-    fps: (d.fps as number | null) ?? null,
-    seed: (d.seed as number | null) ?? null,
+    frame_size: Array.isArray(d.frame_size) && d.frame_size.length === 2 && d.frame_size.every((n) => isNumber(n) && n > 0)
+      ? (d.frame_size as [number, number]) : null,
+    fps: isNumber(d.fps) && d.fps > 0 ? d.fps : null,
+    seed: isNumber(d.seed) ? d.seed : null,
   };
 }

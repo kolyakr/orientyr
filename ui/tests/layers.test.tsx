@@ -8,7 +8,9 @@ import { DEFAULT_LAYERS, LAYERS, type LayerId, availableLayers, consoleUrl, pars
 import { loadRun } from "@/lib/run-server";
 
 const hard = loadRun(path.join(__dirname, "fixtures", "runs", "hard"));
-const fake = loadRun(path.join(__dirname, "fixtures", "run"));
+const fake = loadRun(path.join(__dirname, "fixtures", "run")); // a fake run: its `extra` carries the truth, nothing else
+const one = loadRun(path.join(__dirname, "fixtures", "runs", "one"));
+const nowhere = loadRun(path.join(__dirname, "fixtures", "runs", "nowhere")); // no `extra` at all
 const part = (markup: string, name: string) => markup.includes(`data-part="${name}"`);
 const FRAME = 3; // idx 4 of the hard run: an accepted fix, the truth, a search window and a GPS reading
 
@@ -25,7 +27,8 @@ describe("the layers", () => {
   });
 
   it("offer the truth, the GPS and the search window only for a run that has them", () => {
-    expect(availableLayers(fake.records)).toEqual(["trail", "points", "footprint", "sigma", "camera"]);
+    expect(availableLayers(nowhere.records)).toEqual(["trail", "points", "footprint", "sigma", "camera"]);
+    expect(availableLayers(fake.records)).toEqual(["trail", "points", "footprint", "sigma", "camera", "truth"]);
     expect(availableLayers(hard.records)).toEqual(LAYERS.map((l) => l.id));
   });
 
@@ -93,8 +96,8 @@ describe("the console draws the layers that are on", () => {
       expect(markup).toMatch(new RegExp(`<button[^>]*data-layer="${l.id}"[^>]*aria-pressed="${l.id === "sigma" || l.id === "truth" ? "false" : "true"}"`));
     }
     const plain = html(DEFAULT_LAYERS, fake, 2);
-    for (const id of ["window", "gps", "truth"]) expect(plain).not.toContain(`data-layer="${id}"`);
-    expect(plain).toContain('data-layer="trail"');
+    for (const id of ["window", "gps"]) expect(plain).not.toContain(`data-layer="${id}"`);
+    for (const id of ["trail", "truth"]) expect(plain).toContain(`data-layer="${id}"`);
   });
 
   it("has a run picker with the runs, the open one chosen", () => {

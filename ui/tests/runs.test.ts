@@ -161,7 +161,13 @@ describe("the API serves the chosen run's map and frames", () => {
     expect((await frame(query)).status).toBe(404);
   });
 
-  it.each(["run=..", "run=nope", "run=a/../b", `run=${encodeURIComponent(root)}`])("answers 404 to /api/map?%s", async (query) => {
+  it.each(["run=..", "run=nope", "run=a/../b"])("answers 404 to /api/map?%s", async (query) => {
     expect((await map(query)).status).toBe(404);
+  });
+
+  it("answers 404 to a run given as an absolute path", async () => {
+    // the temp folder exists only while the tests run, so this case cannot sit in the table above
+    expect((await map(`run=${encodeURIComponent(path.join(root, "runs", "a"))}`)).status).toBe(404);
+    expect((await frame(`run=${encodeURIComponent(path.join(root, "runs", "a"))}&src=frames/f0.png`)).status).toBe(404);
   });
 });
