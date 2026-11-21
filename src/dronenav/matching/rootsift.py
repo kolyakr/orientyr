@@ -34,7 +34,8 @@ __all__ = ["RootSiftConfig", "RootSiftMatcher", "rootsift"]
 
 BACKEND = "rootsift"
 # Bump when the extraction or the file layout changes, so old cache files are ignored rather than misread.
-_CACHE_VERSION = 1
+# 2: keypoints in corner-origin pixels and SIFT's precise upscale (M1-12); version-1 files are 0.25 to 0.5 px off.
+_CACHE_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -118,8 +119,11 @@ class RootSiftMatcher:
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         self.map_extractions = 0
         self.map_features_source: str | None = None
+        # precise upscale: SIFT's first octave doubles the image, and without it the keypoints come back a quarter
+        # pixel off (+0.25 px on each axis, measured on a 180° turn; #106). With it they are at OpenCV's pixel
+        # centres, which _extract shifts to ours.
         self._sift = cv2.SIFT_create(nfeatures=cfg.n_features, contrastThreshold=cfg.contrast_threshold,
-                                     edgeThreshold=cfg.edge_threshold)
+                                     edgeThreshold=cfg.edge_threshold, enable_precise_upscale=True)
         self._map: np.ndarray | None = None          # registered map, grayscale
         self._map_feats: _Features | None = None
         self._map_flann: cv2.FlannBasedMatcher | None = None   # index over all map features, built on first use
@@ -184,7 +188,12 @@ class RootSiftMatcher:
         kps, desc = self._sift.detectAndCompute(gray, None)
         if desc is None or not kps:
             return _Features(np.zeros((0, 2), np.float32), np.zeros((0, 128), np.float32))
-        return _Features(np.array([k.pt for k in kps], np.float32), rootsift(desc))
+        # OpenCV puts pixel centres at integers, dronenav.types at +0.5 (origin at the top-left pixel's corner).
+        # Shifted here, once, both the frame's and the map's points are in our convention: the homography, the
+        # fix and the footprint then are too. Left out, the frame side's 0.5 is turned and scaled by the
+        # homography and the map side's is not: up to ~0.5 px of bias at 180°, more at larger scales (#106).
+        pts = np.array([k.pt for k in kps], np.float32) + np.float32(0.5)
+        return _Features(pts, rootsift(desc))
 
     # --- matching ------------------------------------------------------------------------------------------
 
