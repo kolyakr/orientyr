@@ -8,14 +8,42 @@ import { type Run, type RunInfo, RunFormatError, parseRunInfo, parseRunJsonl } f
 
 type Env = Record<string, string | undefined>;
 
+/** Where packed runs (scripts/pack_run.py) lie in the app folder: under public/, so their images are static files. */
+const PACKED = path.join("public", "runs");
+
 /**
  * The folder whose sub-folders are the runs the console can open: ORIENTYR_RUNS, else the folder the one run of
- * ORIENTYR_RUN lies in, else outputs/ in the repo root (`npm run dev` starts in ui/, hence the "..").
+ * ORIENTYR_RUN lies in, else the packed runs of the app (public/runs) when there are any: that is the hosted
+ * console, which has no settings and no repo around it. Else outputs/ in the repo root (`npm run dev` starts in
+ * ui/, hence the ".."). `app` is the app folder, the cwd of `next dev` and `next start`.
  */
-export function runsDir(env: Env = process.env): string {
+export function runsDir(env: Env = process.env, app: string = process.cwd()): string {
   if (env.ORIENTYR_RUNS) return path.resolve(env.ORIENTYR_RUNS);
   if (env.ORIENTYR_RUN) return path.dirname(path.resolve(env.ORIENTYR_RUN));
-  return path.resolve(process.cwd(), "..", "outputs");
+  const packed = path.resolve(app, PACKED);
+  if (listRuns(packed).length > 0) return packed;
+  return path.resolve(app, "..", "outputs");
+}
+
+/** Where the browser gets a run's images: the map's URL and the URL of the folder the frames' `source` is relative to. */
+export interface Assets {
+  map: string;
+  frames: string;
+}
+
+/**
+ * The static URLs of a run's images, or null when they must go through /api/map and /api/frame. Static is only
+ * right for a self-contained run under the app's public/ folder (a packed run): the host then serves the images
+ * itself, with no server code and no size limit on a response. A run whose map lies outside its folder is not
+ * reachable by a static URL, so it keeps the API.
+ */
+export function assetUrls(dir: string, info: RunInfo, app: string = process.cwd()): Assets | null {
+  const pub = path.resolve(app, "public");
+  const run = path.resolve(dir);
+  const map = path.resolve(run, info.map);
+  if (!run.startsWith(pub + path.sep) || !map.startsWith(run + path.sep)) return null;
+  const url = (file: string) => "/" + path.relative(pub, file).split(path.sep).map(encodeURIComponent).join("/");
+  return { map: url(map), frames: url(run) };
 }
 
 const isRun = (dir: string) => existsSync(path.join(dir, "run.json"));
@@ -88,6 +116,7 @@ export interface OpenRun {
   run: Run | null;
   error: string | null; // why there is no run
   mapMissing: boolean;  // the run opens, but its map image is not where run.json says
+  assets: Assets | null; // static URLs of the run's images; null = the API routes
 }
 
 /** Everything the page needs to show a run, or to say why it cannot: this never throws. */
@@ -98,9 +127,12 @@ export function openRun(name: string | null | undefined, env: Env = process.env)
     at = resolveRun(name, env);
     const run = loadRun(at.dir!);
     if (run.records.length === 0) throw new RunFormatError(`run.jsonl in ${at.dir} has no records`);
-    return { ...at, runs, run, error: null, mapMissing: !isFile(mapPath(at.dir!, run.info)) };
+    const assets = assetUrls(at.dir!, run.info);
+    // static images are the host's files, not this server's: on a static host they are not on its disk to check
+    const mapMissing = assets === null && !isFile(mapPath(at.dir!, run.info));
+    return { ...at, runs, run, error: null, mapMissing, assets };
   } catch (e) {
-    return { ...at, runs, run: null, error: (e as Error).message, mapMissing: false };
+    return { ...at, runs, run: null, error: (e as Error).message, mapMissing: false, assets: null };
   }
 }
 
