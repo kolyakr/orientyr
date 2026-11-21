@@ -266,7 +266,8 @@ def test_missing_data_is_reported_not_a_crash(data, tmp_path):
 
 
 def test_a_map_where_nothing_is_found_is_a_zero_row(data, tmp_path):
-    # E flies the 2025 route over the 2017 map; here that map is blank, so no frame can be found on it
+    # E flies the 2025 route over the 2017 map; here that map is unrelated texture: full of features (a blank map
+    # is refused earlier, as unusable), none of them the frames', so no frame can be found on it
     bad = tmp_path / "data"
     for p in data.rglob("*"):
         q = bad / p.relative_to(data)
@@ -274,7 +275,8 @@ def test_a_map_where_nothing_is_found_is_a_zero_row(data, tmp_path):
             q.mkdir(parents=True, exist_ok=True)
         elif p.name != "irpin_2017.png":
             q.symlink_to(p)
-    cv2.imwrite(str(bad / "irpin" / "maps" / "irpin_2017.png"), np.full((1500, 2000), 128, np.uint8))
+    cv2.imwrite(str(bad / "irpin" / "maps" / "irpin_2017.png"), 
+                cv2.resize(np.random.default_rng(3).integers(0, 256, (150, 200), np.uint8), (2000, 1500)))
     res = _bench(bad, tmp_path / "out", "--scenarios", "E", "--presets", "mild", "--speeds", "15",
                  "--trackers", "none", "--boot", "50")
     assert res.returncode == 0, res.stdout + res.stderr
