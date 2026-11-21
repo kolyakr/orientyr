@@ -304,3 +304,33 @@ export function windowOf(rec: RunRecord): Rect | null {
   const [x0, y0, x1, y1] = w as number[];
   return x1 > x0 && y1 > y0 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
 }
+
+/** The camera panel's own size (M7-05): what the viewer asked for, and the room it has. All in CSS px. */
+export interface CameraRoom {
+  /** the smallest panel: the size it has when nobody resized it */
+  min: number;
+  /** the camera frame's width / height: the picture keeps it at any size */
+  aspect: number;
+  /** what the panel adds around the picture: its padding left and right, and padding plus caption above and below */
+  chrome: { x: number; y: number };
+  /** the room on the stage: the widest and the tallest the panel may be (under the top row, inside the map) */
+  max: { width: number; height: number };
+}
+
+/**
+ * The camera panel's width for a wished one: never under the default size, never out of the stage, and the picture
+ * keeps its aspect ratio, so a low stage limits the width too. A stage with no room for more gives the default.
+ */
+export function cameraWidth(want: number | null | undefined, room: CameraRoom): number {
+  const { min, aspect, chrome, max } = room;
+  if (want == null || !Number.isFinite(want) || !(aspect > 0)) return min;
+  const byHeight = (max.height - chrome.y) * aspect + chrome.x; // the width at which the panel is as tall as the room
+  const most = Math.max(min, Math.min(max.width, byHeight));
+  return Math.round(Math.min(Math.max(want, min), most));
+}
+
+/** The width a drag of the corner handle asks for: the handle follows the pointer along the picture's diagonal. */
+export function cameraDrag(startWidth: number, dx: number, dyUp: number, aspect: number): number {
+  const byHeight = dyUp * aspect; // moving up by dy makes the picture dy higher, so dy * aspect wider
+  return startWidth + (Math.abs(dx) >= Math.abs(byHeight) ? dx : byHeight);
+}

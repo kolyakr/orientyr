@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadRun } from "@/lib/run-server";
 import type { RunRecord } from "@/lib/run";
-import { type Camera, type Rect, confidence, courseOf, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail, trailRuns } from "@/lib/view";
+import { type Camera, type Rect, cameraDrag, cameraWidth, confidence, courseOf, events, fitRoute, footprintSize, headingOf, inViewBox, routeBox, sigmaPx, stateRuns, trail, trailRuns } from "@/lib/view";
 
 const run = loadRun(process.env.ORIENTYR_RUN ?? path.join(__dirname, "fixtures", "run"));
 const recs = run.records;
@@ -247,5 +247,49 @@ describe("courseOf", () => {
     expect(courseOf(flight, 0)).toBeNull();
     expect(courseOf(flight, 1)).toBeNull();
     expect(courseOf(flight, 4)).toBeCloseTo(180, 9);
+  });
+});
+
+describe("the camera panel's size (resizable, M7-05)", () => {
+  // a 4:3 camera; the panel adds 14 px beside the picture and 46 px above and below it; a 900 x 600 stage
+  const room = { min: 200, aspect: 4 / 3, chrome: { x: 14, y: 46 }, max: { width: 900, height: 600 } };
+
+  it("is the default size until the viewer asks for another", () => {
+    expect(cameraWidth(null, room)).toBe(200);
+    expect(cameraWidth(undefined, room)).toBe(200);
+    expect(cameraWidth(Number.NaN, room)).toBe(200);
+  });
+
+  it("never gets smaller than the default", () => {
+    expect(cameraWidth(40, room)).toBe(200);
+    expect(cameraWidth(-500, room)).toBe(200);
+    expect(cameraWidth(200, room)).toBe(200);
+  });
+
+  it("grows to what is asked while there is room", () => {
+    expect(cameraWidth(420, room)).toBe(420);
+    expect(cameraWidth(420.4, room)).toBe(420); // whole pixels
+  });
+
+  it("stops at the stage: its width, and the width at which the picture's height fills it", () => {
+    // as tall as the room: picture 600 - 46 = 554 px high, so 554 * 4/3 wide, plus 14
+    expect(cameraWidth(5000, room)).toBe(Math.round(554 * 4 / 3 + 14));
+    expect(cameraWidth(5000, { ...room, max: { width: 500, height: 600 } })).toBe(500);
+    // the picture inside keeps the camera's aspect ratio at the limit
+    const w = cameraWidth(5000, room);
+    expect((w - 14) / (4 / 3) + 46).toBeLessThanOrEqual(600.5);
+  });
+
+  it("stays at the default on a stage with no room for more", () => {
+    expect(cameraWidth(800, { ...room, max: { width: 150, height: 600 } })).toBe(200);
+    expect(cameraWidth(800, { ...room, max: { width: 900, height: 100 } })).toBe(200);
+    expect(cameraWidth(800, { ...room, aspect: 0 })).toBe(200);
+  });
+
+  it("a drag follows the pointer along the diagonal: right or up grows it, left or down shrinks it", () => {
+    expect(cameraDrag(200, 60, 0, 4 / 3)).toBe(260);
+    expect(cameraDrag(200, 0, 30, 4 / 3)).toBe(240);    // 30 px up = 40 px wider at 4:3
+    expect(cameraDrag(200, 10, 60, 4 / 3)).toBe(280);   // the larger of the two moves counts
+    expect(cameraDrag(300, -50, -10, 4 / 3)).toBe(250);
   });
 });

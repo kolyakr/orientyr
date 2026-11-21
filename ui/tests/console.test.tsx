@@ -18,6 +18,13 @@ describe("Console", () => {
       expect(part(html(firstOf("LOST") - 1), name), `no data-part="${name}"`).toBe(true);
     });
 
+  it("has a corner handle to resize the camera picture, at its default size on the first paint", () => {
+    const markup = html(firstOf("LOST") - 1);
+    expect(markup).toMatch(/<button[^>]*data-part="camera-resize"[^>]*aria-label="Resize the camera picture"/);
+    expect(markup).not.toContain("--cam-w"); // the server knows no saved size: the default one
+    expect(markup).not.toMatch(/data-part="camera-resize"[^>]*disabled/); // a view preference: it works on a replay too
+  });
+
   it("draws the map at full map resolution and the trail up to the current frame", () => {
     const frame = firstOf("LOST") - 1;
     const markup = html(frame);
