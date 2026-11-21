@@ -111,6 +111,19 @@ def test_the_records_carry_the_search(tmp_path, world):
     assert (tmp_path / "out" / recs[0].source).is_file()                # sources resolve from the run folder
 
 
+def test_accepted_fixes_report_their_tilt(tmp_path, world):
+    # M2-04: the tilt read off each accepted fix's homography goes into the record; the cut-outs tilt by at most
+    # 3° (``_frames``), so a reported tilt above 5° would be a misread; a jammed frame has no fix, so no tilt
+    frames, _ = _frames(tmp_path, world, n=6, jam=(3,))
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out",
+                "--cache", tmp_path / "cache").returncode == 0
+    for r in read_run(tmp_path / "out" / "run.jsonl"):
+        if r.track.fix is not None and r.track.fix.accepted:
+            assert 0 <= r.extra["tilt_deg"] < 5
+        else:
+            assert "tilt_deg" not in r.extra
+
+
 def test_frames_carry_their_time(tmp_path, world):
     frames, _ = _frames(tmp_path, world, n=4)
     assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--fps", 5,

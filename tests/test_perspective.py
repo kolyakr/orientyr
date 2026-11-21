@@ -11,20 +11,23 @@ no centred camera can produce is known to be wrong.
 - the tilt read off H (the stretch at the image centre is 1 / cos(tilt)) matches the camera to 1e-6°;
 - the focal length read off H (the projective row against the tilt) matches K, without being told K;
 - the ground point under the camera is recovered, with K or with the focal read off H;
-- tilted cameras up to 45° with 40–100° fields of view are accepted, at any heading;
+- tilted cameras up to ~32° with 40–100° fields of view are accepted, at any heading (more tilt with a 100° lens
+  puts the horizon in the frame's corners: that is ``not_convex``, rightly);
 - a perspective without tilt, or along a direction the tilt does not explain, is rejected ("perspective");
 - mirrored, horizon-in-frame and over-stretched tilted homographies keep their M1 reasons;
 - lens distortion: undistorting with the camera's K and dist puts points back where the pinhole puts them.
 """
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 
 import cv2
 import numpy as np
 import pytest
-from dronenav.camera import Camera
 
+from dronenav.camera import Camera
 from dronenav.geometry import (
     PERSPECTIVE,
     GeometryConfig,
@@ -35,6 +38,7 @@ from dronenav.geometry import (
 )
 from dronenav.sim import CutoutPose, cutout_homography
 
+ROOT = Path(__file__).resolve().parents[1]
 W, H_ = 1024, 768
 FRAME = (W, H_)
 GOOD = {"inliers": 200, "reproj_rmse": 0.5}
@@ -123,7 +127,7 @@ def test_nadir_point_without_any_focal_is_unknown_for_a_tilted_view_without_pers
 # --- accepted: tilted cameras ------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("yaw", [0.0, 95.0, 260.0])
-@pytest.mark.parametrize("pitch,roll", [(10, 0), (15, -8), (25, 8), (40, 15)])
+@pytest.mark.parametrize("pitch,roll", [(10, 0), (15, -8), (25, 8), (30, 10)])
 @pytest.mark.parametrize("hfov", [40.0, 70.0, 100.0])
 def test_tilted_cameras_are_accepted(yaw, pitch, roll, hfov):
     H, _ = camera_h(yaw, pitch, roll, hfov=hfov)
@@ -249,11 +253,115 @@ def test_undistort_image_straightens_a_line():
     img = np.zeros((768, 1024), np.uint8)
     bent = _distort(line, cam.K, cam.dist)
     cv2.polylines(img, [np.round(bent * 16).astype(np.int32)], False, 255, 3, cv2.LINE_AA, shift=4)
-    ys, _ = np.nonzero(cam.undistort_image(img)[:, 100:924] > 128)
-    assert np.ptp(ys) <= 4 and abs(np.median(ys) - 80) <= 1.0     # flat to the line's own width
+    def rows(im):          # the line's row in each column: the intensity centroid (sub-pixel, width-free)
+        band = im[:, 100:924].astype(float)
+        return (band * np.arange(im.shape[0])[:, None]).sum(0) / band.sum(0)
+
+    assert np.abs(rows(img) - 80).max() > 5                       # the lens bends it by several px...
+    assert np.abs(rows(cam.undistort_image(img)) - 80).max() < 0.5  # ...undistorted, it is straight again
 
 
 def test_undistort_image_rejects_another_size():
     cam = Camera(K_IRPIN, np.array(DIST_IRPIN), (1024, 768))
     with pytest.raises(ValueError, match="1024 x 768"):
         cam.undistort_image(np.zeros((480, 640), np.uint8))
+
+
+# --- the frames of a calibrated flight come undistorted (io.FolderSource) ---------------------------------------
+
+def _calibrated_flight(tmp_path, camera=True, size=(1024, 768), meta_in="parent"):
+    """A flight folder like Irpin's: frames/frame_000N.png with meta.json next to frames/ (or inside it)."""
+    flight = tmp_path / "flight"
+    frames = flight / "frames"
+    frames.mkdir(parents=True)
+    rng = np.random.default_rng(5)
+    raws = []
+    for i in range(2):
+        img = cv2.GaussianBlur(rng.integers(0, 255, (size[1], size[0], 3), dtype=np.uint8), (7, 7), 0)
+        cv2.imwrite(str(frames / f"frame_{i:04d}.png"), img)
+        raws.append(img)
+    meta = {"fps": 30}
+    if camera:
+        meta["camera"] = {"size": [1024, 768], "K": K_IRPIN.tolist(), "dist": DIST_IRPIN}
+    (flight / "meta.json" if meta_in == "parent" else frames / "meta.json").write_text(json.dumps(meta))
+    return frames, raws
+
+
+@pytest.mark.parametrize("meta_in", ["parent", "folder"])
+def test_a_calibrated_flight_is_undistorted_frame_by_frame(tmp_path, meta_in):
+    from dronenav.io import FolderSource
+    frames, raws = _calibrated_flight(tmp_path, meta_in=meta_in)
+    src = FolderSource(frames)
+    assert src.camera is not None and src.camera.size == (1024, 768)
+    cam = Camera(K_IRPIN, np.array(DIST_IRPIN), (1024, 768))
+    for f, raw in zip(src, raws, strict=True):
+        assert np.array_equal(f.image, cam.undistort_image(raw))
+
+
+def test_undistortion_can_be_turned_off(tmp_path):
+    from dronenav.io import FolderSource
+    frames, raws = _calibrated_flight(tmp_path)
+    src = FolderSource(frames, undistort=False)
+    assert src.camera is None
+    for f, raw in zip(src, raws, strict=True):
+        assert np.array_equal(f.image, raw)
+
+
+def test_a_flight_without_a_camera_is_read_as_is(tmp_path):
+    from dronenav.io import FolderSource
+    frames, raws = _calibrated_flight(tmp_path, camera=False)
+    src = FolderSource(frames)
+    assert src.camera is None and src.fps == 30
+    for f, raw in zip(src, raws, strict=True):
+        assert np.array_equal(f.image, raw)
+
+
+def test_frames_of_another_size_than_the_calibration_are_an_error(tmp_path):
+    from dronenav.io import FolderSource
+    frames, _ = _calibrated_flight(tmp_path, size=(640, 480))
+    with pytest.raises(ValueError, match="1024 x 768"):
+        list(FolderSource(frames))
+
+
+def test_a_broken_camera_block_names_the_file(tmp_path):
+    from dronenav.io import FolderSource
+    frames, _ = _calibrated_flight(tmp_path)
+    (frames.parent / "meta.json").write_text(json.dumps({"fps": 30, "camera": {"size": [1024, 768]}}))
+    with pytest.raises(ValueError, match="meta.json"):
+        FolderSource(frames)
+
+
+# --- the run reports the tilt (pipeline -> run.jsonl extra["tilt_deg"]) -----------------------------------------
+
+IRPIN = ROOT / "data" / "irpin"
+
+
+@pytest.mark.data
+def test_irpin_tilt_is_reported_and_matches_the_truth(tmp_path):
+    """The mild 2025 flight on its own map, 20 keyframes, undistorted from meta.json: every frame is accepted
+    (the perspective check lets real tilt through) and the reported tilt matches the truth's pitch and roll.
+    Tolerance: on 80 undistorted SIFT fixes the tilt error was 0.05° median, 0.61° max; 0.5° / 1.5° leave room
+    for a different subset without letting a wrong tilt (several degrees) through."""
+    from dronenav.pipeline import localize_run
+    from dronenav.telemetry import read_run
+
+    flight = IRPIN / "flights" / "mild" / "2025"
+    the_map = IRPIN / "maps" / "irpin_2025.png"
+    if not (flight / "truth.jsonl").is_file() or not the_map.is_file():
+        pytest.skip("needs data/irpin (mild 2025 flight and map)")
+    sub = tmp_path / "flight" / "frames"
+    sub.mkdir(parents=True)
+    for p in sorted((flight / "frames").glob("frame_*.png"))[:20]:
+        (sub / p.name).symlink_to(p)
+    (sub.parent / "meta.json").symlink_to(flight / "meta.json")
+    localize_run(the_map, sub, tmp_path / "out", cache_dir=ROOT / "outputs" / "cache")
+
+    truth = {}
+    for line in (flight / "truth.jsonl").read_text().splitlines():
+        t = json.loads(line)
+        truth[t["i"]] = math.degrees(math.acos(math.cos(math.radians(t["pitch_deg"]))
+                                               * math.cos(math.radians(t["roll_deg"]))))
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    assert len(recs) == 20 and all(r.track.fix is not None and r.track.fix.accepted for r in recs)
+    err = np.array([abs(r.extra["tilt_deg"] - truth[r.idx]) for r in recs])
+    assert np.median(err) <= 0.5 and err.max() <= 1.5
