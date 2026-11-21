@@ -158,6 +158,35 @@ a finished run.
 | Irpin mild, real motion | 25.4 → 11.1 px | 55.9 → 23.2 px |
 | Irpin harsh, real motion | 55.8 → 21.8 px | 123.5 → 47.7 px |
 
+### GPS spoof detector (M5-07)
+
+A jammed receiver goes silent; a spoofed one lies, and a careful spoofer drags the position away slowly.
+[src/dronenav/tracking/spoof.py](src/dronenav/tracking/spoof.py) compares each GPS reading with the filter's
+position, which comes from the ground and cannot be spoofed:
+- **Normalised gap:** the Mahalanobis distance d² of GPS against the filter, with the filter's covariance plus the
+  GPS noise. The same 30 px is an alarm when the filter is sure to 2 px and nothing while it coasts.
+- **N frames in a row:** one frame with d² > 13.8 (99.9%) is `SUSPECT`; 5 in a row raise the alarm (`SPOOFED`),
+  and 5 good ones in a row clear it. A short glitch passes.
+- The reading and the verdict go into the telemetry as `extra["gps"]` of each `run.jsonl` record.
+
+Measured with [scripts/spoof_check.py](scripts/spoof_check.py) on the Irpin flight mild/2022 (442 keyframes, one
+per second, 0.76 m/px). The filter is fed by the engine's real fixes against the 2022 map. The GPS is simulated
+([src/dronenav/sim/gps.py](src/dronenav/sim/gps.py)): the truth plus white Gaussian noise of 3 m per axis, and for
+the spoofed flights a walk-off on top, starting at a random time and going in a random direction. 200 seeded
+flights per row:
+
+| GPS track | Detected | False alarm | Delay, median | Delay, p95 | Delay, max | Drift at the alarm (median) |
+|---|---|---|---|---|---|---|
+| honest | – | 0/200 flights, 0/88400 frames | – | – | – | – |
+| walk-off 0.5 m/s | 200/200 | 0/200 | 30 s | 35 s | 38 s | 15 m |
+| walk-off 1 m/s | 200/200 | 0/200 | 17 s | 20 s | 22 s | 17 m |
+| walk-off 2 m/s | 200/200 | 0/200 | 10 s | 13 s | 14 s | 20 m |
+| walk-off 5 m/s | 200/200 | 0/200 | 7 s | 8 s | 8 s | 35 m |
+
+The drone is told before the spoofer has moved it 15 to 35 m. The limit is the GPS noise, not the filter: the gap
+must reach about 3.7 σ of 3 m before a frame counts. The simulated noise is white; a real receiver's error also
+drifts, which this table does not test.
+
 ### Accuracy (M1-10)
 
 Every frame's position against the truth, measured with
