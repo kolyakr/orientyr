@@ -415,20 +415,34 @@ button:disabled { cursor: default; }
 /* numbers tick: a changed character rises into place */
 .ticker > span:last-child > span { display: inline-block; white-space: pre; animation: tick .34s var(--out); }
 
-.log { flex: 1; min-height: 96px; padding: 14px 8px 8px; display: flex; flex-direction: column; }
-.log h2 { padding: 0 8px 7px; }
-.log ol { overflow: auto; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .25) transparent; }
-.log button { width: 100%; display: grid; grid-template-columns: 54px 1fr; gap: 8px; padding: 7px 8px; border-radius: 9px;
-  text-align: left; font-size: 13.5px; line-height: 1.3; transition: background-color .25s ease, transform .4s var(--spring); }
-.log button:hover { background: rgb(255 255 255 / .07); }
+/* the mission log is a timeline: time, a node on a rail, the event as a title and a note */
+.log { flex: 1; min-height: 96px; padding: 14px 8px 6px; display: flex; flex-direction: column; }
+.log h2 { display: flex; justify-content: space-between; align-items: baseline; padding: 0 8px 2px; }
+.log h2 span { text-transform: none; letter-spacing: 0; color: var(--faint); font-variant-numeric: tabular-nums; }
+.log ol { position: relative; overflow: auto; padding: 6px 0; scrollbar-width: none;
+  mask-image: linear-gradient(transparent, #000 10px calc(100% - 18px), transparent); }
+.log li { position: relative; transition: opacity .4s ease; }
+/* the rail: from under this node to just above the next one; dashed where the flight has not been yet */
+.log li:not(:last-child)::before { content: ""; position: absolute; left: 75px; top: 27px; bottom: -8px; width: 2px; border-radius: 1px;
+  background: rgb(255 255 255 / .2); pointer-events: none; }
+.log li[data-ahead]::before, .log li[aria-current]::before { background: repeating-linear-gradient(rgb(255 255 255 / .22) 0 3px, transparent 3px 7px); }
+.log button { width: 100%; display: grid; grid-template-columns: 54px 11px 1fr; gap: 8px; padding: 8px; border-radius: 10px;
+  text-align: left; line-height: 1.3; transition: background-color .25s ease, transform .4s var(--spring); }
+.log button:hover { background: rgb(255 255 255 / .06); }
 .log button:active { transform: scale(.98); transition-duration: .25s, .08s; }
-.log time { color: var(--muted); font-variant-numeric: tabular-nums; }
-.log span { position: relative; padding-left: 16px; }
-.log span::before { content: ""; position: absolute; left: 0; top: .4em; width: 7px; height: 7px; border-radius: 50%; background: var(--state); }
-.log li { transition: opacity .4s ease; }
-.log li[data-ahead] { opacity: .62; }
-.log li[aria-current] button { background: color-mix(in srgb, var(--state) 14%, rgb(255 255 255 / .06)); font-weight: 550;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--state) 30%, transparent); animation: arrive .7s var(--spring); }
+.log time { font-size: 13px; line-height: 19px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.log .node { position: relative; width: 11px; height: 11px; margin-top: 4px; border-radius: 50%; background: var(--state); }
+.log strong { display: block; font-size: 14.5px; font-weight: 550; line-height: 19px; color: rgb(240 243 250 / .88); }
+.log small { display: block; margin-top: 1px; font-size: 13px; color: var(--muted); }
+/* not reached yet: a hollow node, quieter text */
+.log li[data-ahead] { opacity: .6; }
+.log li[data-ahead] .node { background: none; box-shadow: inset 0 0 0 2px var(--state); }
+/* now: no box around the row. The node glows and sends a ring, the title is white, the time takes the state colour */
+.log li[aria-current] button { background: linear-gradient(90deg, color-mix(in srgb, var(--state) 13%, transparent), transparent 85%); animation: arrive .7s var(--spring); }
+.log li[aria-current] strong { font-weight: 650; color: #fff; }
+.log li[aria-current] time { color: var(--state); font-weight: 600; }
+.log li[aria-current] .node { box-shadow: 0 0 10px 1px color-mix(in srgb, var(--state) 70%, transparent); }
+.log li[aria-current] .node::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--state); animation: ping 1.8s var(--out) infinite; }
 
 .controls { padding: 14px 16px 16px; }
 .controls h2 span { text-transform: none; letter-spacing: 0; color: var(--faint); }

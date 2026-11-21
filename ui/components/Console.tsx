@@ -67,6 +67,15 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   const log = useMemo(() => events(run.records), [run]);
   const maxPairs = useMemo(() => Math.max(1, ...run.records.map((r) => r.fix?.inliers ?? 0)), [run]);
   const lastEvent = log.findLast((e) => e.frame <= frame);
+  // the log keeps the current event in sight: it scrolls inside its own list only
+  const logList = useRef<HTMLOListElement>(null);
+  const lastEventFrame = lastEvent?.frame;
+  useEffect(() => {
+    const list = logList.current;
+    const li = list?.querySelector<HTMLElement>("[aria-current]");
+    if (!list || !li || typeof list.scrollTo !== "function") return;
+    list.scrollTo({ top: li.offsetTop - (list.clientHeight - li.offsetHeight) / 2, behavior: "smooth" });
+  }, [lastEventFrame]);
 
   const jump = useCallback((f: number) => {
     setPlaying(false);
@@ -389,17 +398,22 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         </section>
 
         <section data-part="events" className="log glass">
-          <h2>Mission log</h2>
-          <ol>
-            {log.map((e) => (
-              <li key={e.frame} data-state={e.state} data-ahead={e.frame > frame || undefined}
-                  aria-current={e === lastEvent || undefined}>
-                <button type="button" onClick={() => jump(e.frame)}>
-                  <time>{clock(e.t)}</time>
-                  <span>{sentence(e.text)}</span>
-                </button>
-              </li>
-            ))}
+          <h2>Mission log <span>{log.filter((e) => e.frame <= frame).length} of {log.length}</span></h2>
+          {/* a timeline: one node per event on a rail, the event itself as a title and a note */}
+          <ol ref={logList}>
+            {log.map((e) => {
+              const [title, note] = sentence(e.text).split(/:\s*/, 2);
+              return (
+                <li key={e.frame} data-state={e.state} data-ahead={e.frame > frame || undefined}
+                    aria-current={e === lastEvent || undefined}>
+                  <button type="button" onClick={() => jump(e.frame)}>
+                    <time>{clock(e.t)}</time>
+                    <i className="node" />
+                    <span><strong>{title}</strong>{note && <small>{note}</small>}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </section>
 
