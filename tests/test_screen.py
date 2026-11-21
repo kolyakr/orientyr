@@ -32,9 +32,9 @@ from dronenav.video import VideoSource
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "screen_video.py"
 
-SCREEN = Screen(size=(1280, 720))            # a smaller monitor at the default 0.233 mm pitch
+SCREEN = Screen(size=(2400, 1600))           # the whole test map at 100 %, at the default 0.233 mm pitch
 CAM = Camera(size=(320, 180), fps=10.0)
-DIST = 50.0                                  # mm: the view is ~300 screen px wide, ~1 camera px per screen px
+DIST = 40.0                                  # mm: the view is ~240 screen px wide, ~1.3 camera px per screen px
 KW = {"screen": SCREEN, "camera": CAM, "distance_mm": DIST}
 
 
@@ -55,19 +55,19 @@ def _shift(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
 
 @pytest.fixture(scope="module")
 def city(city_map):
-    return city_map(1600, 1000)
+    return city_map(2400, 1600)       # room for a 25-degree tilt to stay on the screen (view_contained)
 
 
 @pytest.fixture(scope="module")
 def grey():
-    return np.full((1000, 1600, 3), 128, np.uint8)       # flat: anything that appears is the effect itself
+    return np.full((1600, 2400, 3), 128, np.uint8)       # flat: anything that appears is the effect itself
 
 
 # --- the truth is exact --------------------------------------------------------------------------------------
 
 def test_the_truth_registers_every_frame_within_1_px(city):
     sim = _sim(city, tilt=1.0, shake=1.0)
-    assert len(sim) == 20 and sim.fps == 10.0
+    assert len(sim) == 20 and sim.fps == 10.0 and sim.view_contained
     for i in range(0, len(sim), 3):
         t = sim.truth(i)
         ref = render_cutout(city, t.H, CAM.size)                     # the map as the truth says the frame sees it
@@ -90,7 +90,8 @@ def test_the_rolling_shutter_shears_the_frame_but_the_centre_rows_hold(city):
     h = CAM.size[1]
     i = 10
     ref, img = _gray(render_cutout(city, sim.truth(i).H, CAM.size)), _gray(sim.frame(i))
-    mid, top = slice(int(h * 0.4), int(h * 0.6)), slice(0, int(h * 0.2))
+    # the middle 10 rows: across a wider band the shutter itself stretches rows by up to ~6 px at this speed
+    mid, top = slice(h // 2 - 5, h // 2 + 5), slice(0, int(h * 0.2))
     assert _shift(ref[mid], img[mid])[0] <= 1.0          # the truth is the centre row's moment
     assert _shift(ref[top], img[top])[0] > 3.0           # the top row was read ~45 ms earlier, at 120 mm/s
 
@@ -147,8 +148,12 @@ def test_edge_lets_the_view_run_past_the_screen(city):
         x0, y0 = sim.window_origin
         return sum(bool(((sim.truth(i).footprint < (x0, y0)) | (sim.truth(i).footprint > (x0 + w, y0 + h))).any())
                    for i in range(len(sim)))
-    assert past(_sim(city, seconds=6.0)) == 0
-    assert past(_sim(city, seconds=6.0, edge=1.0)) > 0
+    # a 1200 x 800 screen: the route reaches its edges within 6 s whatever the seed (on the big test screen a
+    # route can stay central that long)
+    kw = {**KW, "screen": Screen(size=(1200, 800))}
+    for seed in (0, 1, 2):
+        assert past(ScreenSim(city, seconds=6.0, seed=seed, **kw)) == 0
+        assert past(ScreenSim(city, seconds=6.0, seed=seed, effects={"edge": 1.0}, **kw)) > 0
 
 
 def test_a_covered_lens_is_dark_and_flagged(city):
@@ -256,7 +261,7 @@ def _cli(*args):
 def test_the_script_writes_a_take(tmp_path, city):
     cv2.imwrite(str(tmp_path / "map.png"), city)
     r = _cli("--map", tmp_path / "map.png", "--out", tmp_path / "take", "--preset", "hard", "--seconds", 1,
-             "--size", "320x180", "--fps", 10, "--screen", "1280x720", "--distance", DIST, "--effect", "glare=0.2")
+             "--size", "320x180", "--fps", 10, "--screen", "2400x1600", "--distance", DIST, "--effect", "glare=0.2")
     assert r.returncode == 0, r.stderr
     meta = json.loads((tmp_path / "take" / "meta.json").read_text())
     assert meta["preset"] == "hard" and meta["effects"]["glare"] == 0.2 and meta["frames"] == 10
