@@ -21,6 +21,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from tests.conftest import _city  # noqa: F401  (the map lives in conftest now; other test modules import it from here)
 
 from dronenav.sim import CutoutSource, cutout_route
 from dronenav.telemetry import read_run, read_run_info
