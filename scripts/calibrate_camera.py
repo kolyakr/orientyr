@@ -21,6 +21,7 @@ from pathlib import Path
 import cv2
 
 from dronenav.calibration import calibrate
+from dronenav.config import add_shared_args, init_cli
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,7 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--square", type=float, default=1.0,
                     help="checkerboard square's real size; does not change K or dist (default: 1.0)")
     ap.add_argument("--out", required=True, help="camera.json to write")
+    add_shared_args(ap, device=False)   # only reads photos and writes JSON: logging yes, no device to pick
     a = ap.parse_args(argv)
+    init_cli(a)
 
     paths = sorted(glob.glob(a.images))
     if not paths:
