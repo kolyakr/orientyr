@@ -269,6 +269,8 @@ python scripts/preprocess_ablation.py --flight data/irpin/flights/mild/2022 \
     --maps data/irpin/maps/irpin_2025.png data/irpin/maps/irpin_2022.png data/irpin/maps/irpin_2017.png   # M4-05 preprocessing ablation (README notes)
 python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run1   # the deliverable: run folder, trajectory image, video (--tracker none: M1's interim states)
 python scripts/run.py --map data/irpin/maps/irpin_2025.png --video data/video/take.mp4 --every 10 --out outputs/phone   # M2-09: a video, every 10th frame (default: ~3 frames/s); frames/ holds the sampled frames
+python scripts/run.py --map data/irpin/maps/irpin_2022.png --frames data/irpin/flights/mild/2022/frames --matcher xfeat --out outputs/xfeat   # M4-03: the XFeat backend (--device cpu|mps|cuda; the first run downloads its weights into the torch cache)
+python scripts/xfeat_timing.py --flight data/irpin/flights/mild/2022 --map data/irpin/maps/irpin_2022.png   # M4-03: ms per frame, XFeat against RootSIFT (no arguments: synthetic cut-outs, no data/)
 python scripts/accuracy.py --run outputs/run1 --truth experiments/data_probe/results/probe.json   # M1-10: error per frame vs truth (add --map/--frames to localize first)
 python scripts/mavlink_log.py --run outputs/irpin --utc-start 2025-06-01T10:00:00Z   # M9-01 stub: GPS_INPUT .tlog (map needs a georef sidecar; --udp HOST:PORT feeds a SITL)
 python scripts/benchmark.py --map data/map.png

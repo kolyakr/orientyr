@@ -356,6 +356,57 @@ What the numbers say:
 
 The defaults follow this: CLAHE and scale normalisation on, grey-world off.
 
+### XFeat backend (M4-03)
+
+[src/dronenav/matching/xfeat.py](src/dronenav/matching/xfeat.py) is a second `Matcher`, `XFeatMatcher`, behind the
+same interface as RootSIFT: `--matcher xfeat` in `scripts/run.py` and `scripts/accuracy.py`, with `--device`
+(`cpu`, `mps`, `cuda`). The network is kornia's `XFeat` (64-D descriptors); its weights (about 6 MB) are downloaded
+on the first run into the torch cache (`~/.cache/torch/hub/checkpoints/xfeat.pt`, or the path in
+`DRONENAV_XFEAT_WEIGHTS`) and never live in the repo. Matching is mutual nearest neighbour on the cosine, with a
+floor (0.82) and a ratio test (0.9). What the matcher adds around the network:
+- **Heading.** XFeat stands only about 25 degrees of rotation, so the frame is tried at 8 turns of 45 degrees and
+  the turn with the most matches wins. A turn that wins clearly (twice the matches of any turn that is not its
+  neighbour) is remembered and tried first for the next frame; the other turns run only when it stops working.
+- **Map features once.** The map is described in overlapping tiles (1024 px, 192 px margin, a budget of keypoints
+  per megapixel) and cached on disk; a search window reuses the cached keypoints that fall inside it.
+- **Scale.** XFeat is not scale-invariant either. It does best with the frame shrunk to the map's own resolution
+  (1.0 map px per frame px), not to the 0.65 of the M1-03 rule: 947 against 496 matches on 20 frames.
+
+Measured with `python scripts/xfeat_timing.py --flight data/irpin/flights/mild/2022 --map
+data/irpin/maps/irpin_2022.png` (and `--device mps`): 60 consecutive keyframes of the Irpin flight `mild/2022`, each
+against a 1600 px window of its own 2022 map around the true position, so the rows differ only in the matcher. The
+time is the whole match call (resize, frame features, matching); the map's features are prepared before. Apple M5,
+10 cores, torch 2.15, kornia 0.9.2. "Localised" is an accepted fix within 10 px of the truth.
+
+| matcher | device | frame px | localised | wrong fixes | matches (median) | inliers (median) | error px (median) | ms/frame (median) | ms/frame (mean) | network passes/frame |
+|---|---|---|---|---|---|---|---|---|---|---|
+| RootSIFT | cpu | 804 x 603 | 60/60 | 0 | 1132 | 1078 | 0.68 | 262 | 292 | - |
+| XFeat | cpu | 522 x 392 | 60/60 | 0 | 791 | 744 | 1.17 | 155 | 221 | 1.35 |
+| XFeat, every turn each frame | cpu | 522 x 392 | 60/60 | 0 | 791 | 744 | 1.12 | 1514 | 1652 | 8.00 |
+| XFeat | mps | 522 x 392 | 60/60 | 0 | 791 | 744 | 1.17 | 131 | 185 | 1.35 |
+| XFeat, every turn each frame | mps | 522 x 392 | 60/60 | 0 | 791 | 744 | 1.12 | 909 | 997 | 8.00 |
+
+Map features for the whole 3936 x 3936 map, once, then read from the cache: RootSIFT 2.8 s, XFeat 3.7 s on CPU and
+4.2 s on MPS.
+
+What the numbers say:
+- While tracking, XFeat is faster per frame than RootSIFT: about 0.6 of its median time on CPU and on MPS
+  alike (RootSIFT took 216 ms in the MPS run, XFeat 131 ms). The margin is modest, not an order of magnitude, and the mean is closer
+  (221 against 292 ms) because a frame whose remembered turn fails pays for all the turns.
+- That price is the weak point: with nothing remembered a frame costs 8 network passes, 1.5 s on CPU and 0.9 s on
+  MPS, 4 to 6 times RootSIFT. XFeat suits the tracking path, where the heading is known; for the first frame and
+  after a loss RootSIFT is the cheaper matcher.
+- It is a little less exact: 1.17 px median error against 0.68 px, with about 30% fewer inliers. Both localise
+  60 of 60 with no wrong fix on the same-epoch map. The cross-epoch maps (2025, 2017) were not measured here.
+- The timings are from a machine busy with other work, and they move with the load: an earlier CPU run of the
+  same command gave 748 ms for RootSIFT and 226 ms for XFeat. The order of the rows was the same in every run.
+- End to end the picture is different. `scripts/run.py` on the first 8 frames of the flight, whole-map search,
+  nothing cached: 25 s with `--matcher xfeat` against 8 s with RootSIFT, with fixes within 1 px of each other. The
+  search (M1-05) probes several frame scales and whole-map windows, which XFeat pays for turn by turn. Nothing
+  outside the matcher was tuned for it.
+- LighterGlue (kornia has its XFeat weights) was not evaluated: the mutual nearest neighbour already localises
+  every frame here, and LighterGlue is not rotation-invariant either.
+
 ### MAVLink `GPS_INPUT` (M9-01, a stub, not flight-tested)
 
 [scripts/mavlink_log.py](scripts/mavlink_log.py) turns a run's fixes into the message an autopilot (ArduPilot

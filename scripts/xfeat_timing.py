@@ -105,10 +105,9 @@ def measure(name: str, matcher, device: str, world: np.ndarray, items: list, fac
 
 
 def table(title: str, rows: list[dict]) -> str:
-    out = [f"**{title}**", "",
-           "| matcher | device | frame px | localised | wrong fixes | matches (median) | inliers (median) | "
-           "error px (median) | ms/frame (median) | ms/frame (mean) | network passes/frame | map features, s |",
-           "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    head = ("| matcher | device | frame px | localised | wrong fixes | matches (median) | inliers (median) | "
+            "error px (median) | ms/frame (median) | ms/frame (mean) | network passes/frame | map features, s |")
+    out = [f"**{title}**", "", head, "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         err = "-" if r["err_px"] is None else f"{r['err_px']:.2f}"
         passes = "-" if r["passes"] is None else f"{r['passes']:.2f}"
