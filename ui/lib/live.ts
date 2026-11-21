@@ -20,7 +20,20 @@ export interface LiveStatus {
   skipped: number;          // frames the engine was too late for
   fixesPerS: number | null; // accepted fixes per second of wall time; null before the second fix
   jam: boolean;             // the last frame reached the engine jammed
+  // the judge controls (M7-05); an engine before them reports none of this: nothing switched, nothing to choose
+  spoof: boolean;           // the simulated GPS receiver is being spoofed
+  map: string | null;       // the name of the map the engine searches
+  maps: string[];           // the maps it can switch to, by name
+  flight: string | null;    // the name of the flight in the air
+  flights: string[];        // the flights it can start
+  speed: number | null;     // flight seconds played per second
+  flightNo: number;         // how many flights were started after the first: a change is a new run in the same folder
 }
+
+/** The fastest flight the console orders: at 2 frames a second of flight, more would only skip frames. */
+export const MAX_FLIGHT_SPEED = 16;
+/** The speeds the "New flight" control offers. */
+export const FLIGHT_SPEEDS = [0.5, 1, 2, 4, 8] as const;
 
 /** How often the viewer asks for new records. Well under the second between two fixes that the spec allows. */
 export const POLL_MS = 400;
@@ -44,6 +57,8 @@ export function parseLiveStatus(text: string): LiveStatus | null {
   const s = d as Record<string, unknown>;
   if (!LIVE_STATES.includes(s.state as LiveState)) return null;
   const count = (v: unknown) => (isNumber(v) && v >= 0 ? v : 0);
+  const name = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+  const names = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => name(x) !== null) : []);
   return {
     state: s.state as LiveState,
     frames: count(s.frames),
@@ -51,6 +66,13 @@ export function parseLiveStatus(text: string): LiveStatus | null {
     skipped: count(s.skipped),
     fixesPerS: isNumber(s.fixes_per_s) ? s.fixes_per_s : null,
     jam: s.jam === true,
+    spoof: s.spoof === true,
+    map: name(s.map),
+    maps: names(s.maps),
+    flight: name(s.flight),
+    flights: names(s.flights),
+    speed: isNumber(s.speed) && s.speed > 0 ? s.speed : null,
+    flightNo: count(s.flight_no),
   };
 }
 

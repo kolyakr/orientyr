@@ -122,10 +122,22 @@ export interface OpenRun {
   waiting: boolean;       // a live run with no record yet: not an error, the page asks again
 }
 
-/** What the page hands the console about a live run: the byte of run.jsonl to read on from, and the jam switch. */
-export interface LiveStart {
+/** What the page hands the console about a live run: the byte of run.jsonl to read on from, and the judge controls. */
+export interface LiveStart extends Switches {
   next: number;
+}
+
+/** The judge controls of a live run, as the console shows them: what is switched on and what can be chosen. */
+export interface Switches {
   jam: boolean;
+  spoof: boolean;
+  map: string | null;      // the map that is ordered: the pressed button
+  mapShown: string | null; // the map the engine searches by now (run.json names it): the picture
+  maps: string[];
+  flight: string | null;
+  flights: string[];
+  speed: number | null;
+  flightNo: number;
 }
 
 /** Everything the page needs to show a run, or to say why it cannot: this never throws. */
@@ -146,7 +158,7 @@ export function openRun(name: string | null | undefined, env: Env = process.env,
       }
       const assets = assetUrls(dir, run.info, app);
       return { ...at, runs, run, error: null, mapMissing: assets === null && !isFile(mapPath(dir, run.info)), assets,
-               live: { next: tail.next, jam: jamOrder(dir, status) }, waiting: false };
+               live: { next: tail.next, ...switches(dir, status) }, waiting: false };
     }
     const run = loadRun(dir);
     if (run.records.length === 0) throw new RunFormatError(`run.jsonl in ${dir} has no records`);
@@ -183,23 +195,69 @@ export function liveStatus(dir: string, now: number = Date.now()): (LiveStatus &
   return { ...status, live };
 }
 
-/**
- * Is the jam switched on? The operator's order (control.json) when there is one, else what the engine reports: the
- * switch shows a press at once, before the engine's next frame confirms it.
- */
-export function jamOrder(dir: string, status: LiveStatus | null): boolean {
+/** The operator's orders (control.json) as they stand; {} when there are none, or the file is being written. */
+function orders(dir: string): Record<string, unknown> {
   try {
     const d: unknown = JSON.parse(readFileSync(path.join(dir, CONTROL_FILE), "utf-8"));
-    if (typeof d === "object" && d !== null && typeof (d as { jam?: unknown }).jam === "boolean") return (d as { jam: boolean }).jam;
+    if (typeof d === "object" && d !== null && !Array.isArray(d)) return d as Record<string, unknown>;
   } catch { /* no order yet, or one being written */ }
-  return status?.jam ?? false;
+  return {};
 }
 
-/** Write the operator's order. In one step (write, then rename): the engine never reads half an order. */
-export function writeJamOrder(dir: string, jam: boolean): void {
+/**
+ * The judge controls as the console shows them: the operator's order (control.json) where there is one, else what
+ * the engine reports. A switch shows a press at once, before the engine's next frame confirms it. `mapShown` alone
+ * is always the engine's word: the map picture changes when run.json does.
+ */
+export function switches(dir: string, status: LiveStatus | null): Switches {
+  const o = orders(dir);
+  const flight = typeof o.flight === "object" && o.flight !== null ? (o.flight as { name?: unknown }).name : undefined;
+  return {
+    jam: typeof o.jam === "boolean" ? o.jam : status?.jam ?? false,
+    spoof: typeof o.spoof === "boolean" ? o.spoof : status?.spoof ?? false,
+    map: typeof o.map === "string" && status?.maps.includes(o.map) ? o.map : status?.map ?? null,
+    mapShown: status?.map ?? null,
+    maps: status?.maps ?? [],
+    flight: typeof flight === "string" && status?.flights.includes(flight) ? flight : status?.flight ?? null,
+    flights: status?.flights ?? [],
+    speed: status?.speed ?? null,
+    flightNo: status?.flightNo ?? 0,
+  };
+}
+
+/** Is the jam switched on? (M7-04's reader: the jam switch alone of `switches`.) */
+export function jamOrder(dir: string, status: LiveStatus | null): boolean {
+  return switches(dir, status).jam;
+}
+
+/** One order of the operator: a switch, a map, or a flight to start. */
+export type Order = { jam: boolean } | { spoof: boolean } | { map: string } | { flight: string; speed: number };
+
+/**
+ * Add an order to control.json and return what was ordered. The other orders stay as they are: the engine keeps
+ * what a key says until it changes. A flight gets the next id (the engine flies each id once) and switches the jam
+ * and the spoof off: they were ordered for the flight that ends. Written in one step (write, then rename): the
+ * engine never reads half an order.
+ */
+export function writeOrder(dir: string, order: Order): Record<string, unknown> {
+  const old = orders(dir);
+  let said: Record<string, unknown> = order;
+  let next: Record<string, unknown> = { ...old, ...order };
+  if ("flight" in order) {
+    const last = typeof old.flight === "object" && old.flight !== null ? (old.flight as { id?: unknown }).id : 0;
+    const id = (typeof last === "number" && Number.isInteger(last) ? last : 0) + 1;
+    said = { flight: order.flight, speed: order.speed, id };
+    next = { ...old, jam: false, spoof: false, flight: { name: order.flight, speed: order.speed, id } };
+  }
   const part = path.join(dir, `.${CONTROL_FILE}.partial`);
-  writeFileSync(part, JSON.stringify({ jam }));
+  writeFileSync(part, JSON.stringify(next));
   renameSync(part, path.join(dir, CONTROL_FILE));
+  return said;
+}
+
+/** Write the jam order (M7-04's writer). */
+export function writeJamOrder(dir: string, jam: boolean): void {
+  writeOrder(dir, { jam });
 }
 
 /**
