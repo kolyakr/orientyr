@@ -427,6 +427,10 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
         </section>
 
         <footer className="meta">
+          <p className="run" title={`${run.info.generator ?? "run"} · ${n} frames · map ${mw} × ${mh} px`}>
+            <span>{run.info.generator ?? "run"}</span><span>{n} frames</span>
+          </p>
+          <p className="keys"><span><kbd>Space</kbd>play</span><span><kbd>←</kbd><kbd>→</kbd>step</span><span><kbd>F</kbd>follow</span></p>
           {/* the legend: what the colours and shapes on the map mean. Here, off the map, it does not compete with the route. */}
           <ul className="legend" aria-label="Map legend">
             <li><i style={{ background: confidenceColor(1) }} />sure</li>
@@ -435,10 +439,6 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <li><i className="box" />camera</li>
             <li><i className="ring" />error area</li>
           </ul>
-          <p className="run" title={`${run.info.generator ?? "run"} · ${n} frames · map ${mw} × ${mh} px`}>
-            <span>{run.info.generator ?? "run"}</span><span>{n} frames</span>
-          </p>
-          <p className="keys"><span><kbd>Space</kbd>play</span><span><kbd>←</kbd><kbd>→</kbd>step</span><span><kbd>F</kbd>follow</span></p>
         </footer>
       </aside>
     </main>
