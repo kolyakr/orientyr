@@ -361,17 +361,10 @@ button:disabled { cursor: default; }
 /* heading and position: a compass, then the two readouts */
 .g-nav > div { min-width: 0; }
 .g-nav > div:nth-of-type(1) { flex: 1; }
-.g-pos i { font-style: normal; font-size: 14px; font-weight: 500; color: var(--faint); }
-.g-pos i + .ticker + i { margin-left: 12px; }
-/* the map as a plate with the drone's place on it */
-.locator { flex: none; height: 62px; margin-right: 2px; overflow: hidden; border-radius: 8px; }
-.loc-plate { fill: rgb(6 8 11 / .6); stroke: rgb(255 255 255 / .5); stroke-width: 2.4; vector-effect: non-scaling-stroke; }
-.loc-grid { fill: none; stroke: rgb(255 255 255 / .13); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.loc-at { transition: transform .5s var(--out); }
-.loc-cross { fill: none; stroke: color-mix(in srgb, var(--state) 60%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.loc-dot { fill: var(--state); stroke: #0d0f13; stroke-width: 1.5; transition: fill .6s ease; }
-.loc-ping { fill: none; stroke: var(--state); stroke-width: 1.5; vector-effect: non-scaling-stroke; animation: probe 2s var(--out) infinite; transform-box: fill-box; transform-origin: center; }
-.compass { flex: none; width: 86px; height: 86px; overflow: visible; }
+.g-pos dd { font-size: 19px; margin-top: 3px; }
+.g-pos dt + dd { margin-top: 5px; }
+.g-pos i { width: 10px; font-style: normal; font-size: 13px; font-weight: 500; color: var(--faint); }
+.compass { flex: none; width: 80px; height: 80px; overflow: visible; }
 .compass .bezel { fill: none; stroke: rgb(255 255 255 / .2); stroke-width: 1; }
 .compass .dial { fill: rgb(6 8 11 / .6); stroke: rgb(255 255 255 / .5); stroke-width: 1.2; }
 .compass line { stroke: rgb(255 255 255 / .32); stroke-width: .8; }
