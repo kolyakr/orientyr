@@ -827,3 +827,34 @@ frames, is LOST for 28 and relocalizes about 460 px from its dead-reckoned posit
 Limits: the filter's uncertainty grows so fast in a jam that the ellipse leaves the stage in under a second of
 video (the number in the panel and the locator plate keep showing it); `run.py` itself still writes the plain M1
 video as `trajectory.mp4`, the HUD video is a second step.
+
+### Backup recordings (M8-05)
+
+The 21 Nov re-plan (#128) cut the live judge-controlled UI demo from the pitch: what would have been live steps
+are now three pre-rendered HUD videos, played instead if anything on stage goes wrong. `outputs/backups/` (not
+committed) holds one file per step:
+
+| File | Backup of |
+|---|---|
+| `crops.mp4` | the organisers' 50-crop task map (`data/hackatons-data/`) |
+| `irpin.mp4` | an Irpin flight |
+| `phone.mp4` | the phone take over the map on a screen (M2-01) |
+
+Each is the HUD video (M7-02) of a normal run, copied into `outputs/backups/` under its own name (`render_video.py`
+always writes `trajectory.mp4`, so the copy step gives it the name `scripts/check_backups.py` expects):
+
+```bash
+python scripts/run.py --map data/hackatons-data/global_map.png --frames data/hackatons-data/crops --out outputs/run_crops
+python scripts/render_video.py --run outputs/run_crops
+cp outputs/run_crops/trajectory.mp4 outputs/backups/crops.mp4
+
+python scripts/run.py --map data/irpin/maps/irpin_2025.png --frames data/irpin/flights/mild/2025/frames --out outputs/run_irpin
+python scripts/render_video.py --run outputs/run_irpin
+cp outputs/run_irpin/trajectory.mp4 outputs/backups/irpin.mp4
+
+# phone.mp4: same two commands once M2-01 has filmed data/video/ and it has been run through run.py --video
+```
+
+**Before the pitch, on both machines:** `python scripts/check_backups.py` - it reports every missing or
+unplayable recording by name (exit 0 only when all three decode). A recording that exists on one laptop but not
+the spare does not count as backed up.
