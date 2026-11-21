@@ -323,8 +323,14 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
               {/* the last frames as a strip chart: the newest value is the dot on the right */}
               <span className="strip" aria-hidden="true">
               <svg viewBox="0 0 120 34" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="strip-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="currentColor" stopOpacity=".34" />
+                    <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
                 <path className="strip-grid" d="M0 4h120M0 17h120M0 30h120" />
-                {strip.length > 1 && <polygon className="strip-area" points={`${strip[0][0]},32 ${strip.map((p) => p.join(",")).join(" ")} 120,32`} />}
+                {strip.length > 1 && <polygon className="strip-area" fill="url(#strip-fill)" points={`${strip[0][0]},32 ${strip.map((p) => p.join(",")).join(" ")} 120,32`} />}
                 {strip.length > 1 && <polyline className="strip-line" points={strip.map((p) => p.join(",")).join(" ")} />}
               </svg>
               <i className="strip-dot" style={{ top: `${Math.round((strip.at(-1)![1] / 34) * 1000) / 10}%` }} />
@@ -337,10 +343,23 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
                 <dd className="sub">search: {String(rec.extra.search ?? "none")}</dd>
               </div>
               {/* the same blue area as on the map, in a sight: it swells while the camera is jammed */}
-              <svg className="sight" viewBox="-20 -20 40 40" aria-hidden="true">
-                <path className="sight-cross" d="M0 -19v7M0 12v7M-19 0h7M12 0h7" />
-                <circle r="18" className="sight-area" style={{ transform: `scale(${ringScale})` }} />
-                <circle r="1.6" className="sight-dot" />
+              <svg className="sight" viewBox="-28 -28 56 56" aria-hidden="true">
+                <defs>
+                  <radialGradient id="sight-fill">
+                    <stop offset="0" stopColor="#4cc9f5" stopOpacity=".04" />
+                    <stop offset="1" stopColor="#4cc9f5" stopOpacity=".42" />
+                  </radialGradient>
+                </defs>
+                {/* the fixed scale: range rings and four ticks */}
+                <circle r="9" className="sight-ring" /><circle r="18" className="sight-ring" /><circle r="26.5" className="sight-ring" />
+                <path className="sight-cross" d="M0 -27.5v6M0 21.5v6M-27.5 0h6M21.5 0h6" />
+                {/* the area itself: its edge turns slowly, and a ring runs from the drone out to the edge */}
+                <g className="sight-zone" style={{ transform: `scale(${ringScale})` }}>
+                  <circle r="26" className="sight-area" fill="url(#sight-fill)" />
+                  <circle r="26" className="sight-orbit" />
+                  <circle r="26" className="sight-probe" />
+                </g>
+                <circle r="2" className="sight-dot" />
               </svg>
             </div>
           </dl>
