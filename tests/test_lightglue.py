@@ -103,6 +103,7 @@ def test_quarter_turn_back_works_between_pixels():
 @pytest.mark.parametrize("bad", [
     {"features": "orb"}, {"max_keypoints": 0}, {"map_keypoints": 0}, {"tile_px": 16},
     {"turns": 0}, {"turns": 3}, {"turns": 5}, {"turns": 16}, {"window_keypoints": 0},
+    {"upsample": 0.5}, {"upsample": 0.0}, {"upsample": 5.0},
 ])
 def test_config_is_checked(bad):
     with pytest.raises(ValueError):
@@ -157,6 +158,9 @@ def test_map_features_are_cached_and_reused(tmp_path):
     # a different budget is a different extraction: never a stale hit
     other = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(map_keypoints=512))
     assert other.map_extractions == 1
+    # so is another upsampling: its keypoints come from a finer image
+    finer = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(upsample=1.5))
+    assert finer.map_extractions == 1
 
 
 @needs_weights
@@ -233,6 +237,18 @@ def test_the_mild_2025_irpin_keyframes_localize(tmp_path):
     assert acc.localized == acc.n and acc.wrong == 0
 
 
+@needs_weights
+def test_upsampling_keeps_points_in_input_pixels(tmp_path):
+    # the enlarged image is an internal detail: a fix from an upsampling matcher lands where the plain one does
+    cx, cy = 600.0, 430.0
+    frame = render_frame(MAP, make_h(30.0, 0.8, cx=cx, cy=cy, frame_size=FRAME_SIZE), FRAME_SIZE)
+    m = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(upsample=2.0)).match(frame, MAP)
+    assert m.pts_frame.max(axis=0)[0] <= FRAME_SIZE[0] and m.pts_frame.max(axis=0)[1] <= FRAME_SIZE[1]
+    fix = localize(0, m, FRAME_SIZE)
+    assert fix is not None and fix.accepted
+    assert math.hypot(fix.x - cx, fix.y - cy) < 1.5                # the same 1.5 px as at any heading above
+
+
 def test_the_pipeline_offers_it():
     """`scripts/run.py --matcher lightglue` picks this backend."""
     from dronenav.pipeline import MATCHERS
@@ -248,14 +264,18 @@ def test_the_pipeline_hands_it_the_device():
 
 
 @needs_weights
-def test_matched_points_follow_the_corner_convention():
+@pytest.mark.parametrize("up", [1.0, 2.0])
+def test_matched_points_follow_the_corner_convention(up):
     # M1-12 (#106): matchers return corner-origin pixels (pixel centres at +0.5), like RootSIFT. A frame that is a
     # map patch turned 180° exactly (np.rot90, no resampling) has its point (x, y) at map (x0 + w - x, y0 + h - y);
     # OpenCV's centre convention would put every match 1 px off on each axis. DISK keypoints sit on whole pixels,
     # so on this exact copy the right convention gives ~0 px and the wrong one ~1.4 px: 0.25 px separates them.
     x0, y0, w, h = 300, 200, 320, 240
     frame = np.ascontiguousarray(np.rot90(MAP[y0:y0 + h, x0:x0 + w], 2))
-    m = LightGlueMatcher(MAP, cache_dir=None, device="cpu").match(frame, MAP)
+    # Upsampled (up = 2), keypoints sit on whole pixels of the enlarged image, i.e. on half pixels of the original;
+    # mapping them back without the half-pixel shift would put both sides 0.25 px off, ~0.7 px after the 180° turn.
+    cfg = LightGlueConfig(upsample=up)
+    m = LightGlueMatcher(MAP, cache_dir=None, device="cpu", cfg=cfg).match(frame, MAP)
     assert len(m) >= 50
     expected = np.column_stack([x0 + w - m.pts_frame[:, 0], y0 + h - m.pts_frame[:, 1]])
     assert np.median(np.linalg.norm(m.pts_map - expected, axis=1)) < 0.25
