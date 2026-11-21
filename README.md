@@ -200,3 +200,18 @@ The regression tests are in [tests/test_accuracy.py](tests/test_accuracy.py):
 - After 5 s without a fix the position holds instead of flying on a stale velocity, and its uncertainty keeps growing.
 - On the task's 50 frames: RELOCALIZING on frame 0, then TRACKING throughout.
 - Each record's `extra["step"]` says what the filter did with that frame's fix: INIT, HIT, GATED, COAST or NONE.
+
+### Search window from the prediction (M5-03)
+
+With the tracker on, the search window comes from the filter, not from M1's fixed 25% margin
+([search.py](src/dronenav/search.py) `prediction_window`, [states.py](src/dronenav/tracking/states.py) `Tracker.predict`).
+- **The window:** the last footprint, moved to the predicted centre and grown on each axis by 3σ of the predicted
+  position (at least 96 px, since the footprint also turns), clipped to the map. If the frame isn't found there, the
+  whole map is searched in the same frame.
+- **Shrinks while tracking, grows while coasting.** After the first fix the speed is unknown, so the window is wide.
+  It closes in as fixes arrive and opens up again with every missed frame.
+- **A miss no longer forces a whole-map search.** M1 searched the whole map after any miss. Now the window keeps
+  following the prediction until the tracker declares the track LOST.
+- **In the telemetry:** each record's `extra["predicted_window"]` and `extra["window_sigma_px"]` (the larger axis σ).
+- **On the task's 50 frames:** σ goes 92 → 64 → 63 px and stays there. All 49 frames after the first are found in
+  their window, 50/50 localized.

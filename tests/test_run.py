@@ -395,3 +395,44 @@ def test_an_unknown_tracker_is_a_clear_error(tmp_path, world):
     res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--tracker", "magic")
     assert res.returncode != 0 and "tracker" in res.stderr and "Traceback" not in res.stderr
     assert not (tmp_path / "out").exists()
+
+
+# --- M5-03: the search window from the prediction (the tracker on) --------------------------------------------
+
+def _area(w):
+    return (w[2] - w[0]) * (w[3] - w[1])
+
+
+def test_the_window_shrinks_while_tracking_and_grows_while_coasting(tmp_path, world):
+    # two jammed frames (5, 6): coasted while TRACKING, found again at 7 in the grown window
+    frames, src = _frames(tmp_path, world, n=12, jam={5, 6})
+    res = _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache")
+    assert res.returncode == 0, res.stderr
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    sig = [r.extra["window_sigma_px"] for r in recs]
+    win = [r.extra["predicted_window"] for r in recs]
+    assert sig[0] is None and win[0] is None                    # LOST at the start: no prediction, whole map
+    # tracking 1..5: the velocity is learned, the prediction firms up, then settles at the filter's steady state
+    # (equal to the 0.01 px written, so: it shrinks, and never grows while the fixes keep coming)
+    assert sig[1] > sig[2] > sig[3], sig
+    assert all(b <= a for a, b in itertools.pairwise(sig[1:6])), sig
+    # coasting 5..7: no fix, less and less sure where the drone is
+    assert all(b > a for a, b in itertools.pairwise(sig[5:8])), sig
+    assert sig[8] < sig[7]                                      # a fix at 7: the window closes in again
+    assert _area(win[7]) > _area(win[4])
+    for r, w in zip(recs, win, strict=True):
+        if w is not None:                                       # the drone is inside the window it was searched in
+            cx, cy = src.truth(r.idx).center
+            assert w[0] <= cx < w[2] and w[1] <= cy < w[3], r.idx
+    # M1 would search frame 7 on the whole map (the track broke at 5); the prediction keeps it in a window
+    assert recs[7].extra["search"] == "window" and recs[7].extra["window"] == win[7]
+    assert recs[7].track.fix.accepted
+
+
+def test_without_the_tracker_the_m1_window_stays(tmp_path, world):
+    frames, _ = _frames(tmp_path, world, n=8, jam={5})
+    assert _cli("--map", world[0], "--frames", frames, "--out", tmp_path / "out", "--cache", tmp_path / "cache",
+                "--tracker", "none").returncode == 0
+    recs = read_run(tmp_path / "out" / "run.jsonl")
+    assert all("predicted_window" not in r.extra and "window_sigma_px" not in r.extra for r in recs)
+    assert recs[6].extra["search"] == "global"                  # M1: a miss restarts the search on the whole map
