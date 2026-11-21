@@ -1,7 +1,10 @@
 # Orientyr console (mock-up)
 
 Mission control for a flight: the map, the route coloured by confidence, the footprint of the current frame,
-the camera inset, the telemetry HUD, the tracker state and a mission log. It replays a **run folder**
+the camera inset, the telemetry HUD, the tracker state and a mission log. The right column shows the state as a
+lamp, the last event, confidence, heading on a compass, the drone's place on a small map plate, position, matched
+pairs and uncertainty. The mission log is a timeline that follows the current event; in follow mode a minimap shows
+the whole route. It replays a **run folder**
 (`run.json` + `run.jsonl` + `frames/`, the format in `src/dronenav/telemetry.py`), so it works today on the
 fake run (M0-04) and later on real runs without changes. The mission controls are drawn but inactive.
 
@@ -24,6 +27,7 @@ Keys: `Space` play / pause, `←` `→` one frame, `F` follow the drone. `/?fram
 | `lib/run-server.ts` | which run folder, and safe paths into it (server only) |
 | `lib/view.ts` | what is drawn from the telemetry: confidence, σ, heading, trail, timeline |
 | `components/MapView.tsx` | the map as an SVG in map pixel coordinates |
+| `components/Minimap.tsx` | follow mode: the whole route's area, small, with the route flown so far |
 | `components/Console.tsx` | the page: panels, playback, keyboard |
 | `app/api/map`, `app/api/frame` | serve the map and the frames out of the run folder |
 
