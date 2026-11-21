@@ -13,7 +13,9 @@ therefore how the next frame is searched (docs/proposal.md "The state machine", 
   ``lost_after``-th miss in a row -> LOST. Counting gated fixes is also the safety net against lock-out: a filter
   that has drifted and gates every true fix is reset by the next global search.
 
-Every state but LOST searches a window around the prediction (WINDOW).
+Every state but LOST searches a window around the prediction (WINDOW): :meth:`Tracker.predict` gives where the
+drone is expected at the next frame and how sure that is, and the last fix's footprint gives the window's size
+(M5-03, ``dronenav.search.prediction_window``).
 
 A long loss must not fly on a stale velocity: ``hold_after_s`` seconds after the last fix the velocity is set to
 zero and the position holds there, while the uncertainty keeps growing (as M1-09's interim rule did).
@@ -23,12 +25,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
+import numpy as np
+
 from dronenav.confidence import fix_covariance
 from dronenav.search import SearchMode
-from dronenav.tracking.kalman import KalmanConfig, KalmanFilter, Step, StepKind
+from dronenav.tracking.kalman import KalmanConfig, KalmanFilter, Step, StepKind, _transition
 from dronenav.types import Fix, TrackMode, TrackState
 
-__all__ = ["Tracker", "TrackerConfig", "TrackerUpdate"]
+__all__ = ["Prediction", "Tracker", "TrackerConfig", "TrackerUpdate"]
 
 
 @dataclass(frozen=True)
@@ -59,6 +63,14 @@ class TrackerUpdate(NamedTuple):
     misses: int
 
 
+class Prediction(NamedTuple):
+    """Where the tracker expects the drone at a time: the centre (x, y) in map px and its 2 x 2 covariance (px²)."""
+
+    x: float
+    y: float
+    cov: np.ndarray
+
+
 class Tracker:
     """The Kalman filter plus the state machine. Per frame, in time order: read :attr:`search` to choose how to
     search the frame, then pass the result to :meth:`update`."""
@@ -69,11 +81,34 @@ class Tracker:
         self.mode = TrackMode.LOST
         self.misses = 0
         self._t_fix: float | None = None          # time of the last fix the filter took
+        self.last_fix: Fix | None = None          # that fix: its footprint sizes the search window (M5-03)
 
     @property
     def search(self) -> SearchMode:
         """How the next frame should be searched: the whole map when LOST, else a window around the prediction."""
         return SearchMode.GLOBAL if self.mode is TrackMode.LOST else SearchMode.WINDOW
+
+    def predict(self, t: float) -> Prediction | None:
+        """Where the drone should be at time ``t`` if no fix comes before: exactly what :meth:`update` would give
+        without a fix (the same hold after ``hold_after_s``), so the frame is searched where the telemetry would
+        put it. None when LOST or before the first fix: there is no prediction to search around. The tracker is
+        not changed."""
+        if self.mode is TrackMode.LOST or not self.kf.initialized:
+            return None
+        t, sigma_acc = float(t), self.cfg.kalman.sigma_acc
+        x, P, t0 = self.kf.x, self.kf.P, self.kf.t
+        if t < t0:
+            raise ValueError(f"time must not go back: t={t} after t={t0}")
+        hold = self._t_fix + self.cfg.hold_after_s
+        if t >= hold:                             # as _step: coast up to the hold time, then stop there
+            if t0 < hold:
+                F, Q = _transition(hold - t0, sigma_acc)
+                x, P, t0 = F @ x, F @ P @ F.T + Q, hold
+            x = x.copy()
+            x[2:] = 0.0
+        F, Q = _transition(t - t0, sigma_acc)
+        x, P = F @ x, F @ P @ F.T + Q
+        return Prediction(float(x[0]), float(x[1]), P[:2, :2].copy())
 
     def update(self, idx: int, t: float, fix: Fix | None) -> TrackerUpdate:
         """Use frame ``idx`` (time ``t`` s) and its fix (None, rejected or accepted); returns the new state."""
@@ -102,7 +137,7 @@ class Tracker:
 
     def _restart(self, t: float, fix: Fix) -> Step:
         self.kf.reset(t, (fix.x, fix.y), fix_covariance(fix))
-        self._t_fix, self.misses = t, 0
+        self._t_fix, self.misses, self.last_fix = t, 0, fix
         return Step(StepKind.INIT, t, self.kf.x.copy(), self.kf.P.copy(), self.kf.x.copy(), self.kf.P.copy(),
                     None)
 
@@ -115,5 +150,5 @@ class Tracker:
             self.kf.x[2:] = 0.0
         step = self.kf.step(t, fix)
         if step.kind is StepKind.HIT:
-            self._t_fix = t
+            self._t_fix, self.last_fix = t, fix
         return step

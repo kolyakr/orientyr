@@ -412,8 +412,10 @@ def test_the_window_shrinks_while_tracking_and_grows_while_coasting(tmp_path, wo
     sig = [r.extra["window_sigma_px"] for r in recs]
     win = [r.extra["predicted_window"] for r in recs]
     assert sig[0] is None and win[0] is None                    # LOST at the start: no prediction, whole map
-    # tracking 1..5: the velocity is learned, the prediction firms up
-    assert all(b < a for a, b in itertools.pairwise(sig[1:6])), sig
+    # tracking 1..5: the velocity is learned, the prediction firms up, then settles at the filter's steady state
+    # (equal to the 0.01 px written, so: it shrinks, and never grows while the fixes keep coming)
+    assert sig[1] > sig[2] > sig[3], sig
+    assert all(b <= a for a, b in itertools.pairwise(sig[1:6])), sig
     # coasting 5..7: no fix, less and less sure where the drone is
     assert all(b > a for a, b in itertools.pairwise(sig[5:8])), sig
     assert sig[8] < sig[7]                                      # a fix at 7: the window closes in again

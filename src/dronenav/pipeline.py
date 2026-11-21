@@ -10,7 +10,10 @@ run folder the renderers read (M0-03, M0-04 convention) and gives every frame a 
 ``tracker="kalman"`` (the default, M5-02): the tracker (``dronenav.tracking.states``) takes each frame's fix; its
 state (TRACKING / LOST / RELOCALIZING), filtered position, velocity and covariance are the frame's TrackState, and
 the filter step (INIT, HIT, GATED, COAST, NONE) is written to ``extra["step"]``. While it is LOST the next frame is
-searched on the whole map. Frames before the first fix are LOST at that fix's position, as below.
+searched on the whole map. Otherwise it is searched in the window from the tracker's prediction (M5-03): the last
+footprint at the predicted centre, grown by 3σ; ``extra["predicted_window"]`` and ``extra["window_sigma_px"]`` (the
+larger axis σ) record it, so the window shrinking while tracking and growing while coasting is in the telemetry.
+Frames before the first fix are LOST at that fix's position, as below.
 
 ``tracker="none"``: M1's interim rule, kept for comparison:
 
@@ -40,7 +43,7 @@ import numpy as np
 
 from dronenav.io import FolderSource, _is_rate, load_map
 from dronenav.matching import RootSiftMatcher
-from dronenav.search import Located, Searcher, SearchMode
+from dronenav.search import Located, Searcher, SearchMode, prediction_window
 from dronenav.telemetry import Record, RunInfo, RunWriter, write_run_info
 from dronenav.tracking.states import Tracker, TrackerUpdate
 from dronenav.types import Fix, TrackMode, TrackState
@@ -96,6 +99,8 @@ class _Found:
     factor: float
     ms: float
     tracked: TrackerUpdate | None = None      # the tracker's result for this frame (tracker="kalman")
+    predicted: tuple[int, int, int, int] | None = None   # the window from the prediction (tracker="kalman")
+    sigma: float | None = None                # the prediction's larger axis σ, px (tracker="kalman")
 
     @property
     def accepted(self) -> bool:
@@ -124,12 +129,22 @@ def _localize(map_path, frames_dir, matcher: str, fps, cache_dir, tracker: str =
         searcher = Searcher(MATCHERS[matcher][1](the_map.image, cache_dir), the_map.image)
         found = []
         for f in frames:
-            if track is not None and track.search is SearchMode.GLOBAL:
-                searcher.reset()                  # LOST: the old track is not trusted, search the whole map
-            loc: Located = searcher.locate(f.idx, f.image)
-            tracked = None if track is None else track.update(f.idx, f.t, loc.fix)
+            window = sigma = tracked = None
+            if track is None:
+                loc: Located = searcher.locate(f.idx, f.image)            # M1's window rule
+            else:
+                if track.search is SearchMode.GLOBAL:
+                    searcher.reset()              # LOST: the old track is not trusted, search the whole map
+                pred = track.predict(f.t)
+                if pred is not None:              # M5-03: the window from the prediction
+                    sigma = math.sqrt(max(pred.cov[0, 0], pred.cov[1, 1]))
+                    window = prediction_window(track.last_fix, (pred.x, pred.y), pred.cov, searcher.map_size,
+                                               searcher.cfg)
+                loc = searcher.locate_in(f.idx, f.image, window)
+                tracked = track.update(f.idx, f.t, loc.fix)
             found.append(_Found(f.idx, f.t, Path(f.source), (f.image.shape[1], f.image.shape[0]), loc.fix,
-                                loc.mode.value, loc.window, float(loc.factor), float(loc.ms), tracked))
+                                loc.mode.value, loc.window, float(loc.factor), float(loc.ms), tracked, window,
+                                sigma))
     except cv2.error as e:                # FLANN refuses an empty index: a blank or flat map
         raise ValueError(f"matching on {map_path} failed: the map has no usable features (blank or flat image?) "
                          f"[{e.err}]") from None
@@ -241,7 +256,10 @@ def _tracked_records(found: list[_Found], out_dir: Path, backend: str):
             track = TrackState(idx=x.idx, state=up.mode, x=anchor.x, y=anchor.y, vx=0.0, vy=0.0,
                                cov=np.eye(2) * 1e6, fix=x.fix)
         yield Record(idx=x.idx, t=x.t, source=_source(x, out_dir), track=track, backend=backend,
-                     ms=round(x.ms, 2) if math.isfinite(x.ms) else None, extra=_extra(x) | {"step": up.step.kind.value})
+                     ms=round(x.ms, 2) if math.isfinite(x.ms) else None,
+                     extra=_extra(x) | {"step": up.step.kind.value,
+                                        "predicted_window": None if x.predicted is None else list(x.predicted),
+                                        "window_sigma_px": None if x.sigma is None else round(x.sigma, 2)})
 
 
 def _source(x: _Found, out_dir: Path) -> str:
