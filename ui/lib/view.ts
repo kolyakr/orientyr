@@ -58,6 +58,27 @@ export function trail(records: RunRecord[], frame: number): TrailSegment[] {
   return segs;
 }
 
+export interface TrailRun {
+  points: number[][]; // map px, in flight order; the first point is the last point of the run before
+  color: string; // confidenceColor of its steps
+  coasting: boolean;
+}
+
+/**
+ * The flown route as a few polylines: neighbouring steps of one colour (and one kind, measured or dead-reckoned)
+ * are joined. The minimap draws these: at its size one line per step would be hundreds of invisible elements.
+ */
+export function trailRuns(records: RunRecord[], frame: number): TrailRun[] {
+  const runs: TrailRun[] = [];
+  for (const s of trail(records, frame)) {
+    const color = confidenceColor(s.confidence);
+    const last = runs.at(-1);
+    if (last && last.color === color && last.coasting === s.coasting) last.points.push([s.x2, s.y2]);
+    else runs.push({ points: [[s.x1, s.y1], [s.x2, s.y2]], color, coasting: s.coasting });
+  }
+  return runs;
+}
+
 export interface StateRun {
   state: TrackMode;
   from: number; // first frame (position in the run, not idx)

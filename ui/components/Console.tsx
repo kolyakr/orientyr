@@ -10,6 +10,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { Run, RunRecord } from "@/lib/run";
 import { STATE_LABEL, clock, compass, confidence, confidenceColor, drawAngle, events, headingOf, niceStep, sigmaPx, stateRuns } from "@/lib/view";
 import { MapView, type StageLayout } from "./MapView";
+import { Minimap } from "./Minimap";
 
 const SPEEDS = [1, 2, 4, 8];
 const MAX_DOTS = 40;
@@ -139,6 +140,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
       const width = cell.offsetWidth, height = cell.offsetHeight;
       let left = 0, top = 0;   // the left column (brand, legend, camera) and the row of the follow button
       for (const el of Array.from(cell.children) as HTMLElement[]) {
+        if (el.classList.contains("minimap")) continue; // it hangs under the follow button, over the far ground
         if (el.classList.contains("follow")) top = el.offsetTop + el.offsetHeight;
         else left = Math.max(left, el.offsetLeft + el.offsetWidth);
       }
@@ -171,7 +173,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
     <main ref={root} className="console" data-state={rec.state} data-follow={follow || undefined} data-playing={playing || undefined}
           onPointerMove={light}>
       <div className="stage">
-        <MapView run={run} frame={frame} follow={follow} stepMs={playing ? stepMs : 250} layout={layout} />
+        <MapView run={run} frame={frame} follow={follow} playing={playing} stepMs={playing ? stepMs : 250} layout={layout} />
       </div>
       {/* the red breath of a lost signal, around the map and under the panels */}
       <div className="alarm" aria-hidden="true" />
@@ -208,6 +210,9 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
           {follow ? "Show whole map" : "Follow drone"}
         </button>
+
+        {/* in follow mode the big map shows only the ground near the drone: the minimap keeps the whole route in sight */}
+        {follow && <Minimap run={run} frame={frame} />}
 
         <section data-part="camera" className="camera glass" data-state={rec.state}>
           <div className="camera-view" style={{ aspectRatio: `${fw} / ${fh}` }}>

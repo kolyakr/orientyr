@@ -41,10 +41,11 @@ function cornerTicks(poly: number[][], size: number): string {
   }).join(" ");
 }
 
-export function MapView({ run, frame, follow, stepMs, layout }: {
+export function MapView({ run, frame, follow, playing, stepMs, layout }: {
   run: Run;
   frame: number;
   follow: boolean;
+  playing: boolean; // the flight is playing: the drone marker trembles like a hovering airframe
   stepMs: number; // how long one frame stays on screen: the camera and the drone glide for this long
   layout: StageLayout | null; // null until the stage is measured (the server's HTML, the first render)
 }) {
@@ -182,8 +183,8 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
           </g>
         )}
 
-        <g data-part="drone" data-state={rec.state} className="drone"
-           style={{ transform: `translate(${tenth(rec.x)}px, ${tenth(rec.y)}px)`, transition: `transform ${Math.round(stepMs)}ms linear` }}>
+        <g data-part="drone" data-state={rec.state} data-flying={playing || undefined} className="drone"
+           style={{ ["--u" as string]: `${Math.round(u * 100) / 100}px`, transform: `translate(${tenth(rec.x)}px, ${tenth(rec.y)}px)`, transition: `transform ${Math.round(stepMs)}ms linear` }}>
           {/* what the camera sees: a light patch with viewfinder corners, and faint lines from the drone to them */}
           {view && (
             <g className="view">
@@ -209,6 +210,8 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
             {heading !== null && (
               <line y1={-19 * u} y2={-44 * u} className="beam" strokeWidth={1.8 * u} strokeDasharray={lost ? `${4 * u} ${4 * u}` : undefined} />
             )}
+            {/* the airframe trembles while it flies; the heading beam above stays still */}
+            <g className="airframe">
             {[5.2, 1.8].map((width, pass) => (
               <g key={pass} className={pass ? "craft-shape" : "craft-case"} strokeWidth={width * u}
                  strokeDasharray={lost && pass ? `${2.6 * u} ${2.2 * u}` : undefined}>
@@ -222,6 +225,7 @@ export function MapView({ run, frame, follow, stepMs, layout }: {
             {ROTORS.map(([x, y], i) => (
               <line key={i} x1={(x * 9.5 - 3.6) * u} y1={y * 9.5 * u} x2={(x * 9.5 + 3.6) * u} y2={y * 9.5 * u} className="blade" strokeWidth={1.1 * u} />
             ))}
+            </g>
           </g>
         </g>
       </g>
