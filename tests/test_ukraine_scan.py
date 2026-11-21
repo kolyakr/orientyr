@@ -23,15 +23,15 @@ _spec.loader.exec_module(scan)
 
 
 def make_candidate(**over):
-    base = dict(
-        aoi="UKR2",
-        destroyed_severe=10,
-        pre={"date": "2020-05-01"},
-        war={"date": "2022-03-16", "is_unosat_date": True},
-        max_season_gap_days=10,
-        same_sensor=True,
-        worst_res=0.3,
-    )
+    base = {
+        "aoi": "UKR2",
+        "destroyed_severe": 10,
+        "pre": {"date": "2020-05-01"},
+        "war": {"date": "2022-03-16", "is_unosat_date": True},
+        "max_season_gap_days": 10,
+        "same_sensor": True,
+        "worst_res": 0.3,
+    }
     base.update(over)
     return base
 
