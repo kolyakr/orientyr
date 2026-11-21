@@ -10,14 +10,26 @@ arrives and appends its record to --out/run.jsonl, so the console (``cd ui && np
 --out>) follows the flight while it happens: it reads the new records twice a second and glides the drone between
 fixes. A frame the engine is too late for is skipped, as a real camera would not wait.
 
-Chaos is switched on while it runs: the console's "Jam camera" button, or by hand
-``echo '{"jam": true}' > OUT/control.json`` (false to stop). --jam START:LENGTH schedules one, in seconds counted from
-the first frame played. Ctrl-C stops the flight; the run so far stays a readable run folder. See dronenav.live.
+The judge controls (M7-05) reach the flight while it runs, through OUT/control.json (the console's buttons write it,
+or by hand ``echo '{"jam": true}' > OUT/control.json``):
+
+    jam camera     {"jam": true}       every frame is noise until false; --jam START:LENGTH schedules one, in seconds
+                                       counted from the first frame played
+    spoof GPS      {"spoof": true}     the simulated GPS receiver walks away from the truth at --spoof-speed px/s; the
+                                       spoof detector's verdict is in every record (extra.gps) and in the console
+    map year       {"map": "2017"}     search another map of the same place: --maps, by default the maps that lie next
+                                       to --map and differ in the year only (irpin_2017.png, irpin_2022.png, ...)
+    new flight     {"flight": {"name": "wild/2022", "speed": 2, "id": 1}}
+                                       land and start another pre-rendered flight: --flights, by default the flights
+                                       that lie next to --flight (<root>/<preset>/<year>)
+
+Ctrl-C stops the flight; the run so far stays a readable run folder. See dronenav.live.
 """
 from __future__ import annotations
 
 import argparse
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -37,6 +49,62 @@ def _jam(text: str) -> tuple[float, float]:
     return start, length
 
 
+_YEAR = re.compile(r"^(.*)_(\d{4})$")
+
+
+def _map_name(path: Path) -> str:
+    """A map's name on its button: the year its file name ends in (irpin_2022.png: "2022"), else the file name."""
+    m = _YEAR.match(path.stem)
+    return m.group(2) if m else path.stem
+
+
+def _maps(map_path: Path, given: list[str] | None) -> dict[str, Path] | None:
+    """The maps the operator can switch between, by name; None when there is only --map.
+
+    --maps items are NAME=PATH or a path (named by :func:`_map_name`), and --map is always one of them. Without
+    --maps: the files next to --map whose names differ from it in the year only, so a pack of the same town in
+    several years needs no option. Two maps under one name are a usage error."""
+    if given is None:
+        m = _YEAR.match(map_path.stem)
+        if not m:
+            return None
+        found = [p for p in sorted(map_path.parent.glob(f"{glob_escape(m.group(1))}_[0-9][0-9][0-9][0-9]{map_path.suffix}"))
+                 if p.is_file()]
+        named = [(_map_name(p), p) for p in found if p.resolve() != map_path.resolve()]
+    else:
+        named = []
+        for item in given:
+            name, sep, rest = item.partition("=")
+            named.append((name, Path(rest)) if sep and name and rest else (_map_name(Path(item)), Path(item)))
+    maps = {_map_name(map_path): map_path}
+    for name, path in named:
+        if path.resolve() == map_path.resolve():
+            continue
+        if name in maps:
+            raise ValueError(f"two maps are named {name!r}: {maps[name]} and {path} (name them: --maps NAME=PATH)")
+        maps[name] = path
+    return maps if len(maps) > 1 else None
+
+
+def glob_escape(text: str) -> str:
+    return re.sub(r"([*?\[\]])", r"[\1]", text)
+
+
+def _flight_name(path: Path) -> str:
+    """A flight's name: its last two folders, "<preset>/<year>" in a flight pack."""
+    path = path.resolve()
+    return f"{path.parent.name}/{path.name}"
+
+
+def _flights(flight: Path, root: Path | None) -> dict[str, Path]:
+    """The flights the operator can start, by name: every <root>/<preset>/<year> that is a rendered flight, and
+    --flight itself. The default root is the pack --flight lies in."""
+    root = flight.resolve().parent.parent if root is None else root
+    found = {_flight_name(d): d for d in sorted(root.glob("*/*"))
+             if (d / "meta.json").is_file() and (d / "truth.jsonl").is_file()}
+    return found | {_flight_name(flight): flight}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--flight", required=True, help="a rendered flight folder (flight.mp4, truth.jsonl, meta.json)")
@@ -50,6 +118,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--matcher", default="sift", help=f"feature matcher (available: {', '.join(sorted(MATCHERS))})")
     ap.add_argument("--jam", type=_jam, default=None, metavar="START:LENGTH",
                     help="jam the camera for LENGTH seconds, START seconds after the first frame played")
+    ap.add_argument("--maps", nargs="+", default=None, metavar="[NAME=]PATH",
+                    help="the maps the operator can switch between, all of one size "
+                         "(default: the files next to --map that differ in the year only)")
+    ap.add_argument("--flights", default=None, metavar="ROOT",
+                    help="a folder of flights (<preset>/<year>) the operator can start (default: the one --flight is in)")
+    ap.add_argument("--spoof-speed", type=float, default=8.0, metavar="PX_S",
+                    help="how fast a spoofed GPS reading walks away from the truth, map px per second (default 8)")
     ap.add_argument("--cache", default="outputs/cache", help="where map features are cached (default outputs/cache)")
     add_shared_args(ap)
     a = ap.parse_args(argv)
@@ -58,13 +133,23 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if a.seconds is not None and not (math.isfinite(a.seconds) and a.seconds > 0):
             raise ValueError(f"--seconds must be a positive number, got {a.seconds!r}")
-        source = FlightSource(a.flight, fps=a.rate, keyframes=a.keyframes, start_s=a.start,
-                              end_s=None if a.seconds is None else a.start + a.seconds)
+
+        def opener(folder: Path):
+            # every flight is played the same way: the same rate and the same stretch of it
+            return lambda: FlightSource(folder, fps=a.rate, keyframes=a.keyframes, start_s=a.start,
+                                        end_s=None if a.seconds is None else a.start + a.seconds)
+
+        flight = Path(a.flight)
+        source = opener(flight)()
+        flights = {name: opener(folder) for name, folder in
+                   _flights(flight, None if a.flights is None else Path(a.flights)).items()}
+        maps = _maps(Path(a.map), a.maps)
         # the jam is counted from the first frame played, the source's clock from the flight's start
         jam = None if a.jam is None else (a.start + a.jam[0], a.jam[1])
         print(f"live: playing {a.flight} at {source.rate:g} frames/s -> {out} (console: /?run={out.name}; "
               f"Ctrl-C stops)", flush=True)
-        s = live_run(a.map, source, out, matcher=a.matcher, cache_dir=a.cache, device=device, speed=a.speed, jam=jam)
+        s = live_run(a.map, source, out, matcher=a.matcher, cache_dir=a.cache, device=device, speed=a.speed, jam=jam,
+                     maps=maps, flights=flights, flight=_flight_name(flight), spoof_speed=a.spoof_speed)
     except KeyboardInterrupt:
         # live_run has marked the run "stopped"; what was flown is a whole run folder
         print(f"live: stopped -> {out}")

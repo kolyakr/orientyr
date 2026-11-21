@@ -116,8 +116,9 @@ describe("readTail", () => {
 
 describe("liveStatus", () => {
   it("parses live.json, and nothing else", () => {
-    expect(parseLiveStatus(JSON.stringify(STATUS))).toEqual({ state: "running", frames: 2, fixes: 2, skipped: 0, fixesPerS: 2, jam: false });
-    expect(parseLiveStatus(JSON.stringify({ state: "done" }))).toEqual({ state: "done", frames: 0, fixes: 0, skipped: 0, fixesPerS: null, jam: false });
+    // these fields, whatever else the status carries (M7-05 adds the judge controls: tests/judge-controls.test.tsx)
+    expect(parseLiveStatus(JSON.stringify(STATUS))).toMatchObject({ state: "running", frames: 2, fixes: 2, skipped: 0, fixesPerS: 2, jam: false });
+    expect(parseLiveStatus(JSON.stringify({ state: "done" }))).toMatchObject({ state: "done", frames: 0, fixes: 0, skipped: 0, fixesPerS: null, jam: false });
     for (const bad of ["", "{", "[]", "null", JSON.stringify({ state: "flying" })]) expect(parseLiveStatus(bad)).toBeNull();
   });
 
@@ -150,7 +151,7 @@ describe("openRun on a live run", () => {
     const opened = openRun("flying");
     expect(opened.error).toBeNull();
     expect(opened.run!.records.map((r) => r.idx)).toEqual([0, 1]);
-    expect(opened.live).toEqual({ next: Buffer.byteLength(text), jam: false });
+    expect(opened.live).toMatchObject({ next: Buffer.byteLength(text), jam: false }); // and the judge controls (M7-05)
     expect(opened.waiting).toBe(false);
   });
 
