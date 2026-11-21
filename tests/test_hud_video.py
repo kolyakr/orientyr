@@ -2,16 +2,19 @@
 
 "Done when: a video of a run with a jam reads clearly without narration." Only a person can judge "reads clearly";
 the checkable contract behind it:
-1. the pure helpers: confidence -> trail colour, covariance -> 3-sigma ellipse, the eased camera (no jump across a
-   relocalisation), caption timing;
-2. each frame shows the right thing: state badge colours, trail colours, the ellipse, a rejected fix and its reason,
-   the camera inset (picture, NO SIGNAL, link to the map), the caption;
+1. the pure helpers: confidence -> trail colour, covariance -> 3-sigma ellipse, the layout (stage, side panel,
+   dock), the camera (eased: no jump across a relocalisation; clamped: the stage never shows anything but map), the
+   projection from the camera picture to its footprint (two lines that cannot cross), caption timing and wording;
+2. each frame shows the right thing: the state lamp's colour, the alarm while LOST, trail colours, the ellipse, a
+   rejected fix and its reason, the camera picture and its projection, match lines only from the run's own match
+   points, the caption, no text too small for a demo screen;
 3. the CLI writes the HUD video by default (H.264, the right size and frame count) and still writes the M1 one;
    square and wide maps, a 442-frame run.
 
 Hand-made runs on a plain grey map make every drawn pixel and position known.
 """
 import itertools
+import json
 import math
 import subprocess
 import sys
@@ -136,9 +139,15 @@ def jam(tmp_path_factory):
 
 def _px(plan, k, x, y):
     """Map px -> video px (floats) at plan frame k."""
-    f = plan.frames[k]
-    s = plan.size[0] / plan.view_w
-    return plan.size[0] / 2 + (x - f.cx) * s, plan.size[1] / 2 + (y - f.cy) * s
+    return hv.to_video(plan, k, x, y)
+
+
+def _inside(inner, outer):
+    return outer[0] <= inner[0] and outer[1] <= inner[1] and inner[2] <= outer[2] and inner[3] <= outer[3]
+
+
+def _apart(a, b):
+    return a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
 
 
 def _row(img, plan, k, x0, x1, y):
@@ -164,14 +173,84 @@ def test_the_trail_colour_goes_from_red_through_yellow_to_green():
 
 
 def test_the_state_colours_are_green_red_and_amber():
-    assert hv.STATE_COLOURS["TRACKING"] == hv.GREEN and hv.STATE_COLOURS["LOST"] == hv.RED
-    assert hv.STATE_COLOURS["RELOCALIZING"] == hv.AMBER
-    b, g, r = hv.GREEN
+    assert set(hv.STATE_COLOURS) == {"TRACKING", "LOST", "RELOCALIZING"}
+    b, g, r = hv.STATE_COLOURS["TRACKING"]
     assert g > r + 60 and g > b + 60
-    b, g, r = hv.RED
+    b, g, r = hv.STATE_COLOURS["LOST"]
     assert r > g + 100 and r > b + 100
-    b, g, r = hv.AMBER
+    b, g, r = hv.STATE_COLOURS["RELOCALIZING"]
     assert r > b + 100 and g > b + 60 and r >= g
+
+
+def test_the_layout_is_a_stage_a_side_panel_and_a_dock():
+    lay = hv.layout((1920, 1080))
+    assert lay.u == 1.0
+    assert lay.stage == (0, 0, 1400, 948) and lay.side == (1400, 0, 1920, 1080) and lay.dock == (0, 948, 1400, 1080)
+    half = hv.layout((960, 540))                                     # everything scales with the video
+    assert half.u == 0.5 and half.stage == (0, 0, 700, 474) and half.side == (700, 0, 960, 540)
+    for size in ((1920, 1080), (1280, 720), (640, 360), (1280, 1024), (320, 180)):
+        lay = hv.layout(size)
+        w, h = size
+        # the three tile the video: no gap, no overlap
+        assert lay.stage[:2] == (0, 0) and lay.stage[2] == lay.side[0] == lay.dock[2] and lay.stage[3] == lay.dock[1]
+        assert lay.side[1:] == (0, w, h) and lay.dock[0] == 0 and lay.dock[3] == h
+        assert lay.stage[2] >= 0.6 * w and lay.stage[3] >= 0.8 * h   # the map keeps most of the screen
+
+
+def test_the_camera_is_clamped_so_the_stage_shows_only_map():
+    cam = np.array([[500.0, 300.0], [50.0, 20.0], [990.0, 595.0], [-40.0, 700.0]])
+    got = hv.clamp_camera(cam, (1000, 600), (200.0, 100.0))          # the stage shows 400 x 200 map px
+    assert got.tolist() == [[500.0, 300.0], [200.0, 100.0], [800.0, 500.0], [200.0, 500.0]]
+    # a map smaller than the stage in one direction cannot fill it: it is centred there, and still clamped in the other
+    assert hv.clamp_camera(np.array([[10.0, 10.0]]), (1000, 150), (200.0, 100.0)).tolist() == [[200.0, 75.0]]
+    assert cam[1].tolist() == [50.0, 20.0]                           # the input is not changed
+
+
+def test_the_projection_is_the_two_outer_lines_from_the_footprint_to_the_picture():
+    foot = np.array([[0.0, 2.0], [10.0, 2.0], [10.0, 8.0], [0.0, 8.0]])
+    links = hv.projection_links(foot, (20, 0, 30, 10))
+    # the hull of the two shapes: its two edges that join them. (10, 2) and (10, 8) lie inside it.
+    assert sorted(links) == [((0.0, 2.0), (20.0, 0.0)), ((0.0, 8.0), (20.0, 10.0))]
+    assert hv.projection_links(foot[[2, 3, 0, 1]], (20, 0, 30, 10)) and \
+        sorted(hv.projection_links(foot[[2, 3, 0, 1]], (20, 0, 30, 10))) == sorted(links)   # corner order is no matter
+
+
+def _cross(p, q, r, s):
+    """Do the open segments p-q and r-s cross?"""
+    def side(a, b, c):
+        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return side(p, q, r) * side(p, q, s) < 0 and side(r, s, p) * side(r, s, q) < 0
+
+
+@pytest.mark.parametrize("heading", range(0, 360, 15))
+def test_the_projection_lines_never_cross_whatever_the_heading(heading):
+    a = math.radians(heading)
+    rot = np.array([[math.cos(a), -math.sin(a)], [math.sin(a), math.cos(a)]])
+    foot = np.array([[-60.0, -40.0], [60.0, -40.0], [60.0, 40.0], [-60.0, 40.0]]) @ rot.T + (300.0, 400.0)
+    box = (900, 60, 1200, 290)
+    links = hv.projection_links(foot, box)
+    assert len(links) == 2
+    (p, q), (r, s) = links
+    assert not _cross(p, q, r, s)
+    for a_end, b_end in links:                                       # from a footprint corner to a picture corner
+        assert min(np.hypot(*(foot - a_end).T)) < 1e-6
+        assert b_end[0] in box[::2] and b_end[1] in box[1::2]
+    # neither line cuts through the footprint: every corner is on one side of it (or on it)
+    for p, q in links:
+        d = [(q[0] - p[0]) * (c[1] - p[1]) - (q[1] - p[1]) * (c[0] - p[0]) for c in foot]
+        assert min(d) >= -1e-6 or max(d) <= 1e-6
+
+
+def test_no_projection_when_the_footprint_covers_the_picture():
+    foot = np.array([[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]])
+    assert hv.projection_links(foot, (40, 40, 60, 60)) == []
+
+
+@pytest.mark.parametrize("sigma, word", [(0.0, "very precise"), (3.0, "very precise"), (3.1, "precise"),
+                                         (15.0, "precise"), (15.1, "drifting"), (40.0, "drifting"), (40.1, "wide"),
+                                         (7000.0, "wide")])
+def test_the_uncertainty_has_a_word(sigma, word):
+    assert hv.uncertainty_word(sigma) == word
 
 
 @pytest.mark.parametrize("cov, want", [
@@ -221,7 +300,8 @@ def test_the_camera_glides_across_a_relocalisation(tmp_path):
     assert np.abs(np.diff(cam_step)).max() <= 4                      # and it speeds up and slows down gradually
     assert np.hypot(*(cam[-1] - drone[-1])) < 1                      # ... and ends on the drone
     k = int(np.argmax(drone_step))
-    assert np.hypot(*(cam - drone).T)[k - 45:k + 45].max() < plan.size[1] / 2   # the drone never leaves the view
+    _, y0, _, y1 = plan.stage
+    assert np.hypot(*(cam - drone).T)[k - 45:k + 45].max() < (y1 - y0) / 2      # the drone never leaves the stage
 
 
 def test_the_camera_stays_on_the_drone_in_steady_flight(tmp_path):
@@ -254,21 +334,52 @@ def test_captions_appear_at_the_event_and_stay_a_couple_of_seconds(jam):
     assert 2.0 <= hv.CAPTION_S <= 4.0
     assert hv.caption_at(plan, 69) is None
     text, alpha = hv.caption_at(plan, 70)
-    assert "frame 7" in text.lower() and "lost" in text.lower() and "camera jammed" in text
+    assert "frame 7" in text and "Signal lost" in text and "camera jammed" in text and "dead reckoning" in text
     assert alpha > 0
     text2, alpha2 = hv.caption_at(plan, 70 + 20)                     # two seconds later: still fully there
     assert text2 == text and alpha2 == pytest.approx(1.0)
     # the next event (record 10) replaces it at once
     text3, _ = hv.caption_at(plan, 100)
-    assert "frame 10" in text3.lower() and "relocalizing" in text3.lower() and "too few inliers" in text3.lower()
+    assert "frame 10" in text3 and "Relocalizing" in text3 and "too few inliers" in text3
     # record 11 is still RELOCALIZING: no new caption; record 12 has one, and it goes away after CAPTION_S
     assert hv.caption_at(plan, 110)[0] == text3
     last, _ = hv.caption_at(plan, 120)
-    assert "frame 12" in last.lower() and "tracking" in last.lower() and "relocalized" in last
+    assert "frame 12" in last and "Position recovered" in last and "relocalized" in last
     gone = 120 + math.ceil(hv.CAPTION_S * 10) + 1
     assert gone < len(plan.frames) and hv.caption_at(plan, gone) is None
     fading = hv.caption_at(plan, gone - 2)
     assert fading is not None and 0 < fading[1] < 1                  # it fades out, it does not blink off
+
+
+def test_a_caption_is_a_title_and_a_short_note(jam, tmp_path):
+    lost, reloc, back = jam["plan"].captions
+    assert (lost.idx, lost.state, lost.title) == (7, "LOST", "Signal lost")
+    assert lost.note == "frame 7 · camera jammed · dead reckoning"
+    assert (reloc.title, reloc.note) == ("Relocalizing", "frame 10 · match rejected: too few inliers")
+    assert (back.title, back.note) == ("Position recovered", "frame 12 · relocalized")
+    # without an event text of its own the note comes from the telemetry: a jammed frame says so, and the frame
+    # that finds the track again says how many points it matched
+    rows = _jam_rows()
+    rows[7]["extra"] = {"jammed": True}
+    rows[12]["extra"] = {}
+    rows[10] = {"x": rows[10]["x"], "y": rows[10]["y"], "state": TrackMode.RELOCALIZING}      # no fix at all
+    records, info = _load(_write(tmp_path, rows))
+    lost, reloc, back = hv.plan_hud_video(records, info, fps=10).captions
+    assert lost.note == "frame 7 · camera jammed · dead reckoning"
+    assert reloc.note == "frame 10 · searching the whole map"
+    assert back.note == "frame 12 · 2 000 points matched"
+    rows[7]["extra"] = {}
+    records, info = _load(_write(tmp_path, rows, name="plain"))
+    assert hv.plan_hud_video(records, info, fps=10).captions[0].note == "frame 7 · no match · dead reckoning"
+
+
+def test_the_first_fix_of_a_run_is_announced_as_a_lock_not_a_recovery(tmp_path):
+    rows = [{"x": 1200.0 + STEP * i, "y": 900.0, "state": TrackMode.TRACKING,
+             "fix": _fix(i, 1200.0 + STEP * i, 900.0)} for i in range(5)]
+    rows[0]["state"] = TrackMode.RELOCALIZING                        # the tracker's first frame, as run.py writes it
+    records, info = _load(_write(tmp_path, rows))
+    caps = hv.plan_hud_video(records, info, fps=10).captions
+    assert [(c.idx, c.title) for c in caps] == [(1, "Position locked")]
 
 
 def test_a_caption_is_not_replaced_before_it_can_be_read(tmp_path):
@@ -280,7 +391,7 @@ def test_a_caption_is_not_replaced_before_it_can_be_read(tmp_path):
     assert all(b - a >= least for a, b in itertools.pairwise(starts))
     assert hv.CAPTION_MIN_S >= 1.0                                   # a line of text needs about a second
     k = starts[1]                                                    # the RELOCALIZING caption, while it is up
-    assert "RELOCALIZING" in hv.caption_at(plan, k)[0] and "RELOCALIZING" in hv.caption_at(plan, k + least - 1)[0]
+    assert "Relocalizing" in hv.caption_at(plan, k)[0] and "Relocalizing" in hv.caption_at(plan, k + least - 1)[0]
 
 
 def test_a_run_without_events_has_no_captions(tmp_path):
@@ -293,31 +404,47 @@ def test_a_run_without_events_has_no_captions(tmp_path):
 
 # --- 2. what a frame shows -------------------------------------------------------------------------------------
 
-def test_the_badge_is_green_when_tracking_red_when_lost_amber_when_relocalizing(jam):
+def test_the_state_is_a_lamp_green_when_tracking_red_when_lost_amber_when_relocalizing(jam):
     r = jam["renderer"]
-    means = {}
+    boxes = []
     for k, state in ((30, "TRACKING"), (80, "LOST"), (100, "RELOCALIZING")):
         img, fi = r.draw(k)
         assert fi.state == state
-        x0, y0, x1, y1 = fi.badge_box
-        assert (x1 - x0) >= 0.12 * jam["plan"].size[0] and (y1 - y0) >= 0.05 * jam["plan"].size[1]   # big enough
-        means[state] = img[y0:y1, x0:x1].reshape(-1, 3).mean(0)
-    b, g, red = means["TRACKING"]
-    assert g > red + 40 and g > b + 40
-    b, g, red = means["LOST"]
-    assert red > g + 60 and red > b + 60
-    b, g, red = means["RELOCALIZING"]
-    assert red > b + 60 and g > b + 40
-    assert np.abs(means["TRACKING"] - means["LOST"]).max() > 80
+        x0, y0, x1, y1 = fi.lamp_box
+        boxes.append(fi.lamp_box)
+        assert _inside(fi.lamp_box, fi.side_box)
+        assert _close(img[(y0 + y1) // 2, (x0 + x1) // 2], hv.STATE_COLOURS[state], tol=30)      # the lamp itself
+        # a lamp and a word on dark glass, not a filled plate: most of the row around the lamp stays dark
+        row = img[y0:y1, x0:fi.side_box[2]]
+        assert (row.max(axis=2) < 110).mean() > 0.6
+    assert boxes[0] == boxes[1] == boxes[2]                          # the lamp does not move about
 
 
-def test_a_lost_frame_differs_from_a_tracking_frame_in_the_badge_region(jam):
+def test_while_lost_the_whole_stage_says_so(jam):
     img_t, fi_t = jam["renderer"].draw(30)
     img_l, fi_l = jam["renderer"].draw(80)
-    x0, y0, x1, y1 = fi_t.badge_box
-    assert fi_l.badge_box[:2] == fi_t.badge_box[:2]                  # the badge does not move about
-    diff = np.abs(img_t[y0:y1, x0:x1].astype(int) - img_l[y0:y1, x0:x1].astype(int)).max(axis=2)
-    assert (diff > 60).mean() > 0.5
+    x0, y0, x1, y1 = fi_l.stage_box
+    n = (y1 - y0) // 8
+
+    def redness(img):                                                # the top-left corner of the stage: bare map
+        b, g, r = img[y0:y0 + n, x0:x0 + n].reshape(-1, 3).mean(0)
+        return r - (g + b) / 2
+
+    assert redness(img_t) < 5 and redness(img_l) > 40                # a red alarm around the map, seen at a glance
+    assert "dead reckoning" in fi_l.note and "dead reckoning" not in fi_t.note
+    # ... while the middle of the stage, where the drone and the ellipse are, stays clear
+    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2 - (y1 - y0) // 5
+    assert _close(img_l[cy, cx], img_t[cy, cx], tol=25)
+
+
+def test_no_text_is_too_small_for_a_demo_screen(tmp_path):
+    assert hv.MIN_TEXT >= 18                                         # px on a 1920 x 1080 video
+    d = _write(tmp_path, _jam_rows(matches=True))
+    records, info = _load(d)
+    plan = hv.plan_hud_video(records, info, fps=10, size=(1920, 1080))
+    r = hv.HudRenderer(d, records, info, plan)
+    for k in (30, 75, 100, 125):                                     # tracking, lost + caption, rejected fix, recovered
+        assert r.draw(k)[1].min_text_px >= hv.MIN_TEXT
 
 
 def test_the_frame_reports_the_numbers_it_shows(jam):
@@ -330,8 +457,7 @@ def test_the_frame_reports_the_numbers_it_shows(jam):
     _, fi = jam["renderer"].draw(80)
     assert (fi.idx, fi.state, fi.inliers, fi.confidence) == (8, "LOST", None, None)
     assert not fi.footprint and fi.rejected is None
-    x0, y0, x1, y1 = fi.hud_box
-    assert x1 > x0 and y1 > y0
+    assert fi.sigma_px == pytest.approx(40.0) and fi.word == "drifting"      # record 8: sigma 40 x 20 map px
 
 
 def test_the_trail_is_green_where_sure_yellow_where_unsure_red_dashed_without_a_fix(jam):
@@ -381,7 +507,7 @@ def test_a_rejected_fix_is_drawn_apart_with_its_reason(jam):
     assert not fi.footprint and fi.inliers == 5 and fi.confidence is None
     x, y = 1500.0 + STEP * 10, 1200.0 - 110
     top = _row(img, plan, 100, x - 90, x + 90, y - 64)               # its top edge, clear of everything else
-    red = [_close(p, hv.RED, tol=60) for p in top]
+    red = [_close(p, hv.BAD, tol=60) for p in top]
     assert any(red) and not all(red)                                  # red and dashed: not the solid accepted outline
     # an accepted footprint (record 3) is a solid light outline, not red
     img, fi = jam["renderer"].draw(30)
@@ -390,30 +516,49 @@ def test_a_rejected_fix_is_drawn_apart_with_its_reason(jam):
     (ax, ay), (bx, by) = _px(plan, 30, *f.footprint[0]), _px(plan, 30, *f.footprint[1])
     edge = [img[round(ay + (by - ay) * u), round(ax + (bx - ax) * u)] for u in np.linspace(0.3, 0.7, 9)]
     assert all(np.abs(p.astype(int) - BG).max() > 40 for p in edge)
-    assert not any(_close(p, hv.RED, tol=60) for p in edge)
+    assert not any(_close(p, hv.BAD, tol=60) for p in edge)
 
 
-def test_the_inset_is_the_current_frame_linked_to_its_footprint(jam):
+def test_the_camera_picture_is_the_current_frame_projected_onto_its_footprint(jam):
     img, fi = jam["renderer"].draw(30)
     x0, y0, x1, y1 = fi.inset_box
-    assert (x1 - x0) >= 0.2 * jam["plan"].size[0]
+    assert (x1 - x0) >= 0.2 * jam["plan"].size[0] and _inside(fi.inset_box, fi.side_box)
+    assert (x1 - x0) / (y1 - y0) == pytest.approx(FRAME[0] / FRAME[1], rel=0.02)     # the frame's own shape
     src = cv2.imread(str(jam["dir"] / jam["records"][3].source))
     expected = cv2.resize(src, (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA).astype(int)
     assert np.abs(img[y0:y1, x0:x1].astype(int) - expected).mean() < 4
     assert not fi.no_signal and not fi.frame_missing
-    # the run folder carries no match points, so the link is the honest one: inset corners to footprint corners
-    assert fi.link == "footprint"
-    assert jam["renderer"].draw(80)[1].link is None                  # LOST: nothing on the map to link to
-    assert jam["renderer"].draw(100)[1].link is None                 # a rejected fix is not linked either
+    # the picture is tied to the place it shows: two lines from the footprint to the picture
+    assert fi.projection and fi.match_lines == 0                     # this run folder carries no match points
+    (p, q), _ = hv.projection_links(np.array([_px(jam["plan"], 30, *c) for c in jam["plan"].frames[30].footprint]),
+                                    fi.inset_box)
+    mid = (0.5 * (p[0] + q[0]), 0.5 * (p[1] + q[1]))
+    bare, _ = jam["renderer"].draw(80)                               # LOST: the same place with no projection
+    assert not jam["renderer"].draw(80)[1].projection                # nothing on the map to project onto
+    assert not jam["renderer"].draw(100)[1].projection               # a rejected fix is not projected either
+    y, x = round(mid[1]), round(mid[0])
+    assert np.abs(img[y - 2:y + 3, x - 2:x + 3].astype(int).max(axis=(0, 1)) - bare[y, x]).max() > 25
 
 
-def test_match_lines_are_drawn_only_when_the_run_carries_match_points(tmp_path):
-    d = _write(tmp_path, _jam_rows(matches=True))
+def test_match_lines_are_drawn_only_from_the_runs_own_match_points(tmp_path):
+    rows = _jam_rows(matches=True)
+    rows[2]["extra"] = {"matches": {"frame": [[1.0, 2.0]], "map": "nonsense"}}       # malformed: not drawn
+    rows[8]["extra"] = {"matches": rows[3]["extra"]["matches"]}                      # LOST: no fix, so no lines
+    d = _write(tmp_path, rows)
     records, info = _load(d)
     plan = hv.plan_hud_video(records, info, fps=10)
     r = hv.HudRenderer(d, records, info, plan)
-    assert r.draw(30)[1].link == "matches"                           # record 3 has extra.matches
-    assert r.draw(20)[1].link == "footprint"                         # record 2 has none
+    img, fi = r.draw(30)                                             # record 3 has extra.matches: three pairs
+    assert fi.match_lines == 3 and fi.projection
+    for (fx, fy), (mx, my) in zip(*(rows[3]["extra"]["matches"][k] for k in ("frame", "map")), strict=True):
+        x0, y0, x1, y1 = fi.inset_box                                # a dot at each end of each line
+        a = (x0 + fx * (x1 - x0) / FRAME[0], y0 + fy * (y1 - y0) / FRAME[1])
+        b = _px(plan, 30, mx, my)
+        assert _close(img[round(a[1]), round(a[0])], hv.MATCH, tol=40)
+        assert _close(img[round(b[1]), round(b[0])], hv.MATCH, tol=40)
+    assert r.draw(10)[1].match_lines == 0 and r.draw(10)[1].projection       # record 1 has none: projection only
+    assert r.draw(20)[1].match_lines == 0                            # malformed points are not guessed at
+    assert r.draw(80)[1].match_lines == 0
 
 
 def test_lost_with_a_picture_is_marked_and_lost_without_one_says_no_signal(jam, tmp_path):
@@ -423,6 +568,7 @@ def test_lost_with_a_picture_is_marked_and_lost_without_one_says_no_signal(jam, 
     shown = cv2.resize(src, (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA).astype(int)
     assert not fi.no_signal
     assert np.abs(img[y0:y1, x0:x1].astype(int) - shown).mean() > 15       # dimmed and stamped: not a normal view
+    assert not fi.jammed and "no match" in fi.note
 
     d = _write(tmp_path, _jam_rows(), write_frames=False)
     records, info = _load(d)
@@ -441,22 +587,24 @@ def test_the_caption_is_drawn_while_it_lasts(jam):
     img0, fi0 = jam["renderer"].draw(60)
     img1, fi1 = jam["renderer"].draw(75)
     assert fi0.caption is None and fi0.caption_box is None
-    assert "frame 7" in fi1.caption.lower()
+    assert "frame 7" in fi1.caption and "Signal lost" in fi1.caption
     x0, y0, x1, y1 = fi1.caption_box
     assert y0 > jam["plan"].size[1] / 2                              # in the lower half, off the drone
-    assert (y1 - y0) >= 0.04 * jam["plan"].size[1]                   # large enough for a projector
+    assert (y1 - y0) >= 0.06 * jam["plan"].size[1]                   # large enough for a projector
     assert np.abs(img1[y0:y1, x0:x1].astype(int) - img0[y0:y1, x0:x1].astype(int)).max() > 100
 
 
 def test_the_panels_do_not_overlap(jam):
     _, fi = jam["renderer"].draw(75)
-    boxes = [fi.hud_box, fi.inset_box, fi.caption_box]
-    for i, a in enumerate(boxes):
-        for b in boxes[i + 1:]:
-            assert a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1], (a, b)
-    bx0, by0, bx1, by1 = fi.badge_box
-    hx0, hy0, hx1, hy1 = fi.hud_box
-    assert hx0 <= bx0 and bx1 <= hx1 and hy0 <= by0 and by1 <= hy1   # the badge heads the HUD panel
+    lay = hv.layout(jam["plan"].size)
+    assert (fi.stage_box, fi.side_box, fi.dock_box) == (lay.stage, lay.side, lay.dock)
+    assert _apart(fi.stage_box, fi.side_box) and _apart(fi.stage_box, fi.dock_box) and _apart(fi.side_box, fi.dock_box)
+    assert _inside(fi.inset_box, fi.side_box) and _inside(fi.lamp_box, fi.side_box)
+    assert _inside(fi.caption_box, fi.stage_box) and _apart(fi.inset_box, fi.lamp_box)
+    x0, y0, x1, y1 = fi.stage_box
+    assert x0 <= fi.drone_px[0] <= x1 and y0 <= fi.drone_px[1] <= y1
+    # the caption sits low in the stage: the drone and its footprint stay clear of it
+    assert fi.caption_box[1] > fi.drone_px[1] + 0.1 * (y1 - y0)
 
 
 def test_drawing_is_deterministic_and_order_independent(jam):
@@ -496,15 +644,15 @@ def test_the_cli_writes_the_hud_video_by_default(tmp_path):
     assert info["size"] == (640, 360) and info["fps"] == pytest.approx(30)
     assert abs(info["frames"] - (math.floor(16 / 4 * 30) + 1 + 30)) <= 1     # the run at 4x, plus a 1 s hold
 
-    cap = cv2.VideoCapture(str(d / "trajectory.mp4"))                # the file holds the HUD frames, badge and all
+    cap = cv2.VideoCapture(str(d / "trajectory.mp4"))                # the file holds the HUD frames, lamp and all
     cap.set(cv2.CAP_PROP_POS_FRAMES, 60)                             # t = 8 s: LOST
     ok, frame = cap.read()
     assert ok
     records, run_info = _load(d)
     plan = hv.plan_hud_video(records, run_info, fps=30, speed=4.0, size=(640, 360))
-    x0, y0, x1, y1 = hv.HudRenderer(d, records, run_info, plan).draw(60)[1].badge_box
+    x0, y0, x1, y1 = hv.HudRenderer(d, records, run_info, plan).draw(60)[1].lamp_box
     b, g, r = frame[y0:y1, x0:x1].reshape(-1, 3).mean(0)
-    assert r > g + 50 and r > b + 50
+    assert r > g + 40 and r > b + 40
 
 
 def test_the_m1_video_is_still_there_as_a_style(tmp_path):
@@ -531,24 +679,59 @@ def test_a_fake_run_with_a_jam_renders_on_square_and_wide_maps(tmp_path, map_siz
     assert abs(info["frames"] - (19 * 3 + 1 + 30)) <= 1
     records, run_info = _load(tmp_path / "run")
     plan = hv.plan_hud_video(records, run_info, speed=10, size=(640, 360))
-    half_h = plan.view_w * 360 / 640 / 2
-    assert plan.view_w <= w + 1e-6 and 2 * half_h <= h + 1e-6        # the view never shows more than the map
-    for f in plan.frames:                                            # the drone is on screen all the way
-        assert abs(f.x - f.cx) <= 0.45 * plan.view_w and abs(f.y - f.cy) <= 0.9 * half_h
+    s = 640 / plan.view_w
+    x0, y0, x1, y1 = plan.stage
+    for k, f in enumerate(plan.frames):                              # the drone is on the stage all the way
+        dx, dy = hv.to_video(plan, k, f.x, f.y)
+        assert x0 <= dx <= x1 and y0 <= dy <= y1
+        if (x1 - x0) / s <= w:                                       # ... and the stage shows nothing but map
+            assert (x1 - x0) / 2 / s - 1e-6 <= f.cx <= w - (x1 - x0) / 2 / s + 1e-6
+        if (y1 - y0) / s <= h:
+            assert (y1 - y0) / 2 / s - 1e-6 <= f.cy <= h - (y1 - y0) / 2 / s + 1e-6
     states = {hv.HudRenderer(tmp_path / "run", records, run_info, plan).draw(k)[1].state
               for k in range(0, len(plan.frames), 3)}
     assert states == {"TRACKING", "LOST", "RELOCALIZING"}
 
 
-def test_along_a_map_edge_the_drone_stays_between_the_panels(tmp_path):
-    # Near a map edge the camera does not stop at the edge (M1 does): that would slide the drone under the side
-    # panels. It stays in the free stage between them: the HUD ends at 26 % of the width, the camera inset
-    # starts at 69 %, so 0.19 of the view to either side of the centre is clear.
-    records, info = _load(_write(tmp_path, _jam_rows(x0=MAP[0] - 16 * STEP - 60, y0=MAP[1] - 80)))
+def test_along_a_map_edge_the_stage_never_shows_anything_but_map(tmp_path):
+    # The flight hugs the bottom edge and ends in the bottom-right corner of the map. The camera stops where the
+    # stage would leave the map (the drone then moves off the stage's centre, towards the edge it is near): the
+    # stage shows map and only map, in every frame. The earlier rule kept the drone centred and showed what is
+    # past the map instead: a black strip a quarter of the screen wide.
+    d = _write(tmp_path, _jam_rows(x0=MAP[0] - 16 * STEP - 60, y0=MAP[1] - 80))
+    records, info = _load(d)
     plan = hv.plan_hud_video(records, info, fps=10, speed=1.0)
-    view_h = plan.view_w * plan.size[1] / plan.size[0]
-    for f in plan.frames:
-        assert abs(f.x - f.cx) <= 0.19 * plan.view_w and abs(f.y - f.cy) <= 0.3 * view_h
+    s = plan.size[0] / plan.view_w
+    x0, y0, x1, y1 = plan.stage
+    for k, f in enumerate(plan.frames):
+        left, top = f.cx - (x1 - x0) / 2 / s, f.cy - (y1 - y0) / 2 / s
+        right, bottom = f.cx + (x1 - x0) / 2 / s, f.cy + (y1 - y0) / 2 / s
+        assert left >= -1e-6 and top >= -1e-6 and right <= MAP[0] + 1e-6 and bottom <= MAP[1] + 1e-6, k
+        dx, dy = hv.to_video(plan, k, f.x, f.y)
+        assert x0 <= dx <= x1 and y0 <= dy <= y1, k                  # and the drone is still on it
+    assert plan.frames[-1].cy == pytest.approx(MAP[1] - (y1 - y0) / 2 / s)   # pressed against the bottom edge
+    img, fi = hv.HudRenderer(d, records, info, plan).draw(30)        # TRACKING: no alarm tint on the map
+    for cx, cy in ((x0 + 3, y1 - 12), (x0 + 3, y0 + 3), (x1 - 12, y0 + 3)):   # stage corners clear of the drawing
+        assert _close(img[cy:cy + 8, cx:cx + 8].reshape(-1, 3).mean(0), (BG,) * 3, tol=12)
+    # under the side panel there is glass over more map (mirrored past the map's edge), never a flat black strip
+    sx0, _, sx1, sy1 = fi.side_box
+    assert img[sy1 - 40:sy1 - 4, sx0 + 4:sx1 - 4].mean() > 20
+
+
+def test_records_without_a_position_are_left_out(tmp_path):
+    rows = [{"x": 1200.0 + STEP * i, "y": 900.0, "state": TrackMode.TRACKING,
+             "fix": _fix(i, 1200.0 + STEP * i, 900.0)} for i in range(6)]
+    d = _write(tmp_path, rows)
+    lines = (d / "run.jsonl").read_text().splitlines()
+    first = json.loads(lines[0])
+    first["track"].update(state="LOST", x=None, y=None, vx=None, vy=None, cov=None, fix=None)
+    (d / "run.jsonl").write_text("\n".join([json.dumps(first), *lines[1:]]) + "\n")
+    records, info = _load(d)
+    assert not records[0].track.has_position
+    plan = hv.plan_hud_video(records, info, fps=10)
+    img, fi = hv.HudRenderer(d, records, info, plan).draw(0)         # the video starts at the first position
+    assert fi.idx == 1 and img.shape == (720, 1280, 3)
+    assert hv.write_hud_video(d, speed=5, size=(640, 360)).is_file()
 
 
 def test_a_long_run_plans_fast_and_draws(tmp_path):
