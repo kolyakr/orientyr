@@ -5,7 +5,9 @@
   video frame 30, and frames come in that order (``crop_2`` before ``crop_10``); ``t = idx / fps``, with fps from
   the argument, else from the flight's ``meta.json``, else 1. Names without numbers, or whose numbers repeat, are
   numbered 0, 1, 2 ... in natural name order; a mix of numbered and unnumbered names is an error, because one
-  stray file must not renumber a whole flight.
+  stray file must not renumber a whole flight. When that ``meta.json`` has a ``camera`` block (K, dist, size; the
+  Irpin flights), every frame is undistorted with it as it is read (M2-04): a homography only holds between
+  pinhole images, and the flights' truth is for undistorted pixels.
 - :func:`load_map` reads a map image and finds its sidecar: the JSON that says where the map is on Earth. It hands
   over the raw sidecar and the block that describes this image (``map`` or ``hires``); turning that into pixel
   <-> lon/lat <-> metre conversions is the georeference module's job (M0-05), so the format is parsed once.
@@ -23,6 +25,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dronenav.camera import Camera
 from dronenav.types import Frame
 
 __all__ = ["IMAGE_EXTENSIONS", "FolderSource", "MapImage", "load_map"]
@@ -47,9 +50,12 @@ class FolderSource:
 
     fps: frames per second for ``t = idx / fps``; None takes ``fps`` from ``meta.json`` in the folder or its parent
     (an Irpin flight keeps it next to ``frames/``), else 1.
+    undistort: undistort each frame with the ``camera`` block of that same ``meta.json`` (``self.camera``, None
+    when there is none or ``undistort`` is False). Off only to look at the raw frames: the checks and the tilt
+    assume pinhole frames, and raw ones cost about 1° of tilt and 0.5 px of position on the Irpin flights.
     """
 
-    def __init__(self, folder: str | Path, fps: float | None = None):
+    def __init__(self, folder: str | Path, fps: float | None = None, undistort: bool = True):
         self.folder = Path(folder)
         if not self.folder.is_dir():
             raise FileNotFoundError(f"no frames folder {self.folder}")
@@ -61,6 +67,7 @@ class FolderSource:
         if fps is not None and not _is_rate(fps):
             raise ValueError(f"fps must be a positive, finite number, got {fps!r}")
         self.fps = float(fps) if fps is not None else _meta_fps(self.folder)
+        self.camera = _meta_camera(self.folder) if undistort else None
         self.paths, self.idxs = _frame_numbers(self.paths)
 
     def __len__(self) -> int:
@@ -71,6 +78,11 @@ class FolderSource:
             image = cv2.imread(str(path), cv2.IMREAD_COLOR)     # grey and alpha come back as BGR
             if image is None:
                 raise ValueError(f"cannot read the frame {path}")
+            if self.camera is not None:
+                try:
+                    image = self.camera.undistort_image(image)
+                except ValueError as e:
+                    raise ValueError(f"{path}: {e}") from None
             yield Frame(idx=idx, t=idx / self.fps, image=image, source=str(path))
 
 
@@ -102,9 +114,8 @@ def _is_rate(v) -> bool:
         return False
 
 
-def _meta_fps(folder: Path) -> float:
-    """fps from meta.json in the folder, else in its parent; 1 when neither has one. A meta.json without an "fps"
-    key is about something else and is skipped; one whose fps is broken is an error, not a silent 1 fps."""
+def _metas(folder: Path) -> Iterator[tuple[Path, dict]]:
+    """The meta.json in the folder, then the one in its parent, that exist, as (path, parsed object)."""
     for meta in (folder / "meta.json", folder.parent / "meta.json"):
         if not meta.is_file():
             continue
@@ -114,6 +125,26 @@ def _meta_fps(folder: Path) -> float:
             raise ValueError(f"{meta} is not valid UTF-8 JSON: {e}") from None
         if not isinstance(data, dict):
             raise ValueError(f"{meta} must be a JSON object")   # noqa: TRY004 - bad file, not a bad argument
+        yield meta, data
+
+
+def _meta_camera(folder: Path) -> Camera | None:
+    """The camera from the first meta.json (folder, then parent) that has a "camera" block; None when none has
+    one. A broken block is an error naming the file, not silently raw frames."""
+    for meta, data in _metas(folder):
+        if "camera" not in data:
+            continue
+        try:
+            return Camera.from_meta(data)
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError(f"{meta} has a broken camera block (needs K, dist and size): {e!r}") from None
+    return None
+
+
+def _meta_fps(folder: Path) -> float:
+    """fps from meta.json in the folder, else in its parent; 1 when neither has one. A meta.json without an "fps"
+    key is about something else and is skipped; one whose fps is broken is an error, not a silent 1 fps."""
+    for meta, data in _metas(folder):
         if "fps" not in data:
             continue
         fps = data["fps"]
