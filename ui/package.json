@@ -1,0 +1,25 @@
+{
+  "name": "orientyr-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orientyr mission control: the console mock-up, driven by a run folder (run.json + run.jsonl + frames/)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5.9",
+    "vitest": "^5.1.1"
+  }
+}

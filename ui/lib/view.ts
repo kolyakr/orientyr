@@ -1,0 +1,245 @@
+/** What the console draws from the telemetry: pure functions, shared by the components and their tests. */
+import type { RunRecord, TrackMode } from "./run";
+
+/** Inliers at which a fix counts as fully trusted: the task crops give 120–384 (experiments/data_probe). */
+const FULL_CONFIDENCE_INLIERS = 300;
+
+/** 0 (no accepted fix) … 1 (as many inliers as a clean frame gives). Colours the trail and the HUD bar. */
+export function confidence(rec: RunRecord): number {
+  if (!rec.fix?.accepted) return 0;
+  return Math.min(1, Math.max(rec.fix.inliers, 1) / FULL_CONFIDENCE_INLIERS);
+}
+
+/** Position uncertainty in map px: the standard deviation along the covariance's long axis. */
+export function sigmaPx(cov: number[][]): number {
+  const [[a, b], [, d]] = cov;
+  const mean = (a + d) / 2;
+  return Math.sqrt(mean + Math.hypot((a - d) / 2, b)); // the larger eigenvalue of [[a, b], [b, d]]
+}
+
+/** Heading in degrees, clockwise from map up: the fix's, else the direction of travel, else unknown. */
+export function headingOf(rec: RunRecord): number | null {
+  if (rec.fix?.accepted) return rec.fix.heading_deg;
+  if (rec.vx === 0 && rec.vy === 0) return null;
+  const deg = (Math.atan2(rec.vx, -rec.vy) * 180) / Math.PI; // map y points down, so up is -y
+  return ((deg % 360) + 360) % 360;
+}
+
+/**
+ * The course the drone really flew into `frame`, in degrees clockwise from map up: the direction of the last step
+ * that moved it. Unlike the camera's heading it turns around when the drone flies back. Null before the first move.
+ */
+export function courseOf(records: RunRecord[], frame: number): number | null {
+  for (let i = Math.min(frame, records.length - 1); i > 0; i--) {
+    const dx = records[i].x - records[i - 1].x;
+    const dy = records[i].y - records[i - 1].y;
+    if (dx !== 0 || dy !== 0) return ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360; // map y points down
+  }
+  return null;
+}
+
+export interface TrailSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  confidence: number; // of the frame the segment arrives at
+  coasting: boolean; // arrived without an accepted fix: dead-reckoned, drawn dashed
+}
+
+/** The route flown so far: one segment per step, from frame 0 up to `frame`. */
+export function trail(records: RunRecord[], frame: number): TrailSegment[] {
+  const segs: TrailSegment[] = [];
+  for (let i = 1; i <= Math.min(frame, records.length - 1); i++) {
+    const a = records[i - 1];
+    const b = records[i];
+    segs.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, confidence: confidence(b), coasting: !b.fix?.accepted });
+  }
+  return segs;
+}
+
+export interface TrailRun {
+  points: number[][]; // map px, in flight order; the first point is the last point of the run before
+  color: string; // confidenceColor of its steps
+  coasting: boolean;
+}
+
+/**
+ * The flown route as a few polylines: neighbouring steps of one colour (and one kind, measured or dead-reckoned)
+ * are joined. The minimap draws these: at its size one line per step would be hundreds of invisible elements.
+ */
+export function trailRuns(records: RunRecord[], frame: number): TrailRun[] {
+  const runs: TrailRun[] = [];
+  for (const s of trail(records, frame)) {
+    const color = confidenceColor(s.confidence);
+    const last = runs.at(-1);
+    if (last && last.color === color && last.coasting === s.coasting) last.points.push([s.x2, s.y2]);
+    else runs.push({ points: [[s.x1, s.y1], [s.x2, s.y2]], color, coasting: s.coasting });
+  }
+  return runs;
+}
+
+export interface StateRun {
+  state: TrackMode;
+  from: number; // first frame (position in the run, not idx)
+  to: number; // last frame, inclusive
+}
+
+/** Consecutive frames in one state: the coloured bands of the timeline. */
+export function stateRuns(records: RunRecord[]): StateRun[] {
+  const runs: StateRun[] = [];
+  records.forEach((r, i) => {
+    const last = runs.at(-1);
+    if (last && last.state === r.state) last.to = i;
+    else runs.push({ state: r.state, from: i, to: i });
+  });
+  return runs;
+}
+
+export interface RunEvent {
+  frame: number; // position in the run
+  t: number;
+  state: TrackMode;
+  text: string;
+}
+
+/** The captions the engine attaches to state changes (`extra.event`): the mission log. */
+export function events(records: RunRecord[]): RunEvent[] {
+  return records.flatMap((r, frame) =>
+    typeof r.extra.event === "string" ? [{ frame, t: r.t, state: r.state, text: r.extra.event }] : [],
+  );
+}
+
+/** The trail's three colours, as the legend says: green = sure, yellow = less sure, red = guessing (no fix). */
+export function confidenceColor(c: number): string {
+  if (c <= 0) return "#e3261c";
+  return c < 0.6 ? "#f5d21f" : "#3ec43e";
+}
+
+/**
+ * The 3σ ellipse of a 2x2 covariance: radii along its axes (map px) and the long axis's angle in degrees.
+ * The drone is inside it with ~99 % probability.
+ */
+export function sigmaEllipse(cov: number[][]): { rx: number; ry: number; angle: number } {
+  const [[a, b], [, d]] = cov;
+  const mean = (a + d) / 2;
+  const half = Math.hypot((a - d) / 2, b);
+  return {
+    rx: 3 * Math.sqrt(mean + half),
+    ry: 3 * Math.sqrt(Math.max(mean - half, 0)),
+    angle: (0.5 * Math.atan2(2 * b, a - d) * 180) / Math.PI,
+  };
+}
+
+export const STATE_LABEL: Record<TrackMode, string> = {
+  TRACKING: "Tracking",
+  LOST: "Signal lost",
+  RELOCALIZING: "Relocalizing",
+};
+
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+/** The compass point nearest to a heading in degrees (0 = map up = N). */
+export function compass(deg: number): string {
+  return COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+/** mm:ss.s of flight time. */
+export function clock(t: number): string {
+  const m = Math.floor(t / 60);
+  return `${String(m).padStart(2, "0")}:${(t - m * 60).toFixed(1).padStart(4, "0")}`;
+}
+
+/** A round step (1, 2, 5, 10, 20, 50, …) that puts about `target` marks on `n` frames: point numbers, axis ticks. */
+export function niceStep(n: number, target: number): number {
+  const raw = Math.max(1, n / target);
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  return pow * ([1, 2, 5, 10].find((m) => m * pow >= raw) ?? 10);
+}
+
+/**
+ * An angle for an SVG or CSS transform, rounded to 0.1°. `Math.atan2` may differ in the last digit between Node and
+ * the browser: unrounded, the server's HTML and the client's first render disagree (a React hydration warning).
+ */
+export function drawAngle(deg: number): number {
+  return Math.round(deg * 10) / 10;
+}
+
+/** A box in px: on the map, or on the screen. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Where the map is drawn on the screen: screen px = map px * scale + (x, y). */
+export interface Camera {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+/** How big one camera footprint is on the map, in map px: the median larger side over the accepted fixes; 0 without any. */
+export function footprintSize(records: RunRecord[]): number {
+  const sizes = records.flatMap((r) => {
+    if (!r.fix?.accepted) return [];
+    const xs = r.fix.footprint.map((p) => p[0]);
+    const ys = r.fix.footprint.map((p) => p[1]);
+    return [Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))];
+  }).sort((a, b) => a - b);
+  return sizes.length ? sizes[Math.floor(sizes.length / 2)] : 0;
+}
+
+/**
+ * The box around the whole route, in map px, with a margin for what is drawn around the points (the footprint,
+ * the labels). The margin never reaches outside the map; a point that drifted off the map still stays inside.
+ */
+export function routeBox(records: RunRecord[], [w, h]: [number, number], margin: number): Rect {
+  const xs = records.map((r) => r.x);
+  const ys = records.map((r) => r.y);
+  const side = (lo: number, hi: number, size: number) => {
+    const from = Math.min(lo, Math.max(0, lo - margin));
+    const to = Math.max(hi, Math.min(size, hi + margin), from + 1); // never empty: the scale must stay finite
+    return [from, to - from];
+  };
+  const [x, width] = side(Math.min(...xs), Math.max(...xs), w);
+  const [y, height] = side(Math.min(...ys), Math.max(...ys), h);
+  return { x, y, width, height };
+}
+
+/**
+ * The camera of the whole-route view. `free` is the part of the screen no panel covers, `view` the whole window;
+ * both in the same screen px. Three rules, in this order of weight:
+ *   1. the route box lies inside `free`, as large as it can be;
+ *   2. the map covers `view` where rule 1 allows: it slides under the panels, so no map edge shows;
+ *   3. otherwise the route box sits in the middle of `free`.
+ */
+export function fitRoute(box: Rect, [w, h]: [number, number], free: Rect, view: Rect): Camera {
+  const scale = Math.min(free.width / box.width, free.height / box.height);
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+  const along = (b0: number, bLen: number, mapLen: number, f0: number, fLen: number, v0: number, vLen: number) => {
+    let t = f0 + (fLen - bLen * scale) / 2 - b0 * scale;                              // rule 3
+    if (mapLen * scale >= vLen) t = clamp(t, v0 + vLen - mapLen * scale, v0);         // rule 2
+    return clamp(t, f0 - b0 * scale, f0 + fLen - (b0 + bLen) * scale);                // rule 1
+  };
+  return {
+    scale,
+    x: along(box.x, box.width, w, free.x, free.width, view.x, view.width),
+    y: along(box.y, box.height, h, free.y, free.height, view.y, view.height),
+  };
+}
+
+/**
+ * The same camera for a group inside an svg whose viewBox is the map and which the browser fits into its cell
+ * (preserveAspectRatio "xMidYMid meet"): the transform of that group, in map units. The camera's screen px are
+ * counted from the cell's top-left corner.
+ */
+export function inViewBox(camera: Camera, [w, h]: [number, number], cell: { width: number; height: number }): Camera {
+  const fit = Math.min(cell.width / w, cell.height / h);
+  return {
+    scale: camera.scale / fit,
+    x: (camera.x - (cell.width - w * fit) / 2) / fit,
+    y: (camera.y - (cell.height - h * fit) / 2) / fit,
+  };
+}
