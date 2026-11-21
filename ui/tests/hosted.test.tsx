@@ -7,7 +7,7 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Console } from "@/components/Console";
-import { assetUrls, listRuns, loadRun, runsDir } from "@/lib/run-server";
+import { assetUrls, listRuns, loadRun, openRun, runsDir } from "@/lib/run-server";
 
 const fixture = path.join(__dirname, "fixtures", "run");
 
@@ -63,6 +63,41 @@ describe("assetUrls", () => {
     const { app, run } = appWithPackedRun();
     const info = { ...loadRun(run).info, map: "../../../../data/map.png" };
     expect(assetUrls(run, info, app)).toBeNull();
+  });
+});
+
+describe("openRun with packed runs", () => {
+  it("lists a packed run, opens it without a name and gives the page its static URLs", () => {
+    const { app, run } = appWithPackedRun();
+    const opened = openRun(null, {}, app);
+    expect(opened.error).toBeNull();
+    expect(opened.runs).toEqual(["irpin"]);
+    expect(opened.name).toBe("irpin");
+    expect(opened.dir).toBe(run);
+    expect(opened.assets).toEqual({ map: "/runs/irpin/map.webp", frames: "/runs/irpin" });
+    // the map is the host's static file: the server does not look for it on its own disk
+    expect(opened.mapMissing).toBe(false);
+    expect(openRun("irpin", {}, app).assets).toEqual(opened.assets);
+  });
+
+  it("keeps the API routes for a run a setting points at, packed runs or not", () => {
+    const { app } = appWithPackedRun();
+    const opened = openRun(null, { ORIENTYR_RUN: fixture }, app);
+    expect(opened.error).toBeNull();
+    expect(opened.dir).toBe(fixture);
+    expect(opened.assets).toBeNull();
+    expect(opened.runs).not.toContain("irpin");
+  });
+
+  it("without a packed run it opens the runs of outputs/ as before: no static URLs", () => {
+    const repo = mkdtempSync(path.join(os.tmpdir(), "orientyr-repo-"));
+    const app = path.join(repo, "ui");
+    mkdirSync(app);
+    cpSync(fixture, path.join(repo, "outputs", "fake"), { recursive: true });
+    const opened = openRun(null, {}, app);
+    expect(opened.error).toBeNull();
+    expect(opened.runs).toEqual(["fake"]);
+    expect(opened.assets).toBeNull();
   });
 });
 
