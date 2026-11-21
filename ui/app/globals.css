@@ -159,7 +159,6 @@ button:disabled { cursor: default; }
 .craft-shape { stroke: #ece7dc; stroke-linecap: round; stroke-linejoin: round; fill: #ece7dc; }
 .craft-shape .rotor-disc { fill: rgb(30 33 38 / .8); }
 .craft-shape .craft-nose { fill: var(--state); stroke: none; }
-.craft-case .craft-nose { stroke-width: 0; }
 .blade { stroke: rgb(236 231 220 / .7); stroke-linecap: round; transform-box: fill-box; transform-origin: center; }
 .drone[data-state="TRACKING"] .blade { animation: spin .5s linear infinite; }
 /* a lost signal: the marker is a ghost, outlines only */
