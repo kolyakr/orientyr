@@ -73,7 +73,11 @@ class LightGlueConfig:
     features: "disk" (default, open weights) or "superpoint". max_keypoints: the frame's keypoint budget per
     try, the main speed / accuracy knob (M4-09 profiles it).
     Map extraction (part of the cache key): map_keypoints, the budget per map tile; tile_px, the tile core
-    (a quarter of it is added around as context and cut off again).
+    (a quarter of it is added around as context and cut off again); upsample, how much the map and every frame
+    are enlarged before DISK looks at them (points are mapped back, so callers never see it), or None to choose
+    it per map with :func:`auto_upsample` within upsample_budget_mp megapixels. DISK finds its keypoints on a
+    4 px grid, too coarse on a low-resolution map and a frame shrunk to its scale: on the task map, 2x lifts
+    the hardest frames from ~12 inliers to ~150-240 (M4-02 notes in the README).
     Matching: window_keypoints, the most map keypoints one LightGlue call sees (the strongest are kept);
     chunk_px, the side of the chunks a larger area is searched in (half a chunk apart); turns, how many evenly
     spaced turns of the frame are tried (1: upright only, 4: quarter turns, 8: 45° steps); strong_matches, a try with at least this
@@ -86,6 +90,8 @@ class LightGlueConfig:
     max_keypoints: int = 2048
     map_keypoints: int = 2048
     tile_px: int = 512
+    upsample: float | None = None
+    upsample_budget_mp: float = 32.0
     window_keypoints: int = 4096
     chunk_px: int = 1024
     turns: int = 8
@@ -103,12 +109,34 @@ class LightGlueConfig:
             raise ValueError("tile_px and chunk_px must be >= 64")
         if self.turns not in (1, 2, 4, 8):
             raise ValueError(f"turns must be 1, 2, 4 or 8, got {self.turns}")
+        if self.upsample is not None and not 1.0 <= self.upsample <= 4.0:
+            raise ValueError(f"upsample must be None or in [1, 4], got {self.upsample}")
+        if self.upsample_budget_mp <= 0:
+            raise ValueError(f"upsample_budget_mp must be > 0, got {self.upsample_budget_mp}")
         if not 0.0 <= self.filter_threshold < 1.0 or self.min_texture < 0:
             raise ValueError("filter_threshold must be in [0, 1) and min_texture >= 0")
 
     def extraction_key(self) -> dict:
         """The parameters that change the map's features: what the cache file name depends on."""
         return {k: v for k, v in asdict(self).items() if k in ("features", "map_keypoints", "tile_px", "min_texture")}
+
+
+def auto_upsample(map_shape: tuple[int, ...], budget_mp: float) -> float:
+    """2.0 when the map enlarged 2x still fits ``budget_mp`` megapixels, else 1.0. A small map is a coarse one
+    (or a small area, cheap either way); a large one already matches at 1x and would cost 4x to extract."""
+    h, w = map_shape[:2]
+    return 2.0 if 4 * h * w <= budget_mp * 1e6 else 1.0
+
+
+_PAD = 128   # side multiple images are padded to before DISK
+
+
+def padded_size(h: int, w: int) -> tuple[int, int]:
+    """(h, w) rounded up to multiples of 128 (at least 128 each). On MPS, torch compiles a graph per input shape
+    (~1 s each, ~0.25 s when reused); padding keeps the number of distinct shapes small, so graphs get reused."""
+    def up(n: int) -> int:
+        return max(_PAD, -(-n // _PAD) * _PAD)
+    return up(h), up(w)
 
 
 def quarter_turn_back(pts: np.ndarray, q: int, size: tuple[int, int]) -> np.ndarray:
@@ -213,6 +241,7 @@ class LightGlueMatcher:
         self._map: np.ndarray | None = None
         self._map_feats: _Features | None = None
         self._turn = 0                          # the last winning quarter turn, tried first next time
+        self.upsample = cfg.upsample or 1.0     # resolved per map by set_map when cfg.upsample is None
         if map_img is not None:
             self.set_map(map_img)
 
@@ -235,19 +264,32 @@ class LightGlueMatcher:
         return 128 if self.cfg.features == "disk" else 256
 
     def _extract(self, img: np.ndarray, budget: int) -> _Features:
-        """Keypoints of one image (any size), at most ``budget``, flat ones dropped. Pixels of ``img``."""
+        """Keypoints of one image (any size), at most ``budget``, flat ones dropped. Pixels of ``img`` (centres at
+        integers), whatever ``upsample`` the extraction ran at."""
         import torch
 
+        u = self.upsample
+        if u != 1.0:
+            img = cv2.resize(img, None, fx=u, fy=u, interpolation=cv2.INTER_CUBIC)
         rgb = _rgb(img)
+        h, w = rgb.shape[:2]
+        ph, pw = padded_size(h, w)
+        # black padding at the right and bottom: pixel coordinates are unchanged, only the shape is rounded
+        padded = cv2.copyMakeBorder(rgb, 0, ph - h, 0, pw - w, cv2.BORDER_CONSTANT, value=(0, 0, 0))
         extractor, _ = self._nets()
         extractor.conf.max_num_keypoints = budget
-        x = torch.from_numpy(rgb).permute(2, 0, 1).float().div(255.0).to(self.device)
+        x = torch.from_numpy(padded).permute(2, 0, 1).float().div(255.0).to(self.device)
         with torch.inference_mode():
             f = extractor.extract(x, resize=None)        # no resize: the scale is the Searcher's business
         pts = f["keypoints"][0].cpu().numpy().astype(np.float32)
         feats = _Features(pts, f["descriptors"][0].cpu().numpy().astype(np.float32),
                           f["keypoint_scores"][0].cpu().numpy().astype(np.float32))
-        return feats.take(self._textured(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY), feats.pts))
+        feats = feats.take((pts[:, 0] < w) & (pts[:, 1] < h))      # nothing from the padding
+        feats = feats.take(self._textured(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY), feats.pts))
+        if u != 1.0:
+            # cv2.resize lines up pixel edges, not centres: centre-origin x maps back as (x + 0.5) / u - 0.5
+            feats.pts = ((feats.pts + 0.5) / u - 0.5).astype(np.float32)
+        return feats
 
     def _textured(self, gray: np.ndarray, pts: np.ndarray) -> np.ndarray:
         """Which keypoints sit on texture: the gray-level std over a 9 x 9 patch around them."""
@@ -264,6 +306,7 @@ class LightGlueMatcher:
     def set_map(self, map_img: np.ndarray) -> None:
         """Register the full map: read its features from the pack or the cache, or extract and cache them."""
         img = np.ascontiguousarray(map_img)
+        self._choose_upsample(img)
         name = self._cache_name(img)
         for source, folder in (("pack", self.pack_dir), ("cache", self.cache_dir)):
             feats = self._load(folder / name) if folder is not None else None
@@ -276,12 +319,19 @@ class LightGlueMatcher:
             self.map_features_source = "extracted"
             if self.cache_dir is not None:
                 self._save(self.cache_dir / name, feats)
-        self._map, self._map_feats = img, feats
+        self._map, self._map_feats, self._map_upsample = img, feats, self.upsample
+
+    def _choose_upsample(self, img: np.ndarray) -> None:
+        """Fix the enlargement for this map and the frames matched against it (they must share it)."""
+        self.upsample = self.cfg.upsample or auto_upsample(img.shape, self.cfg.upsample_budget_mp)
 
     def _cache_name(self, img: np.ndarray) -> str:
         h = hashlib.sha1(f"{img.shape}".encode())
         h.update(img.data)
-        params = json.dumps({"v": _CACHE_VERSION, **self.cfg.extraction_key()}, sort_keys=True)
+        key = {"v": _CACHE_VERSION, **self.cfg.extraction_key()}
+        if self.upsample != 1.0:                # 1x keeps the names it always had: caches and packs stay valid
+            key["upsample"] = self.upsample
+        params = json.dumps(key, sort_keys=True)
         return f"{BACKEND}_{h.hexdigest()[:16]}_{hashlib.sha1(params.encode()).hexdigest()[:8]}.npz"
 
     def _extract_tiled(self, img: np.ndarray) -> _Features:
@@ -405,12 +455,14 @@ class LightGlueMatcher:
         map registered first, or a window of an unregistered map extracted for this call only."""
         h, w = win.shape[:2]
         if self._is_window_of_map(win, ox, oy):
+            self.upsample = self._map_upsample  # frames must be enlarged like the features they are matched to
             f = self._map_feats
             keep = (f.pts[:, 0] >= ox) & (f.pts[:, 0] < ox + w) & (f.pts[:, 1] >= oy) & (f.pts[:, 1] < oy + h)
         elif (ox, oy) == (0, 0):
             self.set_map(win)
             return self._map_features(win, 0, 0, mask)
         else:
+            self._choose_upsample(win)
             f = self._extract_tiled(win)
             f.pts += np.float32([ox, oy])
             keep = np.ones(len(f), bool)

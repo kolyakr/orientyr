@@ -49,6 +49,16 @@ FRAME_SIZE = (480, 360)
 MAP = make_map()
 
 
+@pytest.fixture(autouse=True)
+def _unit_tests_on_cpu(request, monkeypatch):
+    """Unit tests feed DISK many image sizes; on MPS each new size compiles a graph (~1 s, measured), which made
+    this file take an hour. CPU costs the same for any size. Data tests keep the real device, as the run would."""
+    if request.node.get_closest_marker("data") is None:
+        import dronenav.matching.lightglue as lg
+        auto = lg.pick_device
+        monkeypatch.setattr(lg, "pick_device", lambda d=None: "cpu" if d in (None, "auto") else auto(d))
+
+
 # --- quarter turns: exact, no network -------------------------------------------------------------------------
 
 @pytest.mark.parametrize("q", [0, 1, 2, 3, 4, -1])
@@ -154,14 +164,21 @@ def test_the_device_is_picked_and_can_be_forced():
     assert LightGlueMatcher(cache_dir=None, device="cpu").device == "cpu"
 
 
+@pytest.fixture(scope="module")
+def map_cache(tmp_path_factory):
+    """One cache folder for the tests that only match: MAP's features (2x: a 2400 x 1800 image) are extracted
+    once for the file instead of once per test. Tests that count extractions keep their own tmp_path."""
+    return tmp_path_factory.mktemp("lightglue_map_cache")
+
+
 @needs_weights
 # 45°, 135° and 315° lie halfway between quarter turns: the hardest headings for quarter turns alone
 @pytest.mark.parametrize("heading", [0.0, 45.0, 90.0, 135.0, 150.0, 200.0, 290.0, 315.0])
-def test_a_frame_localizes_at_any_heading(heading, tmp_path):
+def test_a_frame_localizes_at_any_heading(heading, map_cache):
     """Without the quarter turns, a frame turned 150° or 200° from the map finds next to nothing."""
     cx, cy = 600.0, 430.0
     frame = render_frame(MAP, make_h(heading, 0.8, cx=cx, cy=cy, frame_size=FRAME_SIZE), FRAME_SIZE)
-    m = LightGlueMatcher(MAP, cache_dir=tmp_path).match(frame, MAP)
+    m = LightGlueMatcher(MAP, cache_dir=map_cache).match(frame, MAP)
     fix = localize(0, m, FRAME_SIZE)
     assert fix is not None and fix.accepted, heading
     # an exact synthetic homography: 1.5 px allows DISK's coarser keypoints (it localizes on a 4 px grid
@@ -171,10 +188,10 @@ def test_a_frame_localizes_at_any_heading(heading, tmp_path):
 
 
 @needs_weights
-def test_the_keypoint_budget_bounds_the_frame(tmp_path):
+def test_the_keypoint_budget_bounds_the_frame(map_cache):
     frame = render_frame(MAP, make_h(20.0, 0.8, cx=600, cy=430, frame_size=FRAME_SIZE), FRAME_SIZE)
-    small = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(max_keypoints=128)).match(frame, MAP)
-    big = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(max_keypoints=2048)).match(frame, MAP)
+    small = LightGlueMatcher(MAP, cache_dir=map_cache, cfg=LightGlueConfig(max_keypoints=128)).match(frame, MAP)
+    big = LightGlueMatcher(MAP, cache_dir=map_cache, cfg=LightGlueConfig(max_keypoints=2048)).match(frame, MAP)
     assert 0 < len(small) <= 128
     assert len(big) > len(small)
 
@@ -208,9 +225,9 @@ def test_map_features_are_read_from_the_pack_when_present(tmp_path):
 
 
 @needs_weights
-def test_the_matcher_reports_the_upsampling_it_chose(tmp_path):
-    assert LightGlueMatcher(MAP, cache_dir=tmp_path).upsample == 2.0                 # a small map: 2x
-    assert LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(upsample=1.0)).upsample == 1.0
+def test_the_matcher_reports_the_upsampling_it_chose(map_cache):
+    assert LightGlueMatcher(MAP, cache_dir=map_cache).upsample == 2.0                # a small map: 2x
+    assert LightGlueMatcher(MAP, cache_dir=map_cache, cfg=LightGlueConfig(upsample=1.0)).upsample == 1.0
 
 
 @needs_weights
@@ -275,11 +292,11 @@ def test_the_mild_2025_irpin_keyframes_localize(tmp_path):
 
 
 @needs_weights
-def test_upsampling_keeps_points_in_input_pixels(tmp_path):
+def test_upsampling_keeps_points_in_input_pixels(map_cache):
     # the enlarged image is an internal detail: a fix from an upsampling matcher lands where the plain one does
     cx, cy = 600.0, 430.0
     frame = render_frame(MAP, make_h(30.0, 0.8, cx=cx, cy=cy, frame_size=FRAME_SIZE), FRAME_SIZE)
-    m = LightGlueMatcher(MAP, cache_dir=tmp_path, cfg=LightGlueConfig(upsample=2.0)).match(frame, MAP)
+    m = LightGlueMatcher(MAP, cache_dir=map_cache, cfg=LightGlueConfig(upsample=2.0)).match(frame, MAP)
     assert m.pts_frame.max(axis=0)[0] <= FRAME_SIZE[0] and m.pts_frame.max(axis=0)[1] <= FRAME_SIZE[1]
     fix = localize(0, m, FRAME_SIZE)
     assert fix is not None and fix.accepted
