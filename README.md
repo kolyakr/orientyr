@@ -317,9 +317,9 @@ ruff check .
 ```
 
 `tools/task.sh test` runs pytest on `tests/` with the right import path, in parallel. It needs no data and no
-network, runs on the CPU, and takes about three and a half minutes on a laptop (1637 tests in 204 s on an Apple M5). `--full` adds the tests
-that need the full dataset. They are skipped when `data/` is not there. `ruff check .` is the linter. CI runs the
-fast suite and the linter on every pull request.
+network, runs on the CPU, and takes one and a half to three and a half minutes on a laptop (about 1650 tests; between
+80 s and 204 s in four runs on an Apple M5). `--full` adds the tests that need the full dataset. They are skipped when `data/` is not there.
+`ruff check .` is the linter. CI runs the fast suite and the linter on every pull request.
 
 To run one file: `tools/task.sh test tests/test_geometry.py`.
 
