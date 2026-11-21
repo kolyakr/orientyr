@@ -124,7 +124,12 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
   ]);
   const sigma = sigmaPx(rec.cov);
   // the uncertainty ring grows with the logarithm of sigma: 1 px and 100 px both stay readable in one small dial
-  const ringScale = Math.round(Math.min(1, 0.2 + 0.36 * Math.log10(1 + sigma)) * 100) / 100;
+  const ringScale = Math.round(Math.min(1, 0.3 + 0.36 * Math.log10(1 + sigma)) * 100) / 100;
+  const sigmaWord = sigma <= 3 ? "very precise" : sigma <= 15 ? "precise" : sigma <= 40 ? "drifting" : "wide";
+  // before the first step and after the last one nothing is being tracked: the lamp rests and says so
+  const idle = playing ? null : frame === 0 ? "Ready" : frame === last ? "Flight complete" : null;
+  // an event reads "what happened: what the tracker does now"; the HUD sets the two parts as a title and a note
+  const [eventTitle, eventNote = ""] = sentence(lastEvent ? lastEvent.text : "mission start: tracking").split(/:\s*/, 2);
 
   // The timeline is drawn once: the playhead and the curtain over the frames ahead move by transform alone.
   const bars = useMemo(() => run.records.map((r) => (
@@ -198,10 +203,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
             <circle cx="16" cy="16" r="4.8" fill="#f4f5f7"/>
             <circle cx="16" cy="16" r="2.3" fill="#ff4438"/>
           </svg>
-          <div>
-            <p>Orientyr / replay</p>
-            <h1>Live tracking</h1>
-          </div>
+          <h1>Orientyr</h1>
         </header>
 
         <button type="button" className="follow glass pill press" aria-pressed={follow} onClick={() => setFollow((v) => !v)}>
@@ -275,10 +277,13 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
       <aside className="side">
         <section data-part="hud" className="hud glass">
           <div className="status">
-            <span data-part="state-badge" data-state={rec.state} className="badge" role="status">{STATE_LABEL[rec.state]}</span>
+            <span data-part="state-badge" data-state={rec.state} data-idle={idle ? "" : undefined} className="badge" role="status">{idle ?? STATE_LABEL[rec.state]}</span>
             <span className="frame">Frame <Ticker value={String(rec.idx)} /> of {run.records[last].idx}</span>
           </div>
-          <p className="headline" key={lastEvent?.frame ?? -1}>{sentence(lastEvent ? lastEvent.text : "mission start: tracking")}</p>
+          <p className="headline" key={lastEvent?.frame ?? -1}>
+            <strong>{eventTitle}</strong>
+            <span>{[eventNote, `since ${clock(lastEvent?.t ?? 0)}`].filter(Boolean).join(" · ")}</span>
+          </p>
           <div className="trust">
             <span>Confidence</span>
             <div><i style={{ transform: `scaleX(${trust / 100})` }} /></div>
@@ -288,19 +293,26 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
           <dl className="gauges">
             <div className="g-nav">
               {/* a compass: the needle shows the heading, north is map up */}
-              <svg className="compass" viewBox="-36 -36 72 72" aria-hidden="true">
-                <circle r="33" className="dial" />
-                {Array.from({ length: 24 }, (_, i) => (
-                  <line key={i} y1={i % 6 === 0 ? -33 : -32} y2={i % 6 === 0 ? -26 : -29} className={i % 6 === 0 ? "major" : undefined} transform={`rotate(${i * 15})`} />
+              <svg className="compass" viewBox="-40 -40 80 80" aria-hidden="true">
+                <circle r="38.5" className="bezel" />
+                <circle r="34" className="dial" />
+                {Array.from({ length: 36 }, (_, i) => (
+                  <line key={i} y1={-34} y2={i % 9 === 0 ? -27 : i % 3 === 0 ? -29.5 : -31.5} className={i % 9 === 0 ? "major" : i % 3 === 0 ? "mid" : undefined} transform={`rotate(${i * 10})`} />
                 ))}
-                <text y="-15.5" textAnchor="middle">N</text>
+                <text y="-17" textAnchor="middle" className="north">N</text>
+                <text x="21.5" y="2.6" textAnchor="middle">E</text>
+                <text y="22.5" textAnchor="middle">S</text>
+                <text x="-21.5" y="2.6" textAnchor="middle">W</text>
                 {heading != null && (
                   <g className="needle" style={{ transform: `rotate(${needle}deg)` }}>
-                    <path d="M0 -25 5.2 3 0 -1 -5.2 3Z" className="needle-head" />
-                    <path d="M0 21 3.6 4 0 7 -3.6 4Z" className="needle-tail" />
+                    {/* two halves, one lit and one in shade: the needle reads as a folded blade, sharp at any size */}
+                    <path d="M0 -27 0 0 -5.4 3.6Z" className="needle-head" />
+                    <path d="M0 -27 5.4 3.6 0 0Z" className="needle-head shade" />
+                    <path d="M0 22 -3.8 4.4 0 2Z" className="needle-tail" />
+                    <path d="M0 22 0 2 3.8 4.4Z" className="needle-tail shade" />
                   </g>
                 )}
-                <circle r="2.2" className="hub" />
+                <circle r="2.6" className="hub" />
               </svg>
               <div>
                 <dt>Heading</dt>
@@ -340,7 +352,7 @@ export function Console({ run, initialFrame = 0 }: { run: Run; initialFrame?: nu
               <div>
                 <dt>Uncertainty</dt>
                 <dd><Ticker value={`± ${Math.round(sigma)} px`} /></dd>
-                <dd className="sub">search: {String(rec.extra.search ?? "none")}</dd>
+                <dd className="sub"><b>{sigmaWord}</b> · search: {String(rec.extra.search ?? "none")}</dd>
               </div>
               {/* the same blue area as on the map, in a sight: it swells while the camera is jammed */}
               <svg className="sight" viewBox="-28 -28 56 56" aria-hidden="true">
