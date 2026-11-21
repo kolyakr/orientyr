@@ -28,7 +28,7 @@ import pytest
 from tests.test_run import _city
 
 from dronenav.eval import irpin
-from dronenav.eval.metrics import WITHIN_M, WRONG_M, FrameEval, frame_metrics, summarize
+from dronenav.eval.metrics import WITHIN_M, WRONG_M, FrameEval, frame_metrics, missed, summarize
 from dronenav.sim import CutoutSource, cutout_route
 from dronenav.telemetry import Record
 from dronenav.types import Fix, TrackMode, TrackState
@@ -124,6 +124,15 @@ def test_bootstrap_interval_brackets_the_value_and_repeats_with_the_seed():
         assert v["lo"] <= v["value"] <= v["hi"], (key, v)
         assert v["lo"] < v["hi"], key                    # 60 spread-out errors: a real interval, not a point
     assert summarize(frames, seed=8, n_boot=300)["median_m"] != a["median_m"]
+
+
+def test_a_flight_found_nowhere_scores_zero_not_nothing():
+    # a run that localized no frame at all (the pipeline's NothingLocalized) is a result: 0 %, not a missing row
+    s = summarize(missed([0, 1, 2, 99], TRUTH), seed=7, n_boot=50)          # 99 has no truth: left out
+    assert s["frames"] == 3
+    assert s["localised_pct"]["value"] == 0.0 and s["coverage_pct"]["value"] == 0.0
+    assert s["wrong_fix_pct"]["value"] == 0.0
+    assert s["median_m"]["value"] is None
 
 
 def test_frames_without_truth_are_left_out():
@@ -254,6 +263,25 @@ def test_missing_data_is_reported_not_a_crash(data, tmp_path):
     [row] = json.loads((tmp_path / "out" / "bench.json").read_text())["rows"]
     assert row["status"] == "missing data" and "harsh" in row["missing"][0]
     assert "missing data" in (tmp_path / "out" / "bench.md").read_text()
+
+
+def test_a_map_where_nothing_is_found_is_a_zero_row(data, tmp_path):
+    # E flies the 2025 route over the 2017 map; here that map is blank, so no frame can be found on it
+    bad = tmp_path / "data"
+    for p in data.rglob("*"):
+        q = bad / p.relative_to(data)
+        if p.is_dir():
+            q.mkdir(parents=True, exist_ok=True)
+        elif p.name != "irpin_2017.png":
+            q.symlink_to(p)
+    cv2.imwrite(str(bad / "irpin" / "maps" / "irpin_2017.png"), np.full((1500, 2000), 128, np.uint8))
+    res = _bench(bad, tmp_path / "out", "--scenarios", "E", "--presets", "mild", "--speeds", "15",
+                 "--trackers", "none", "--boot", "50")
+    assert res.returncode == 0, res.stdout + res.stderr
+    [row] = json.loads((tmp_path / "out" / "bench.json").read_text())["rows"]
+    assert row["status"] == "ok" and row["note"] == "nothing localized"
+    assert row["metrics"]["frames"] == N and row["metrics"]["localised_pct"]["value"] == 0.0
+    assert "nothing localized" in (tmp_path / "out" / "bench.md").read_text()
 
 
 @pytest.mark.parametrize("args", [("--scenarios", "Z"), ("--speeds", "20"), ("--matchers", "nope"),
