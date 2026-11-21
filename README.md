@@ -1022,7 +1022,10 @@ Each effect has a strength from 0 to 1 and a seed. They are modelled physically 
   blur, auto-exposure, refresh banding, sensor noise, a finger over the lens (`lens_covered` in the truth),
   and H.264 compression.
 
-The `calm`, `hard` and `jam` presets mirror M2-01's three takes.
+The `calm`, `hard` and `jam` presets mirror M2-01's three takes. The truth's pitch, roll and altitude mean what
+they mean in the Irpin flights. A take replaces only an empty folder or an earlier simulated take, never a real
+flight. Supersampling (`--supersample`, default 2) approximates the sensor's averaging: at 2, about 15% of the
+moiré comes from the sampling itself; 3 or 4 is more faithful, and slower.
 
 ![Check sheet: each effect at strength 0, 0.5 and 1](results/m2-08/sheet.jpg)
 
@@ -1038,18 +1041,18 @@ the scale rule, the window search). Rendering times are for an M-series Mac.
 
 | map | preset | localized | wrong | error px median / p95 / max | render |
 |---|---|---|---|---|---|
-| task | calm | 20/20 | 0 | 0.36 / 0.92 / 0.97 | 43 s |
-| task | hard | 20/20 | 0 | 0.45 / 3.13 / 4.32 | 87 s |
-| task | jam | 18/20 | 0 | 0.36 / 0.92 / 0.97 | 42 s |
-| Irpin 2025 | calm | 20/20 | 0 | 0.37 / 0.83 / 0.90 | 41 s |
-| Irpin 2025 | hard | 20/20 | 0 | 0.57 / 1.55 / 1.63 | 85 s |
-| Irpin 2025 | jam | 18/20 | 0 | 0.37 / 0.84 / 0.91 | 40 s |
+| task | calm | 20/20 | 0 | 0.42 / 1.12 / 1.24 | 40 s |
+| task | hard | 20/20 | 0 | 0.42 / 1.08 / 2.07 | 74 s |
+| task | jam | 18/20 | 0 | 0.44 / 1.14 / 1.24 | 41 s |
+| Irpin 2025 | calm | 20/20 | 0 | 0.41 / 0.98 / 1.15 | 41 s |
+| Irpin 2025 | hard | 20/20 | 0 | 0.48 / 1.22 / 1.82 | 76 s |
+| Irpin 2025 | jam | 18/20 | 0 | 0.43 / 1.00 / 1.15 | 42 s |
 
 What the table shows:
 - **Jam:** the two missed keyframes are exactly the two inside the covered stretch, and no wrong fix is
   accepted.
-- **Hard:** tilt, the rolling shutter and motion blur raise the worst errors to a few pixels. Even so, no frame
-  is lost or wrong.
+- **Hard:** tilt, the rolling shutter and motion blur raise the worst errors to about 2 px. Even so, no frame is
+  lost or wrong.
 - **What this does not show:** these numbers say the pipeline handles the geometry and the screen artefacts. They
   do not say a real take will score the same.
   - The screen here shows the map's own pixels at 100% zoom.
