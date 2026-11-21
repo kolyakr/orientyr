@@ -34,6 +34,13 @@ def _size(text: str) -> tuple[int, int]:
     return w, h
 
 
+def _frame_size(text: str) -> tuple[int, int]:
+    w, h = _size(text)
+    if w % 2 or h % 2:
+        raise argparse.ArgumentTypeError(f"H.264 needs an even width and height, got {text!r}")
+    return w, h
+
+
 def _effect(text: str) -> tuple[str, float]:
     name, eq, value = text.partition("=")
     if not eq:
@@ -57,7 +64,9 @@ def _x264(img: np.ndarray, crf: int, fps: float) -> np.ndarray:
         cap = cv2.VideoCapture(str(path))
         ok, out = cap.read()
         cap.release()
-    return out if ok else img
+    if not ok:
+        raise RuntimeError("could not decode the compression sample")
+    return out
 
 
 def sheet(map_img: np.ndarray, path: Path, seed: int = 0) -> Path:
@@ -65,7 +74,8 @@ def sheet(map_img: np.ndarray, path: Path, seed: int = 0) -> Path:
     cam = Camera(size=(320, 180), fps=10.0)
     mh, mw = map_img.shape[:2]
     screen = Screen(size=(min(2560, mw), min(1440, mh)))
-    # come close enough that the view is about a quarter of the screen's width: any map gets a route
+    # come close enough that the view is about a quarter of the screen's width (a map too small even for that is
+    # a clear error from ScreenSim)
     dist = 0.25 * screen.size[0] * screen.pitch_mm / (2 * np.tan(np.radians(cam.hfov_deg) / 2))
     label_w = 150
     rows = []
@@ -103,13 +113,16 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"override one effect, 0 to 1; repeatable ({', '.join(EFFECTS)})")
     ap.add_argument("--seconds", type=float, default=20.0, help="length of the take (default 20)")
     ap.add_argument("--seed", type=int, default=0, help="the route, the hand and the noise (default 0)")
-    ap.add_argument("--size", type=_size, default=(1280, 720), help="camera frame WxH (default 1280x720)")
+    ap.add_argument("--size", type=_frame_size, default=(1280, 720), help="camera frame WxH, even (default 1280x720)")
     ap.add_argument("--fps", type=float, default=30.0, help="camera frame rate (default 30)")
     ap.add_argument("--screen", type=_size, default=(2560, 1440), help="screen WxH px (default 2560x1440, 27 in)")
     ap.add_argument("--pitch", type=float, default=0.233, help="screen pixel pitch, mm (default 0.233)")
     ap.add_argument("--zoom", type=float, default=1.0, help="screen px per map px in the viewer (default 1)")
     ap.add_argument("--distance", type=float, default=100.0, help="phone to screen, mm (default 100: phones focus from ~10 cm)")
     ap.add_argument("--speed", type=float, default=None, help="look-at speed on the screen, mm/s (default: preset)")
+    ap.add_argument("--supersample", type=int, default=2,
+                    help="samples per camera px per side, 1 to 4 (default 2; 3 or 4: moire closer to the optics' own, "
+                         "slower)")
     add_shared_args(ap, device=False)            # renders with numpy and OpenCV: no device to pick
     a = ap.parse_args(argv)
     init_cli(a)
@@ -120,7 +133,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         out = write_screen_video(a.map, a.out, preset=a.preset, seconds=a.seconds, seed=a.seed,
                                  effects=dict(a.effect), screen=Screen(size=a.screen, pitch_mm=a.pitch, zoom=a.zoom),
-                                 camera=Camera(size=a.size, fps=a.fps), distance_mm=a.distance, speed_mm_s=a.speed)
+                                 camera=Camera(size=a.size, fps=a.fps), distance_mm=a.distance, speed_mm_s=a.speed,
+                                 supersample=a.supersample)
     except (OSError, ValueError, RuntimeError, cv2.error) as e:
         print(f"screen_video: error: {e}", file=sys.stderr)
         return 2

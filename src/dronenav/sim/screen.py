@@ -30,7 +30,13 @@ take and (seed, frame) for per-frame noise, so :meth:`ScreenSim.frame` gives the
 - ``motion_blur``: sub-exposure samples; ``rolling_shutter``: each row read at its own time (the truth is the
   centre row's moment); ``exposure``: auto-exposure hunting and reacting late to the glare; ``banding``: refresh
   bands rolling across the rows; ``noise``: sensor noise; ``cover``: a finger over the lens (``lens_covered``);
-- ``compression``: the H.264 CRF of ``flight.mp4`` (16 to 36); it acts in :func:`write_screen_video` only.
+- ``compression``: the H.264 CRF of ``flight.mp4`` (16 to 36; 16 is near-lossless, not lossless); it acts in
+  :func:`write_screen_video` only, and only with the bundled x264 (``meta.json``: ``"crf": null`` otherwise).
+
+Truth fields mean what they mean in the Irpin flights: pitch > 0 puts the top of the frame on the far side, roll > 0
+the right side; ``altitude_m`` is the camera's perpendicular distance to the screen. Supersampling (``supersample``,
+default 2) approximates the sensor's averaging: at 2, about 15 % of the moiré is the sampling's own; 3 or 4 is
+closer to the optics alone, and slower.
 """
 from __future__ import annotations
 
@@ -69,6 +75,7 @@ PRESET_SPEED_MM_S = {"calm": 40.0, "hard": 90.0, "jam": 40.0}   # how fast the l
 
 TILT_MAX_DEG = 25.0
 COVER_MAX_S = 3.0           # a finger over the lens for this long at strength 1
+LEAD_S = 0.25               # route time before frame 0 and after the last (exposure and readout reach past)
 KEY_HZ = 8.0                # route key poses per second (at most 25 degrees of turn between two: 200 deg/s)
 _FILL, _ROW = 0.8, 0.88     # subpixel stripe width (of a third of the pixel) and lit height (of the pixel)
 
@@ -141,8 +148,9 @@ class _Wave:
 
 def _rot(pitch: float, roll: float, yaw: float) -> np.ndarray:
     """World -> camera. yaw: the heading (clockwise from map up), so frame up points along it on the map; then
-    the camera pitches about its x axis and rolls about its y axis."""
-    a, p, r = (math.radians(v) for v in (yaw, pitch, roll))
+    the camera pitches about its x axis and rolls about its y axis. Signs as in the Irpin flights' truth:
+    pitch > 0 makes the top of the frame the far side, roll > 0 the right side."""
+    a, p, r = math.radians(yaw), -math.radians(pitch), -math.radians(roll)
     Rz = np.array([[math.cos(a), math.sin(a), 0], [-math.sin(a), math.cos(a), 0], [0, 0, 1.0]])
     Rx = np.array([[1, 0, 0], [0, math.cos(p), -math.sin(p)], [0, math.sin(p), math.cos(p)]])
     Ry = np.array([[math.cos(r), 0, math.sin(r)], [0, 1, 0], [-math.sin(r), 0, math.cos(r)]])
@@ -166,9 +174,15 @@ class ScreenSim:
                         ("pitch_mm", screen.pitch_mm), ("zoom", screen.zoom)):
             if not _is_rate(v):
                 raise ValueError(f"{name} must be a positive number, got {v!r}")
-        if isinstance(seed, bool) or not isinstance(seed, numbers.Integral):
-            raise ValueError(  # noqa: TRY004 - a bad setting, reported like the others (as in cutout_route)
-                f"seed must be a whole number, got {seed!r}")
+        if isinstance(seed, bool) or not isinstance(seed, numbers.Integral) or seed < 0:
+            raise ValueError(f"seed must be a whole number >= 0, got {seed!r}")
+        for name, size, even in (("camera.size", camera.size, True), ("screen.size", screen.size, False)):
+            if not (len(size) == 2 and all(isinstance(v, numbers.Integral) and v >= 16 for v in size)
+                    and (not even or all(v % 2 == 0 for v in size))):
+                raise ValueError(f"{name} must be (w, h) in px, at least 16{', both even (H.264)' if even else ''}, "
+                                 f"got {size!r}")
+        if not (isinstance(camera.hfov_deg, numbers.Real) and 0 < camera.hfov_deg < 170):
+            raise ValueError(f"camera.hfov_deg must be in (0, 170), got {camera.hfov_deg!r}")
         if not (isinstance(supersample, numbers.Integral) and 1 <= supersample <= 4):
             raise ValueError(f"supersample must be 1 to 4, got {supersample!r}")
         if map_img is None or map_img.ndim != 3 or map_img.shape[2] != 3:
@@ -247,7 +261,7 @@ class ScreenSim:
         self.view_contained = bool(self.fx["edge"] == 0 and extra_for(self.fx["tilt"], self.fx["shake"]) <= keep)
         margin = keep - self.fx["edge"] * 0.8 * view_w                      # edge: let the view out on purpose
         bx0, by0, bx1, by1 = xa + margin, ya + margin, xb - margin, yb - margin
-        self.n_key = math.ceil(self.n / self.fps * KEY_HZ) + 4
+        self.n_key = math.ceil((self.n / self.fps + 2 * LEAD_S) * KEY_HZ) + 4
         try:
             poses = cutout_route((round(bx1 - bx0), round(by1 - by0)), self.n_key, self.seed, frame_size=(w, h),
                                  scale=(self.scale * 0.9, self.scale * 1.1), tilt_max_deg=0.0,
@@ -282,7 +296,8 @@ class ScreenSim:
     # -- poses
     def _pose(self, t: float):
         """(look-at x, y in screen mm, distance mm, heading, pitch, roll in degrees) at time t (s)."""
-        u = min(max(t, 0.0), self.n / self.fps) * KEY_HZ + 1.0              # key 0 is only a handle for the spline
+        # key 0 is only a handle for the spline; the route starts LEAD_S before frame 0, so t < 0 is a real moment
+        u = (min(max(t, -LEAD_S), self.n / self.fps + LEAD_S) + LEAD_S) * KEY_HZ + 1.0
         k = min(int(u), self.n_key - 3)
         s = u - k
 
@@ -321,8 +336,10 @@ class ScreenSim:
 
     def truth(self, i: int) -> FlightTruth:
         """Frame i's true pose, at the centre row's moment (the rolling shutter reads other rows earlier/later)."""
+        if not 0 <= i < self.n:
+            raise IndexError(f"frame {i} is outside the take (0 to {self.n - 1})")
         t = i / self.fps
-        M, _, (_, _, d, yaw, pitch, roll) = self._camera(t)
+        M, C, (_, _, _, yaw, pitch, roll) = self._camera(t)
         H = self.A @ self.S @ np.linalg.inv(M)
         H = H / H[2, 2]
         w, h = self.camera.size
@@ -332,7 +349,7 @@ class ScreenSim:
         a, b = self._pose(t - dt), self._pose(t + dt)
         speed = math.hypot(b[0] - a[0], b[1] - a[1]) / (2 * dt) / 1000      # m/s on the screen
         return FlightTruth(i=i, t=t, H=H, center=(c[0] / c[2], c[1] / c[2]), footprint=corners[:, :2] / corners[:, 2:],
-                           heading_deg=yaw % 360, altitude_m=d / 1000, pitch_deg=pitch, roll_deg=roll,
+                           heading_deg=yaw % 360, altitude_m=-C[2] / 1000, pitch_deg=pitch, roll_deg=roll,
                            speed_mps=speed)
 
     def _cover_amount(self, t: float) -> float:
@@ -477,11 +494,10 @@ def write_screen_video(map_path: str | Path, out_dir: str | Path, *, preset: str
     sim = ScreenSim(the_map.image, seconds=seconds, seed=seed, effects=fx, screen=screen, camera=camera,
                     distance_mm=distance_mm, speed_mm_s=speed, supersample=supersample)
     out_dir = Path(out_dir)
-    if out_dir.exists() and not out_dir.is_dir():
-        raise ValueError(f"{out_dir} exists and is not a folder")
+    _check_replaceable(out_dir)
     part = out_dir.parent / f".{out_dir.name}.partial"
     shutil.rmtree(part, ignore_errors=True)
-    crf = 16 + round(20 * fx["compression"])
+    crf = 16 + round(20 * fx["compression"]) if _has_x264() else None      # OpenCV's fallback has no CRF
     try:
         (part / "frames").mkdir(parents=True)
         with open(part / "truth.jsonl", "w", encoding="utf-8") as f:
@@ -492,10 +508,10 @@ def write_screen_video(map_path: str | Path, out_dir: str | Path, *, preset: str
                                     "heading_deg": tr.heading_deg, "altitude_m": tr.altitude_m,
                                     "pitch_deg": tr.pitch_deg, "roll_deg": tr.roll_deg, "speed_mps": tr.speed_mps,
                                     "lens_covered": sim.covered(i)}) + "\n")
-        with _encoder(part / "flight.mp4", sim.fps, camera.size, crf=crf) as write:
+        with _encoder(part / "flight.mp4", sim.fps, camera.size, crf=crf) as write:   # crf None: unused
             for i in range(len(sim)):
                 write(sim.frame(i))
-        every = max(1, round(sim.fps))
+        every = max(1, math.floor(sim.fps + 0.5))       # round half up, like FlightSource and VideoSource
         cap = cv2.VideoCapture(str(part / "flight.mp4"))
         keys = 0
         try:
@@ -519,10 +535,45 @@ def write_screen_video(map_path: str | Path, out_dir: str | Path, *, preset: str
                 "truth_note": "H_frame_to_map is exact for the pinhole camera (no distortion), at the centre row's "
                               "moment; lens_covered frames show no map"}
         (part / "meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        shutil.rmtree(out_dir / "frames", ignore_errors=True)
-        for name in ("frames", "truth.jsonl", "meta.json", "flight.mp4"):
-            os.replace(part / name, out_dir / name)
+        # swap whole folders: the old take (if any) steps aside, the new one takes its name, then the old one goes
+        old = out_dir.parent / f".{out_dir.name}.old"
+        shutil.rmtree(old, ignore_errors=True)
+        if out_dir.exists():
+            os.replace(out_dir, old)
+        os.replace(part, out_dir)
+        shutil.rmtree(old, ignore_errors=True)
     finally:
         shutil.rmtree(part, ignore_errors=True)
     return out_dir
+
+
+TAKE_FILES = {"flight.mp4", "truth.jsonl", "meta.json", "frames"}
+
+
+def _check_replaceable(out_dir: Path) -> None:
+    """``out_dir`` may be missing, empty, or a previous simulated take (nothing else in it): a take replaces it
+    whole. Anything else (a real flight, a run folder) is refused, never overwritten."""
+    if not out_dir.exists():
+        return
+    if not out_dir.is_dir():
+        raise ValueError(f"{out_dir} exists and is not a folder")
+    names = {p.name for p in out_dir.iterdir()}
+    if not names:
+        return
+    try:
+        simulated = json.loads((out_dir / "meta.json").read_text(encoding="utf-8")).get("simulated") is True
+    except (OSError, ValueError, AttributeError):
+        simulated = False
+    if not simulated or not names <= TAKE_FILES:
+        raise ValueError(f"{out_dir} is not empty and is not a simulated take (meta.json \"simulated\": true, only "
+                         f"{', '.join(sorted(TAKE_FILES))}): refusing to overwrite it; choose another --out")
+
+
+def _has_x264() -> bool:
+    """Is the bundled ffmpeg (x264, which honours the CRF) there? The encoder falls back to OpenCV otherwise."""
+    try:
+        import imageio_ffmpeg
+        imageio_ffmpeg.get_ffmpeg_exe()
+    except (ImportError, RuntimeError):
+        return False
+    return True
