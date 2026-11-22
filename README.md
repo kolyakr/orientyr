@@ -30,14 +30,17 @@ pip install -r requirements.txt && pip install -e .
 
 ## Data
 
-Get the [challenge data](data/README.md) with `tools/data.sh setup` and `tools/data.sh pull hackatons-data`.
+Provide a satellite map and matching camera frames or a video. See the [data layout](data/README.md)
+for the optional benchmark datasets.
 
 ## Run and outputs
 
 ```bash
-python scripts/run.py --map data/hackatons-data/global_map.png \
-  --frames data/hackatons-data/crops --out outputs/run1
+python scripts/run.py --map path/to/map.png \
+  --frames path/to/frames --out outputs/run1
 ```
+
+Use `--video` with a video path in place of `--frames`.
 
 The run writes `trajectory.png`, `trajectory_preview.jpg`, `trajectory.mp4`, and telemetry in
 `run.json` and `run.jsonl`.
@@ -52,4 +55,5 @@ The run writes `trajectory.png`, `trajectory_preview.jpg`, `trajectory.mp4`, and
 tools/task.sh test
 ```
 
-See [NOTES.md](NOTES.md) for the full benchmarks, implementation details, and repository layout.
+See [NOTES.md](NOTES.md) for benchmarks and implementation details, and [CONTRIBUTING.md](CONTRIBUTING.md)
+for the PR workflow.

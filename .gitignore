@@ -14,9 +14,15 @@ __pycache__/
 build/
 .venv/
 .DS_Store
-.claude/settings.local.json
+# Local editor and assistant files
+/AGENTS.md
+/CLAUDE.md
+/.claude/
+/.codex/
+/.cursor/
+/ui/AGENTS.md
 
-# docs live in the make-docs library "orientyr", not in git
+# Local documentation and exports
 docs/
 extras/
 make-docs.toml

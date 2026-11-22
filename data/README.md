@@ -1,16 +1,15 @@
-# data/
+# Data layout
 
-Not in git (`.gitignore` excludes `data/*`, except this file). The single source is the team's Google Drive
-folder: <https://drive.google.com/drive/folders/1Z5iIhFekHIFkAjH49jxUdf3k4SGw7voe>, which this layout mirrors.
-Get it with `tools/data.sh pull` (needs `tools/data.sh setup` once), or by downloading the folder in the
-browser and unzipping it here. Then check it unpacked correctly:
+Orientyr accepts a map image and an ordered folder of frames or a video. Pass their paths directly to
+`scripts/run.py`. The full benchmark datasets are external to the repository.
+
+If you already have a benchmark dataset, use the layout below. Check it with:
 
 ```bash
-python scripts/check_data.py
+python scripts/check_data.py --data data
 ```
 
-It reports every missing or truncated file by name; see `src/dronenav/check_data.py` for exactly what it
-checks. Pull before starting work that reads data (M0-06).
+The checker reports missing or truncated benchmark files by name.
 
 ## Layout
 
@@ -32,6 +31,6 @@ data/
     drone/<year>/               a short real-looking flight for quick checks
       truth.json                       camera + per-frame ground truth; "frames" names each frame_NNN.png
       frame_NNN.png
-    preview/                           curated stills used in the README / pitch
+    preview/                           curated preview images
   video/                      phone/webcam takes over the map on a screen (M2-01); added once filmed, optional
 ```

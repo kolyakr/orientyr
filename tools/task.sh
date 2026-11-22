@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The test gate and the PR flow for Orientyr: one command per step, so humans and agents follow the same flow.
-# Work happens on feat/<slug>, fix/<slug> or chore/<slug> branches off develop (AGENTS.md, "How we work").
+# See CONTRIBUTING.md for the branch and PR workflow.
 # Needs: gh logged in. Works on macOS bash 3.2.
 #
 #   tools/task.sh test               the gate pr/finish run: the suite in parallel, without the `data` tests
@@ -11,8 +11,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(git rev-parse --show-toplevel)" && pwd)  # posix form: git-bash on Windows mis-splits PYTHONPATH otherwise
-# shellcheck source=tools/task.env
-source "${TASK_ENV:-$ROOT/tools/task.env}"
+cd "$ROOT"
 
 die() { echo "task.sh: $*" >&2; exit 1; }
 
@@ -102,14 +101,14 @@ case "${1:-}" in
     if [[ -n "${2:-}" ]]; then body=$(cat "$2")
     else body=$'## What\n\n## Done when\n\n## Tests: one per "Done when" item\n'; fi
     tests_line="$TESTS_LINE $(tests_note), green on \`$(git rev-parse --short HEAD)\`."
-    existing=$(gh pr list -R "$REPO" --head "$branch" --state open --json url --jq '.[0].url')
+    existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
     if [[ -n "$existing" ]]; then
       # the body is the author's by now: only the tests line is ours, so it stays true after every push
-      { old=$(gh pr view "$existing" -R "$REPO" --json body --jq .body) \
-          && gh pr edit "$existing" -R "$REPO" --body "$(with_tests_line "$tests_line" <<<"$old")" >/dev/null; } \
+      { old=$(gh pr view "$existing" --json body --jq .body) \
+          && gh pr edit "$existing" --body "$(with_tests_line "$tests_line" <<<"$old")" >/dev/null; } \
         || echo "task.sh: could not update the tests line in the PR body" >&2
       echo "PR already open, branch updated: $existing"
-    else gh pr create -R "$REPO" --base develop --head "$branch" --title "$(pr_title "$branch")" \
+    else gh pr create --base develop --head "$branch" --title "$(pr_title "$branch")" \
            --body "$body"$'\n\n'"$tests_line"; fi
     ;;
 
@@ -117,15 +116,15 @@ case "${1:-}" in
     branch=$(work_branch)
     require_clean
     [[ -z "$(git log --oneline "origin/$branch..HEAD" 2>/dev/null)" ]] || die "local commits not pushed: run tools/task.sh pr"
-    pr=$(gh pr list -R "$REPO" --head "$branch" --state open --json number,baseRefName --jq '.[0] | "\(.number) \(.baseRefName)"')
+    pr=$(gh pr list --head "$branch" --state open --json number,baseRefName --jq '.[0] | "\(.number) \(.baseRefName)"')
     [[ -n "$pr" && "$pr" != "null null" ]] || die "no open PR for $branch: run tools/task.sh pr"
     [[ "${pr#* }" == develop ]] || die "PR #${pr% *} targets ${pr#* }, not develop"
     if tests_already_green; then
       echo "task.sh: tests already green on this tree ($(git rev-parse --short 'HEAD^{tree}'), $(cut -d' ' -f2 "$STAMP") gate): not run again"
     else run_tests; fi
-    checks=$(gh pr checks "${pr% *}" -R "$REPO" --json bucket --jq '[.[] | select(.bucket=="fail" or .bucket=="pending")] | length' 2>/dev/null || echo 0)
+    checks=$(gh pr checks "${pr% *}" --json bucket --jq '[.[] | select(.bucket=="fail" or .bucket=="pending")] | length' 2>/dev/null || echo 0)
     [[ "$checks" == 0 ]] || die "PR #${pr% *} has failing or pending checks: gh pr checks ${pr% *}"
-    gh pr merge "${pr% *}" -R "$REPO" --squash --delete-branch
+    gh pr merge "${pr% *}" --squash --delete-branch
     git switch -q develop 2>/dev/null || true
     git pull -q --ff-only origin develop
     git branch -D "$branch" >/dev/null 2>&1 || true

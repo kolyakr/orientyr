@@ -1,4 +1,4 @@
-"""Check that data/ has the layout the team's Google Drive mirrors (M0-06); see data/README.md.
+"""Check the optional benchmark data layout described in data/README.md.
 
     python scripts/check_data.py
     python scripts/check_data.py --data /path/to/data
