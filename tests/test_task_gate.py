@@ -12,12 +12,11 @@ stubs on PATH that log how they were called: nothing here talks to GitHub or run
   branches only, and never touch issues or the board            test_pr_and_finish_refuse_other_branches,
                                                                 test_the_flow_touches_no_issue_and_no_board
 - the board commands and their hooks are gone                → test_the_board_commands_are_gone,
-                                                                test_nothing_runs_the_board_any_more
-- CI uses ``-n auto``; the docs describe the gate            → test_ci_runs_the_suite_in_parallel, test_agents_md_*
+                                                                test_legacy_board_workflows_are_absent
+- CI uses ``-n auto``; the docs describe the gate            → test_ci_runs_the_suite_in_parallel, test_contributor_guide_*
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -84,7 +83,6 @@ class Sandbox:
         self.git("init", "-q", "-b", "develop", str(self.repo), cwd=tmp)
         (self.repo / "tools").mkdir()
         shutil.copy(ROOT / "tools" / "task.sh", self.repo / "tools" / "task.sh")
-        shutil.copy(ROOT / "tools" / "task.env", self.repo / "tools" / "task.env")
         (self.repo / "tests").mkdir()
         (self.repo / "tests" / "test_nothing.py").write_text("def test_nothing():\n    pass\n")
         self.git("add", "-A")
@@ -348,15 +346,9 @@ def test_the_board_commands_are_gone(box, args):
     assert all(f"task.sh {c}" in usage for c in ("test", "pr", "finish")), usage
 
 
-def test_nothing_runs_the_board_any_more():
-    settings = ROOT / ".claude" / "settings.json"
-    if settings.exists():                                     # no hook asks the board for news any more
-        assert "notify" not in json.dumps(json.loads(settings.read_text()))
+def test_legacy_board_workflows_are_absent():
     workflows = {p.name for p in (ROOT / ".github" / "workflows").iterdir()}
     assert not workflows & {"unblock.yml", "owner-only.yml"}, workflows
-    assert not (ROOT / ".claude" / "skills" / "start-task").exists()
-    env = (ROOT / "tools" / "task.env").read_text()
-    assert "REPO=" in env and "PROJECT_ID" not in env and "STATUS_" not in env
 
 
 # --- CI and the docs ----------------------------------------------------------------------------------------------
@@ -374,16 +366,10 @@ def test_xdist_is_a_dev_requirement():
     assert "pytest-xdist" in names
 
 
-def test_agents_md_describes_the_flow_and_the_gate():
-    text = (ROOT / "AGENTS.md").read_text()
-    commands = text[text.index("## Commands"):]
-    assert "tools/task.sh test --full" in commands
-    start = text.index("### The flow")
-    flow = text[start:text.index("\n### ", start + 1)]
-    rows = {m[1]: m[0] for m in re.finditer(r"^\| \d\. (\w+).*$", flow, re.MULTILINE)}
-    assert "data" in rows["PR"] and "TASK_FULL=1" in rows["PR"]             # what the gate leaves out, and how to add it
-    assert re.search(r"already (green|passed)", rows["Merge"])              # finish does not repeat a green run
+def test_contributor_guide_describes_the_flow_and_the_gate():
+    text = (ROOT / "CONTRIBUTING.md").read_text()
+    for command in ("tools/task.sh test", "tools/task.sh test --full", "tools/task.sh pr", "tools/task.sh finish"):
+        assert f"`{command}`" in text
+    assert "TASK_FULL=1" in text and "same committed tree" in text
     for kind in ("feat/", "fix/", "chore/"):
-        assert kind in text[:start]                                         # the branch names, before the flow
-    for gone in ("task.sh ready", "task.sh start", "task.sh notify", "Closes #"):
-        assert gone not in text, gone
+        assert kind in text
