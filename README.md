@@ -1,11 +1,8 @@
 # Orientyr
 
 Orientyr matches drone-camera frames to a satellite map to reconstruct the route without GPS.
-Built for the Spectron hackathon.
 
-![Orientyr mission-control demo showing the camera feed, reconstructed route, and tracking status](results/orientyr-demo.webp)
-
-Full presentation (3:14) is available locally in `data/orientyr_presentation.mp4`.
+https://github.com/user-attachments/assets/6278e5fc-05a4-4d86-ada1-797c86e4a452
 
 ## Approach
 
