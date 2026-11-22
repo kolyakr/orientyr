@@ -2,7 +2,7 @@
 
 "Done when: every live step in the pitch has a matching recording, on two machines." This checks the first half
 (a recording exists and actually decodes) on one machine; run scripts/check_backups.py on the second machine too
-- see README.md, "Backup recordings".
+- see NOTES.md, "Backup recordings".
 
 The 21 Nov re-plan (#128) cut the live judge-controlled UI demo; the three live steps it replaced are the HUD
 videos of the 50-crop task map, an Irpin flight, and the phone take.

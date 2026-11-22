@@ -198,10 +198,10 @@ def test_localize_scaled_on_a_blank_frame_gives_no_accepted_fix(matcher):
     assert len(res.matches) == 0
 
 
-# --- the README notes -----------------------------------------------------------------------------------------
+# --- the technical notes -----------------------------------------------------------------------------------------
 
-def test_readme_has_the_scale_table():
-    text = (ROOT / "README.md").read_text()
+def test_notes_have_the_scale_table():
+    text = (ROOT / "NOTES.md").read_text()
     assert "Frame-to-map scale" in text
     # a markdown table with the factor, inliers and time columns
     header = next((ln for ln in text.splitlines() if ln.startswith("|") and "factor" in ln.lower()), "")
