@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dronenav"
+dynamic = ["version"]
+description = "GNSS-denied drone navigation: localize UAV frames on a satellite map"
+readme = "README.md"
+requires-python = ">=3.11"
+# The heavy stack (torch, opencv, lightglue) lives in requirements.txt so `pip install -e .`
+# stays fast and offline-friendly; install requirements first.
+dependencies = []
+
+[tool.setuptools.dynamic]
+version = { attr = "dronenav.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]          # experiments/ holds scripts named test_*/stress_test, not tests
+markers = ["data: needs the full dataset in data/ (skipped when it is missing)"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+# experiments/ holds one-off research scripts kept for the record (see their READMEs), not maintained code: CI
+# lints the package, tests, scripts and tools only.
+extend-exclude = ["experiments"]
+
+[tool.ruff.lint.flake8-bugbear]
+# dronenav.config.arg() is a dataclass field specifier (it returns dataclasses.field(...)), so calling it as a
+# default is the config pattern itself (M0-07), not a shared mutable default. Without this, RUF009 flags every
+# option whose annotation ruff does not know to be immutable (Path, list, ...), in any script that declares one.
+extend-immutable-calls = ["dronenav.config.arg"]

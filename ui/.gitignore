@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.env*.local
+# packed runs for hosting (scripts/pack_run.py): imagery, never committed
+public/runs/
+.vercel

@@ -1,0 +1,3 @@
+{"idx": 0, "t": 0.0, "source": "frames/frame_00000.png", "state": "LOST", "x": null, "y": null, "vx": null, "vy": null, "cov": null, "fix": null}
+{"idx": 1, "t": 0.5, "source": "frames/frame_00001.png", "state": "LOST", "x": null, "y": null, "vx": null, "vy": null, "cov": null, "fix": null}
+{"idx": 2, "t": 1.0, "source": "frames/frame_00002.png", "state": "LOST", "x": null, "y": null, "vx": null, "vy": null, "cov": null, "fix": null}

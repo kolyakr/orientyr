@@ -1,15 +1,28 @@
-data/
+# only the project's own data/ at the repo root (see data/README.md), not any nested "data" dir elsewhere
+/data/*
+!/data/README.md
 outputs/
 *.mp4
 *.mov
+*.avi
+*.mkv
+*.webm
 *.pt
 *.pth
 __pycache__/
+*.egg-info/
+build/
 .venv/
 .DS_Store
-.claude/settings.local.json
+# Local editor and assistant files
+/AGENTS.md
+/CLAUDE.md
+/.claude/
+/.codex/
+/.cursor/
+/ui/AGENTS.md
 
-# docs live in the make-docs library "orientyr", not in git
+# Local documentation and exports
 docs/
 extras/
 make-docs.toml
@@ -31,4 +44,9 @@ experiments/**/*.png
 *.onnx
 *.ckpt
 *.safetensors
+*.bin
+weights/
 cache/
+
+# full scan output (large, regenerable): only the committed results/candidates_summary.json survives
+experiments/ukraine_scan/candidates.json
