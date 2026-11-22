@@ -28,7 +28,7 @@ from dronenav.pipeline import OUTPUTS
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 
-MAX_IMAGE_BYTES = 500_000   # curated results stay small (AGENTS.md); a README that loads megabytes is not read
+MAX_IMAGE_BYTES = 500_000
 
 
 # --- sections ---------------------------------------------------------------------------------------------------
@@ -135,12 +135,11 @@ def test_the_run_command_is_the_deliverable_one():
     assert any(all(f in c for f in ("--map", "--frames", "--out")) for c in runs), runs
 
 
-def test_data_tool_subcommands_exist():
-    script = (ROOT / "tools" / "data.sh").read_text()
-    subs = set(re.findall(r"tools/data\.sh (\w+)", README))
-    assert {"setup", "pull"} <= subs
-    for sub in subs:
-        assert re.search(rf"^\s*{sub}\)", script, flags=re.MULTILINE), f"tools/data.sh has no {sub!r} command"
+def test_readme_documents_local_inputs():
+    links, _ = _targets()
+    assert "data/README.md" in links
+    assert "`--video`" in README
+    assert all("data/" not in command for command in _commands() if "scripts/run.py" in command)
 
 
 # --- links and images -------------------------------------------------------------------------------------------
@@ -179,9 +178,10 @@ def test_every_relative_link_points_into_the_repo():
         assert not _ignored(t), f"{t} is gitignored: the link is broken on a fresh clone"
 
 
-def test_readme_shows_a_small_result_image():
+def test_readme_shows_a_demo():
     _, images = _targets()
-    assert any(t.startswith("results/") for t in images), f"no image from results/ among {sorted(images)}"
+    hosted_video = re.search(r"^https://github\.com/user-attachments/assets/[a-f0-9-]+$", README, re.MULTILINE)
+    assert hosted_video or any(t.startswith("results/") for t in images)
     for t in sorted(images):
         assert (ROOT / t).is_file(), t
         assert (ROOT / t).stat().st_size <= MAX_IMAGE_BYTES, f"{t}: {(ROOT / t).stat().st_size} bytes"

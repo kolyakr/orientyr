@@ -12,7 +12,7 @@ frames in flight order. The frames are rotated and have a different scale than t
 route on the map and make a video with the drone's position.
 
 These notes describe the implementation and benchmark results. Things that are not built yet are marked **planned**.
-Contributors: the team workflow (feature and fix branches, PRs) is in [AGENTS.md](AGENTS.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor workflow.
 
 ## Approach
 
@@ -99,9 +99,9 @@ You need:
 
 You do not need to install ffmpeg. The video encoder comes with the `imageio-ffmpeg` package.
 
+From the repository root:
+
 ```bash
-git clone https://github.com/kolyakr/orientyr.git
-cd orientyr
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -129,46 +129,11 @@ python scripts/fake_run.py --map tests/fixtures/irpin_mild_2025/map_crop.jpg --o
 python scripts/render_image.py --run outputs/fake
 ```
 
-## Getting the data
+## Input data
 
-The data is not in git. It lives in the team's Google Drive folder:
-<https://drive.google.com/drive/folders/1Z5iIhFekHIFkAjH49jxUdf3k4SGw7voe>
-
-For the task run you need only `hackatons-data/`: the map and the 50 frames (about 56 MB). The folder must look
-like this:
-
-```text
-data/
-  hackatons-data/
-    global_map.png
-    crops/crop_0.png ... crop_49.png
-```
-
-**Way 1, no extra tools.** Open the link in a browser. Download the folder `hackatons-data` (Google gives you a
-zip). Unzip it so that the file `data/hackatons-data/global_map.png` exists.
-
-**Way 2, with rclone.** Good when you want all the data, or want to update it later.
-
-```bash
-brew install rclone
-tools/data.sh setup
-tools/data.sh pull hackatons-data
-```
-
-`tools/data.sh setup` opens a browser once to log in to Google. `tools/data.sh pull` without a path downloads
-everything, including our own Irpin data (several GB). `tools/data.sh pull irpin/maps` and
-`tools/data.sh pull irpin/flights/mild/2022` get only what the Irpin examples below use. On Linux, install rclone
-from <https://rclone.org/install/>.
-
-Check the result:
-
-```bash
-python scripts/check_data.py
-```
-
-This checks the whole layout, described in [data/README.md](data/README.md). If you downloaded only
-`hackatons-data`, it lists the `irpin/...` files as missing. That is fine for the task run. No line may start with
-`missing: hackatons-data`.
+The benchmark examples below refer to datasets described in [data/README.md](data/README.md). If you already
+have the 50-frame challenge dataset, place its map in `data/hackatons-data/global_map.png` and its frames in
+`data/hackatons-data/crops/`. To process your own imagery, pass your map and frames or video to the same CLI.
 
 ## Run
 
@@ -881,9 +846,7 @@ video as `trajectory.mp4`, the HUD video is a second step.
 
 ### Backup recordings (M8-05)
 
-The 21 Nov re-plan (#128) cut the live judge-controlled UI demo from the pitch: what would have been live steps
-are now three pre-rendered HUD videos, played instead if anything on stage goes wrong. `outputs/backups/` (not
-committed) holds one file per step:
+`outputs/backups/` can hold one pre-rendered HUD video for each demo scenario:
 
 | File | Backup of |
 |---|---|
@@ -906,9 +869,7 @@ cp outputs/run_irpin/trajectory.mp4 outputs/backups/irpin.mp4
 # phone.mp4: same two commands once M2-01 has filmed data/video/ and it has been run through run.py --video
 ```
 
-**Before the pitch, on both machines:** `python scripts/check_backups.py` - it reports every missing or
-unplayable recording by name (exit 0 only when all three decode). A recording that exists on one laptop but not
-the spare does not count as backed up.
+`python scripts/check_backups.py` reports missing or unplayable recordings and exits with 0 when all three decode.
 
 ### Visual odometry (M9-02)
 

@@ -1,7 +1,4 @@
-"""Verify a downloaded data/ folder against the layout the team's Google Drive mirrors (M0-06).
-
-"Done when: a fresh clone plus the Drive folder unpacked into data/ passes scripts/check_data.py; a missing or
-truncated file is reported by name." See data/README.md for the layout this checks.
+"""Verify a local benchmark data folder against the layout in data/README.md.
 
 A missing directory that should hold many expected files (an undownloaded irpin/, a whole flight folder, ...)
 is reported once, not once per file that would have been inside it - the point is to find the one bad file in
