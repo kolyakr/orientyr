@@ -3,7 +3,7 @@
 "Done when: every live step in the pitch has a matching recording, on two machines." The checkable half of
 that: a backups/ folder has the three required recordings (crops, Irpin flight, phone take), each a video that
 actually decodes - the "on two machines" half is a human running scripts/check_backups.py on each one before
-the pitch (see README.md, "Backup recordings").
+the pitch (see NOTES.md, "Backup recordings").
 
 Mirrors tests/test_check_data.py: tiny synthetic mp4s, so CI needs no real recordings.
 """

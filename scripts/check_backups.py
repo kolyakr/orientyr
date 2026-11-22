@@ -4,7 +4,7 @@
     python scripts/check_backups.py --backups /path/to/backups
 
 Prints every missing or truncated recording by name. Run this on both machines before the pitch - that is the
-"on two machines" half of "Done when" (see README.md, "Backup recordings"). Exit code 0: nothing wrong.
+"on two machines" half of "Done when" (see NOTES.md, "Backup recordings"). Exit code 0: nothing wrong.
 1: problems found (printed). 2: bad arguments or the backups folder itself is missing.
 """
 from __future__ import annotations
